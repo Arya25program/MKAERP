@@ -159,6 +159,49 @@ tr:hover td{background:var(--bg3)}
 .dev-chat-send{padding:7px 12px;border-radius:8px;background:var(--text);color:var(--bg);font-size:12px;border:none;cursor:pointer;font-weight:600;transition:opacity .15s;flex-shrink:0}
 .dev-chat-send:hover{opacity:.8}
 .dev-chat-send:disabled{opacity:.4;cursor:not-allowed}
+.mini-grid {display: grid;grid-template-columns: repeat(4, 1fr);gap: 12px;}
+.mini-card {background: #252525;border-radius: 10px;padding: 10px;min-height: 70px;display: flex;flex-direction: column;justify-content: space-between;}
+.mini-title {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.mini-content {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Button */
+.mini-btn {
+  background: #333;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+/* Toggle */
+.toggle {
+  width: 36px;
+  height: 18px;
+  background: #444;
+  border-radius: 20px;
+  position: relative;
+  cursor: pointer;
+}
+
+.toggle-knob {
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: 0.2s;
+}
 </style>
 </head>
 <body class="dark">
@@ -297,6 +340,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'approvals',icon:'✦',label:'Approvals'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'create-invoice',icon:'✦',label:'New Invoice'},
     {id:'users',icon:'◍',label:'Users'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
@@ -1370,6 +1414,46 @@ function UsersPage({data,setData,notify}){
   );
 }
 
+function DevToolsPage({ user }) {
+  return React.createElement('div', { className: 'mini-grid' },
+    MiniBox('AI Debug Mode', ToggleSwitch()),
+    MiniBox('System Logs', ActionButton('View Logs')),
+    MiniBox('Force Sync', ActionButton('Run Sync')),
+    MiniBox('Clear Cache', ActionButton('Clear')),
+    MiniBox('Dark Mode Override', ToggleSwitch()),
+    MiniBox('Mock Data Mode', ToggleSwitch()),
+    MiniBox('Test Notifications', ActionButton('Send')),
+    MiniBox('DB Health Check', ActionButton('Check'))
+  );
+}
+
+function MiniBox(title, content) {
+  return React.createElement('div', { className: 'mini-card' },
+    React.createElement('div', { className: 'mini-title' }, title),
+    React.createElement('div', { className: 'mini-content' }, content)
+  );
+}
+
+function ToggleSwitch() {
+  const [on, setOn] = React.useState(false);
+  return React.createElement('div', {
+    className: 'toggle',
+    onClick: () => setOn(!on)
+  },
+    React.createElement('div', {
+      className: 'toggle-knob',
+      style: { transform: on ? 'translateX(16px)' : 'translateX(0)' }
+    })
+  );
+}
+
+function ActionButton(label) {
+  return React.createElement('button', {
+    className: 'mini-btn',
+    onClick: () => alert(label + ' clicked')
+  }, label);
+}
+
 function App(){
   const [user,setUser]=useState(null);
   const [active,setActive]=useState('dashboard');
@@ -1379,7 +1463,18 @@ function App(){
   const notify=(msg,type='success')=>setNotif({msg,type});
   useEffect(()=>{document.body.className=theme},[theme]);
   if(!user)return React.createElement(Login,{onLogin:u=>{setUser(u);setActive('dashboard')},users:data.users,theme,setTheme});
-  const titles={dashboard:['Dashboard','Overview'],customers:['Customers','Manage records'],invoices:['Invoices','Invoice records'],'create-invoice':['New Invoice','Create and submit'],approvals:['Approvals','Review pending'],'approved-invoices':['Approved Invoices','Generate and print'],products:['Product Catalog','All products'],users:['Users','User management'],quotation:['Quotation Uphold','Demand & formal quotations'],delivery:['Delivery','Schedule and track deliveries']};
+  const titles={dashboard:['Dashboard','Overview'],
+                customers:['Customers','Manage records'],
+                invoices:['Invoices','Invoice records'],
+                'create-invoice':['New Invoice','Create and submit'],
+                approvals:['Approvals','Review pending'],
+                'approved-invoices':['Approved Invoices','Generate and print'],
+                products:['Product Catalog','All products'],
+                users:['Users','User management'],
+                quotation:['Quotation Uphold','Demand & formal quotations'],
+                delivery:['Delivery','Schedule and track deliveries'],
+                devtools: ['Dev Tools','Developer utilities']
+  };
   const [pt,ps]=titles[active]||['Dashboard',''];
   const props={user,data,setData,notify};
   const page=()=>{
@@ -1397,6 +1492,7 @@ function App(){
     if(active==='delivery')return React.createElement(DeliveryPage,props);
     if(active==='users')return React.createElement(UsersPage,props);
     if(active==='quotation')return React.createElement(QuotationUphold,props);
+    if(active==='devtools')return React.createElement(DevToolsPage, props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
   return React.createElement('div',{className:'app'},
