@@ -8,8 +8,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Sora',sans-serif;font-size:14px;line-height:1.6;min-height:100vh;transition:background .2s,color .2s}
-body.dark{--bg:#1a1a1a;--bg2:#222;--bg3:#2a2a2a;--bg4:#303030;--border:#333;--border2:#444;--text:#f0f0ee;--text2:#a0a09a;--text3:#666660;--green:#3dba78;--green-bg:#1e2e24;--amber:#d4a030;--amber-bg:#2e2618;--red:#d45c5c;--red-bg:#2e1e1e;--shadow:rgba(0,0,0,.3)}
-body.light{--bg:#f4f4f0;--bg2:#ffffff;--bg3:#ededea;--bg4:#e4e4e0;--border:#d8d8d4;--border2:#c8c8c4;--text:#1a1a18;--text2:#5a5a56;--text3:#9a9a96;--green:#1f9a5e;--green-bg:#e8f7ef;--amber:#b07800;--amber-bg:#fef8e0;--red:#c04040;--red-bg:#fdf0f0;--shadow:rgba(0,0,0,.08)}
+body.dark{--bg:#1a1a1a;--bg2:#222;--bg3:#2a2a2a;--bg4:#303030;--border:#333;--border2:#444;--text:#f0f0ee;--text2:#a0a09a;--text3:#666660;--green:#3dba78;--green-bg:#1e2e24;--amber:#d4a030;--amber-bg:#2e2618;--red:#d45c5c;--red-bg:#2e1e1e;--shadow:rgba(0,0,0,.3);--nav-bg:rgba(30,30,30,.88)}
+body.light{--bg:#f4f4f0;--bg2:#ffffff;--bg3:#ededea;--bg4:#e4e4e0;--border:#d8d8d4;--border2:#c8c8c4;--text:#1a1a18;--text2:#5a5a56;--text3:#9a9a96;--green:#1f9a5e;--green-bg:#e8f7ef;--amber:#b07800;--amber-bg:#fef8e0;--red:#c04040;--red-bg:#fdf0f0;--shadow:rgba(0,0,0,.08);--nav-bg:rgba(255,255,255,.88)}
 body{background:var(--bg);color:var(--text)}
 input,select,textarea{background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:10px;padding:9px 13px;width:100%;font-family:inherit;font-size:13px;outline:none;transition:border .2s,background .2s}
 input:focus,select:focus,textarea:focus{border-color:var(--text3)}
@@ -160,7 +160,7 @@ tr:hover td{background:var(--bg3)}
 .dev-chat-send:hover{opacity:.8}
 .dev-chat-send:disabled{opacity:.4;cursor:not-allowed}
 .mini-grid {display: grid;grid-template-columns: repeat(4, 1fr);gap: 12px;}
-.mini-card {background: #252525;border-radius: 10px;padding: 10px;min-height: 70px;display: flex;flex-direction: column;justify-content: space-between;}
+.mini-card {background: #1e1e1e;border-radius: 10px;padding: 10px;min-height: 70px;display: flex;flex-direction: column;justify-content: space-between;}
 .mini-title {
   font-size: 12px;
   opacity: 0.7;
@@ -201,6 +201,113 @@ tr:hover td{background:var(--bg3)}
   top: 2px;
   left: 2px;
   transition: 0.2s;
+}
+
+/* ── TABLE OVERFLOW IN CARDS ── */
+@media(max-width:768px){
+  .card{overflow-x:hidden}
+  .card > table, .card > div > table{min-width:0;width:100%}
+}
+
+/* ── MOBILE FLOATING NAV ── */
+.mobile-nav{
+  display:none;
+  position:fixed;
+  bottom:18px;
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--nav-bg,rgba(34,34,34,.88));
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--border);
+  border-radius:40px;
+  padding:6px 10px;
+  z-index:250;
+  gap:2px;
+  box-shadow:0 8px 32px rgba(0,0,0,.35);
+  align-items:center;
+}
+body.light .mobile-nav{background:rgba(255,255,255,.88)}
+.mob-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  padding:7px 11px;
+  border-radius:28px;
+  cursor:pointer;
+  color:var(--text3);
+  font-size:9px;
+  font-weight:500;
+  min-width:52px;
+  transition:all .18s;
+  font-family:'Sora',sans-serif;
+  border:none;
+  background:transparent;
+}
+.mob-item.active{background:var(--text);color:var(--bg)}
+.mob-item:not(.active):hover{background:var(--bg3);color:var(--text)}
+.mob-icon{font-size:15px;line-height:1;display:block}
+
+/* ── TABLE SCROLL WRAPPER ── */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ── RESPONSIVE BREAKPOINTS ── */
+@media(max-width:768px){
+  /* hide desktop sidebar */
+  .sidebar{display:none!important}
+  /* show mobile nav */
+  .mobile-nav{display:flex!important}
+  /* app fills screen */
+  .app{height:100vh;overflow:hidden}
+  /* main scrolls */
+  .main{flex:1;overflow-y:auto}
+  /* content bottom pad so nav doesn't overlap */
+  .content{padding:14px 14px 100px!important}
+  /* topbar tighter */
+  .topbar{padding:11px 14px!important}
+  /* metrics: 2-col on tablet */
+  .metrics{grid-template-columns:1fr 1fr!important}
+  /* two-col grids collapse */
+  .grid-2{grid-template-columns:1fr!important}
+  .grid-3{grid-template-columns:1fr 1fr!important}
+  /* form rows stack */
+  .form-row{grid-template-columns:1fr!important}
+  /* invoice item rows tighter */
+  .item-row{grid-template-columns:1.4fr 55px 65px auto!important;gap:6px!important;padding:8px 10px!important}
+  /* login card full-width */
+  .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:40px!important}
+  .login-card{width:100%!important;max-width:440px!important;padding:24px!important}
+  /* modals slide up as sheets */
+  .modal-overlay{align-items:flex-end!important;padding:0!important}
+  .modal{
+    border-radius:18px 18px 0 0!important;
+    width:100%!important;
+    max-width:100%!important;
+    padding:20px 18px!important;
+    max-height:88vh!important;
+  }
+  /* notif full-width at top */
+  .notif{top:10px!important;right:10px!important;left:10px!important;max-width:none!important}
+  /* dev chat popup repositioned */
+  .dev-chat-popup{left:10px!important;right:10px!important;bottom:90px!important;width:auto!important}
+  /* quot chips wrap nicely */
+  .quot-chip{margin:3px!important}
+  /* import choice stays 2-col */
+  .import-choice{grid-template-columns:1fr 1fr!important}
+  /* mini-grid (devtools) 2-col */
+  .mini-grid{grid-template-columns:1fr 1fr!important}
+  /* tables get scroll wrapper — applied via JS helper */
+  table{min-width:520px}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius-lg,14px)}
+}
+
+@media(max-width:440px){
+  .metrics{grid-template-columns:1fr!important}
+  .grid-3{grid-template-columns:1fr!important}
+  .import-choice{grid-template-columns:1fr!important}
+  .mini-grid{grid-template-columns:1fr!important}
+  .mob-item{min-width:44px;padding:7px 8px;font-size:8px}
 }
 </style>
 </head>
@@ -486,6 +593,47 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
       React.createElement('input',{ref:chatInputRef,placeholder:'Type a command or question…',value:val,onChange:e=>setVal(e.target.value),onKeyDown:handleKey}),
       React.createElement('button',{className:'dev-chat-send',disabled:loading||!val.trim(),onClick:()=>{onSend(val);setVal('');}},loading?'…':'→')
     )
+  );
+}
+
+/* ── MOBILE NAV ── */
+function MobileNav({user,active,setActive}){
+  const empNav=[
+    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'customers',icon:'◎',label:'Leads'},
+    {id:'create-invoice',icon:'✦',label:'Invoice'},
+    {id:'invoices',icon:'◻',label:'History'},
+    {id:'products',icon:'▣',label:'Products'},
+  ];
+  const accNav=[
+    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'approved-invoices',icon:'◻',label:'Invoices'},
+    {id:'delivery',icon:'◉',label:'Delivery'},
+  ];
+  const ownerNav=[
+    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'approvals',icon:'✦',label:'Approve'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'customers',icon:'◎',label:'Leads'},
+    {id:'quotation',icon:'❖',label:'Quotes'},
+  ];
+  const adminNav=[
+    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'approvals',icon:'✦',label:'Approve'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'users',icon:'◍',label:'Users'},
+    {id:'quotation',icon:'❖',label:'Quotes'},
+  ];
+  const nav=user.role==='employee'?empNav:user.role==='accountant'?accNav:user.role==='admin'?adminNav:ownerNav;
+  return React.createElement('div',{className:'mobile-nav'},
+    nav.map(item=>React.createElement('button',{
+      key:item.id,
+      className:`mob-item${active===item.id?' active':''}`,
+      onClick:()=>setActive(item.id)
+    },
+      React.createElement('span',{className:'mob-icon'},item.icon),
+      React.createElement('span',null,item.label)
+    ))
   );
 }
 
@@ -1498,6 +1646,7 @@ function App(){
   return React.createElement('div',{className:'app'},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
     React.createElement(Sidebar,{user,active,setActive,onLogout:()=>setUser(null),theme,setTheme}),
+    React.createElement(MobileNav,{user,active,setActive}),
     React.createElement('div',{className:'main'},
       React.createElement('div',{className:'topbar'},
         React.createElement('div',null,React.createElement('div',{className:'page-title'},pt),React.createElement('div',{className:'page-sub'},ps)),
