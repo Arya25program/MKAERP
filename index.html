@@ -203,111 +203,127 @@ tr:hover td{background:var(--bg3)}
   transition: 0.2s;
 }
 
-/* ── TABLE OVERFLOW IN CARDS ── */
-@media(max-width:768px){
-  .card{overflow-x:hidden}
-  .card > table, .card > div > table{min-width:0;width:100%}
-}
-
-/* ── MOBILE FLOATING NAV ── */
+/* ── MOBILE BOTTOM NAV BAR ── */
 .mobile-nav{
   display:none;
   position:fixed;
-  bottom:18px;
-  left:50%;
-  transform:translateX(-50%);
-  background:var(--nav-bg,rgba(34,34,34,.88));
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border:1px solid var(--border);
-  border-radius:40px;
-  padding:6px 10px;
+  bottom:0;left:0;right:0;
+  background:var(--nav-bg,rgba(26,26,26,.97));
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--border);
   z-index:250;
+  padding:6px 8px 10px;
   gap:2px;
-  box-shadow:0 8px 32px rgba(0,0,0,.35);
-  align-items:center;
+  align-items:stretch;
+  justify-content:space-around;
+  box-shadow:0 -4px 20px rgba(0,0,0,.25);
 }
-body.light .mobile-nav{background:rgba(255,255,255,.88)}
+body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .mob-item{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:2px;
-  padding:7px 11px;
-  border-radius:28px;
-  cursor:pointer;
-  color:var(--text3);
-  font-size:9px;
-  font-weight:500;
-  min-width:52px;
-  transition:all .18s;
-  font-family:'Sora',sans-serif;
-  border:none;
-  background:transparent;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 6px;border-radius:12px;cursor:pointer;
+  color:var(--text3);font-size:10px;font-weight:500;
+  flex:1;min-width:0;max-width:80px;
+  transition:all .18s;font-family:'Sora',sans-serif;
+  border:none;background:transparent;
 }
-.mob-item.active{background:var(--text);color:var(--bg)}
-.mob-item:not(.active):hover{background:var(--bg3);color:var(--text)}
-.mob-icon{font-size:15px;line-height:1;display:block}
+.mob-item.active{background:var(--bg3);color:var(--text)}
+.mob-item:not(.active):hover{background:var(--bg3);color:var(--text2)}
+.mob-icon{font-size:20px;line-height:1.2;display:block}
+.mob-label{font-size:10px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px}
 
-/* ── TABLE SCROLL WRAPPER ── */
-.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* ── MOBILE PROFILE BUTTON ── */
+.mob-profile-btn{
+  display:none;align-items:center;gap:8px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:20px;padding:5px 10px 5px 5px;cursor:pointer;
+  transition:all .15s;
+}
+.mob-profile-btn:hover{border-color:var(--text3)}
+.mob-profile-avatar{width:26px;height:26px;border-radius:50%;background:var(--bg4);color:var(--text);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
+.mob-profile-name{font-size:11px;font-weight:500;color:var(--text)}
 
-/* ── RESPONSIVE BREAKPOINTS ── */
+/* ── MOBILE PROFILE SHEET ── */
+.mob-profile-sheet{
+  position:fixed;inset:0;z-index:400;
+  display:flex;align-items:flex-end;
+  background:rgba(0,0,0,.5);
+}
+.mob-profile-inner{
+  background:var(--bg2);border-top:1px solid var(--border2);
+  border-radius:20px 20px 0 0;width:100%;padding:24px 20px 40px;
+}
+.mob-profile-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.mob-big-avatar{width:52px;height:52px;border-radius:50%;background:var(--bg4);color:var(--text);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
+.mob-profile-info-name{font-size:16px;font-weight:600;color:var(--text)}
+.mob-profile-info-role{font-size:12px;color:var(--text3);margin-top:2px}
+.mob-profile-info-email{font-size:11px;color:var(--text3);margin-top:2px}
+
+/* ── TABLE SCROLL ── */
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+
+/* ── USERS TABLE ACTIONS — ALWAYS VISIBLE ── */
+.user-actions{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+
+/* ── IMPORT CHOICE CARDS ── */
+.import-choice{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px}
+.import-opt{border:2px solid var(--border2);border-radius:14px;padding:22px 16px;cursor:pointer;text-align:center;transition:all .2s;background:var(--bg3)}
+.import-opt:hover,.import-opt.selected{border-color:var(--text);background:var(--bg4)}
+.import-opt-icon{font-size:32px;margin-bottom:10px}
+.import-opt-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.import-opt-desc{font-size:11px;color:var(--text3)}
+.excel-preview-row{display:grid;gap:0;border-bottom:1px solid var(--border)}
+.excel-preview-row:last-child{border-bottom:none}
+.excel-cell{padding:7px 10px;font-size:11px;border-right:1px solid var(--border)}
+.excel-cell:last-child{border-right:none}
+.excel-hdr{background:var(--bg4);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+.col-map-row{display:grid;grid-template-columns:130px 24px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;margin:8px 0}
+.drop-zone:hover,.drop-zone.dz-over{border-color:var(--text3);background:var(--bg3)}
+.drop-zone-icon{font-size:34px;margin-bottom:10px}
+
+/* ── MODAL ACTIONS ALWAYS WRAP ── */
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.modal-actions .btn{min-width:80px;text-align:center}
+
+/* ── RESPONSIVE ── */
 @media(max-width:768px){
-  /* hide desktop sidebar */
   .sidebar{display:none!important}
-  /* show mobile nav */
   .mobile-nav{display:flex!important}
-  /* app fills screen */
+  .mob-profile-btn{display:flex!important}
   .app{height:100vh;overflow:hidden}
-  /* main scrolls */
   .main{flex:1;overflow-y:auto}
-  /* content bottom pad so nav doesn't overlap */
-  .content{padding:14px 14px 100px!important}
-  /* topbar tighter */
-  .topbar{padding:11px 14px!important}
-  /* metrics: 2-col on tablet */
+  .content{padding:14px 14px 90px!important}
+  .topbar{padding:10px 14px!important}
+  .topbar-date{display:none}
   .metrics{grid-template-columns:1fr 1fr!important}
-  /* two-col grids collapse */
   .grid-2{grid-template-columns:1fr!important}
   .grid-3{grid-template-columns:1fr 1fr!important}
-  /* form rows stack */
   .form-row{grid-template-columns:1fr!important}
-  /* invoice item rows tighter */
-  .item-row{grid-template-columns:1.4fr 55px 65px auto!important;gap:6px!important;padding:8px 10px!important}
-  /* login card full-width */
-  .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:40px!important}
-  .login-card{width:100%!important;max-width:440px!important;padding:24px!important}
-  /* modals slide up as sheets */
+  .item-row{grid-template-columns:1.3fr 52px 64px auto!important;gap:6px!important;padding:8px 10px!important}
+  .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:36px!important}
+  .login-card{width:100%!important;max-width:440px!important;padding:22px!important}
   .modal-overlay{align-items:flex-end!important;padding:0!important}
-  .modal{
-    border-radius:18px 18px 0 0!important;
-    width:100%!important;
-    max-width:100%!important;
-    padding:20px 18px!important;
-    max-height:88vh!important;
-  }
-  /* notif full-width at top */
+  .modal{border-radius:20px 20px 0 0!important;width:100%!important;max-width:100%!important;padding:22px 18px 32px!important;max-height:90vh!important}
+  .modal-actions{justify-content:stretch!important}
+  .modal-actions .btn{flex:1!important;text-align:center!important;padding:11px!important;font-size:13px!important}
   .notif{top:10px!important;right:10px!important;left:10px!important;max-width:none!important}
-  /* dev chat popup repositioned */
-  .dev-chat-popup{left:10px!important;right:10px!important;bottom:90px!important;width:auto!important}
-  /* quot chips wrap nicely */
+  .dev-chat-popup{left:10px!important;right:10px!important;bottom:80px!important;width:auto!important}
   .quot-chip{margin:3px!important}
-  /* import choice stays 2-col */
   .import-choice{grid-template-columns:1fr 1fr!important}
-  /* mini-grid (devtools) 2-col */
   .mini-grid{grid-template-columns:1fr 1fr!important}
-  /* tables get scroll wrapper — applied via JS helper */
-  table{min-width:520px}
-  .table-wrap{overflow-x:auto;border-radius:var(--radius-lg,14px)}
+  table{min-width:480px}
+  .tbl-scroll{overflow-x:auto}
+  .user-actions button{font-size:10px!important;padding:4px 8px!important}
 }
-
 @media(max-width:440px){
   .metrics{grid-template-columns:1fr!important}
   .grid-3{grid-template-columns:1fr!important}
   .import-choice{grid-template-columns:1fr!important}
   .mini-grid{grid-template-columns:1fr!important}
-  .mob-item{min-width:44px;padding:7px 8px;font-size:8px}
+  .mob-icon{font-size:18px}
+  .mob-label{font-size:9px}
 }
 </style>
 </head>
@@ -316,8 +332,10 @@ body.light .mobile-nav{background:rgba(255,255,255,.88)}
 <div class="print-page" id="print-area"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const {useState,useEffect,useRef}=React;
+function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
 const USERS_INIT=[
   {id:1,name:'Ramachandran',email:'owner1@mka.com',password:'Owner@001',role:'owner',active:true},
@@ -596,44 +614,72 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
   );
 }
 
-/* ── MOBILE NAV ── */
-function MobileNav({user,active,setActive}){
+/* ── MOBILE NAV + PROFILE ── */
+function MobileNav({user,active,setActive,onLogout}){
+  const [showProfile,setShowProfile]=useState(false);
   const empNav=[
-    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'customers',icon:'◎',label:'Leads'},
     {id:'create-invoice',icon:'✦',label:'Invoice'},
     {id:'invoices',icon:'◻',label:'History'},
     {id:'products',icon:'▣',label:'Products'},
   ];
   const accNav=[
-    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approved-invoices',icon:'◻',label:'Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
   ];
   const ownerNav=[
-    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approvals',icon:'✦',label:'Approve'},
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'customers',icon:'◎',label:'Leads'},
     {id:'quotation',icon:'❖',label:'Quotes'},
   ];
   const adminNav=[
-    {id:'dashboard',icon:'◈',label:'Home'},
+    {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approvals',icon:'✦',label:'Approve'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'users',icon:'◍',label:'Users'},
     {id:'quotation',icon:'❖',label:'Quotes'},
   ];
   const nav=user.role==='employee'?empNav:user.role==='accountant'?accNav:user.role==='admin'?adminNav:ownerNav;
-  return React.createElement('div',{className:'mobile-nav'},
-    nav.map(item=>React.createElement('button',{
-      key:item.id,
-      className:`mob-item${active===item.id?' active':''}`,
-      onClick:()=>setActive(item.id)
-    },
-      React.createElement('span',{className:'mob-icon'},item.icon),
-      React.createElement('span',null,item.label)
-    ))
+  return React.createElement(React.Fragment,null,
+    React.createElement('div',{className:'mobile-nav'},
+      nav.map(item=>React.createElement('button',{
+        key:item.id,
+        className:`mob-item${active===item.id?' active':''}`,
+        onClick:()=>setActive(item.id)
+      },
+        React.createElement('span',{className:'mob-icon'},item.icon),
+        React.createElement('span',{className:'mob-label'},item.label)
+      ))
+    ),
+    showProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setShowProfile(false)},
+      React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
+        React.createElement('div',{className:'mob-profile-header'},
+          React.createElement('div',{className:'mob-big-avatar'},getInitials(user.name)),
+          React.createElement('div',null,
+            React.createElement('div',{className:'mob-profile-info-name'},user.name),
+            React.createElement('div',{className:'mob-profile-info-role'},user.role.charAt(0).toUpperCase()+user.role.slice(1)),
+            React.createElement('div',{className:'mob-profile-info-email'},user.email||'')
+          )
+        ),
+        React.createElement('button',{
+          className:'btn btn-danger',
+          style:{width:'100%',padding:'14px',fontSize:14,marginBottom:8},
+          onClick:()=>{setShowProfile(false);onLogout();}
+        },'Sign Out')
+      )
+    )
+  );
+}
+
+/* ── MOBILE TOPBAR PROFILE BUTTON ── */
+function MobProfileBtn({user,onOpen}){
+  return React.createElement('button',{className:'mob-profile-btn',onClick:onOpen},
+    React.createElement('div',{className:'mob-profile-avatar'},getInitials(user.name)),
+    React.createElement('span',{className:'mob-profile-name'},user.name)
   );
 }
 
@@ -1077,88 +1123,235 @@ function CustomersPage({user,data,setData,notify}){
 function ProductsPage({user,data,setData,notify}){
   const {products}=data;
   const [showImport,setShowImport]=useState(false);
+  const [importStep,setImportStep]=useState('choose'); // choose|manual|excel-upload|excel-map|excel-preview
   const [showEdit,setShowEdit]=useState(null);
   const [ef,setEf]=useState({});
-  const [importDate,setImportDate]=useState('');
-  const [importItems,setImportItems]=useState([{name:'',price:'',stock:'',category:''}]);
+  // manual
+  const [manualDate,setManualDate]=useState('');
+  const [manualRows,setManualRows]=useState([{name:'',price:'',stock:'',category:''}]);
+  // excel
+  const [xlsxRows,setXlsxRows]=useState(null);
+  const [xlsxHeaders,setXlsxHeaders]=useState([]);
+  const [colMap,setColMap]=useState({name:'',price:'',stock:'',category:''});
+  const [preview,setPreview]=useState([]);
+  const [isDrag,setIsDrag]=useState(false);
+  const fileRef=useRef();
   const isAdmin=user.role==='admin';
+
+  const openImport=()=>{setImportStep('choose');setManualRows([{name:'',price:'',stock:'',category:''}]);setManualDate('');setXlsxRows(null);setXlsxHeaders([]);setColMap({name:'',price:'',stock:'',category:''});setPreview([]);setShowImport(true)};
+
   const saveEdit=()=>{
     if(!ef.name.trim()){notify('Name required','error');return}
     setData(d=>({...d,products:d.products.map(p=>p.id===showEdit.id?{...p,...ef,price:parseFloat(ef.price),stock:parseInt(ef.stock)}:p)}));
     notify('Product updated','success');setShowEdit(null);
   };
-  const doImport=()=>{
-    if(!importDate){notify('Date required','error');return}
-    const valid=importItems.filter(i=>i.name.trim()&&i.price&&i.stock&&i.category.trim());
-    if(!valid.length){notify('Add at least one product','error');return}
-    setData(d=>({...d,products:[...d.products,...valid.map((i,idx)=>({id:Date.now()+idx,name:i.name.trim(),price:parseFloat(i.price),stock:parseInt(i.stock),category:i.category.trim(),addedDate:importDate}))]}));
-    notify(valid.length+' imported','success');setShowImport(false);setImportDate('');setImportItems([{name:'',price:'',stock:'',category:''}]);
+
+  const doManual=()=>{
+    if(!manualDate){notify('Arrival date required','error');return}
+    const valid=manualRows.filter(r=>r.name.trim()&&r.price&&r.stock&&r.category.trim());
+    if(!valid.length){notify('Add at least one complete row','error');return}
+    setData(d=>({...d,products:[...d.products,...valid.map((r,i)=>({id:Date.now()+i,name:r.name.trim(),price:parseFloat(r.price),stock:parseInt(r.stock),category:r.category.trim(),addedDate:manualDate}))]}));
+    notify(valid.length+' product(s) imported','success');setShowImport(false);
   };
-  return React.createElement('div',null,
-    React.createElement('div',{className:'grid-3',style:{marginBottom:18}},
+
+  const handleFile=e=>{
+    const file=e.target?.files?.[0]||e.dataTransfer?.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(raw.length<2){notify('Sheet appears empty','error');return}
+        const hdrs=raw[0].map(String);
+        const rows=raw.slice(1).filter(r=>r.some(c=>String(c).trim()));
+        setXlsxHeaders(hdrs);setXlsxRows(rows);
+        const g={name:'',price:'',stock:'',category:''};
+        hdrs.forEach((h,i)=>{
+          const n=normalize(h);
+          if(!g.name&&(n.includes('name')||n.includes('product')||n.includes('item')))g.name=String(i);
+          if(!g.price&&(n.includes('price')||n.includes('cost')||n.includes('rate')))g.price=String(i);
+          if(!g.stock&&(n.includes('stock')||n.includes('qty')||n.includes('quantity')||n.includes('count')))g.stock=String(i);
+          if(!g.category&&(n.includes('category')||n.includes('type')||n.includes('class')))g.category=String(i);
+        });
+        setColMap(g);setImportStep('excel-map');
+      }catch(err){notify('Could not read file — use .xlsx or .csv','error')}
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const buildPreview=()=>{
+    if(!colMap.name){notify('Map the Product Name column','error');return}
+    const rows=xlsxRows.map(r=>({
+      name:String(r[parseInt(colMap.name)]||'').trim(),
+      price:parseFloat(r[colMap.price!==''?parseInt(colMap.price):-1])||0,
+      stock:parseInt(r[colMap.stock!==''?parseInt(colMap.stock):-1])||0,
+      category:String(r[colMap.category!==''?parseInt(colMap.category):-1]||'Imported').trim(),
+    })).filter(r=>r.name);
+    const tagged=rows.map(r=>{
+      const match=products.find(p=>normalize(p.name)===normalize(r.name));
+      return{...r,match:match||null,action:match?'update':'new'};
+    });
+    setPreview(tagged);setImportStep('excel-preview');
+  };
+
+  const doXlsx=()=>{
+    const today=new Date().toISOString().split('T')[0];
+    let added=0,updated=0;
+    setData(d=>{
+      let prods=[...d.products];
+      preview.forEach(r=>{
+        if(r.action==='update'&&r.match){prods=prods.map(p=>p.id===r.match.id?{...p,stock:p.stock+r.stock,price:r.price||p.price,addedDate:today}:p);updated++;}
+        else if(r.action==='new'){prods.push({id:Date.now()+Math.random(),name:r.name,price:r.price,stock:r.stock,category:r.category,addedDate:today});added++;}
+      });
+      return{...d,products:prods};
+    });
+    notify(`Imported: ${added} new, ${updated} stock updated`,'success');setShowImport(false);
+  };
+
+  const R=React.createElement;
+  return R('div',null,
+    R('div',{className:'grid-3',style:{marginBottom:18}},
       [{label:'Total',val:products.length},{label:'In Stock',val:products.filter(p=>p.stock>0).length},{label:'Out of Stock',val:products.filter(p=>p.stock===0).length}]
-        .map(m=>React.createElement('div',{key:m.label,className:'metric'},React.createElement('div',{className:'metric-label'},m.label),React.createElement('div',{className:'metric-value'},m.val)))
+        .map(m=>R('div',{key:m.label,className:'metric'},R('div',{className:'metric-label'},m.label),R('div',{className:'metric-value'},m.val)))
     ),
-    React.createElement('div',{className:'card'},
-      React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
-        React.createElement('div',{className:'card-title',style:{margin:0}},'Product Catalog'),
-        isAdmin&&React.createElement('button',{className:'btn btn-primary',onClick:()=>setShowImport(true)},'+ Import Products')
+    R('div',{className:'card'},
+      R('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}},
+        R('div',{className:'card-title',style:{margin:0}},'Product Catalog'),
+        isAdmin&&R('button',{className:'btn btn-primary',onClick:openImport},'+ Import Products')
       ),
-      React.createElement('table',null,
-        React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Product'),React.createElement('th',null,'Category'),React.createElement('th',null,'Price'),React.createElement('th',null,'Stock'),React.createElement('th',null,'Added'),React.createElement('th',null,'Status'),isAdmin&&React.createElement('th',null,''))),
-        React.createElement('tbody',null,products.map(p=>React.createElement('tr',{key:p.id},
-          React.createElement('td',{className:'primary'},p.name),
-          React.createElement('td',null,p.category),
-          React.createElement('td',null,React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(p.price))),
-          React.createElement('td',null,p.stock),
-          React.createElement('td',null,p.addedDate||'—'),
-          React.createElement('td',null,React.createElement('span',{className:`badge ${p.stock===0?'rejected':p.stock<=3?'low-stock':'in-stock'}`},p.stock===0?'Out of stock':p.stock<=3?'Low stock':'In stock')),
-          isAdmin&&React.createElement('td',null,React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setEf({name:p.name,price:p.price,stock:p.stock,category:p.category});setShowEdit(p)}},'Edit'))
+      R('div',{className:'tbl-scroll'},R('table',null,
+        R('thead',null,R('tr',null,R('th',null,'Product'),R('th',null,'Category'),R('th',null,'Price'),R('th',null,'Stock'),R('th',null,'Added'),R('th',null,'Status'),isAdmin&&R('th',null,''))),
+        R('tbody',null,products.map(p=>R('tr',{key:p.id},
+          R('td',{className:'primary'},p.name),
+          R('td',null,p.category),
+          R('td',null,R('span',{style:{fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(p.price))),
+          R('td',null,p.stock),
+          R('td',null,p.addedDate||'—'),
+          R('td',null,R('span',{className:`badge ${p.stock===0?'rejected':p.stock<=3?'low-stock':'in-stock'}`},p.stock===0?'Out of stock':p.stock<=3?'Low stock':'In stock')),
+          isAdmin&&R('td',null,R('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setEf({name:p.name,price:p.price,stock:p.stock,category:p.category});setShowEdit(p)}},'Edit'))
         )))
-      )
+      ))
     ),
-    showEdit&&React.createElement('div',{className:'modal-overlay'},
-      React.createElement('div',{className:'modal',style:{width:440}},
-        React.createElement('div',{className:'modal-title'},'Edit Product'),
-        React.createElement('div',{className:'form-grid'},
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Name'),React.createElement('input',{value:ef.name,onChange:e=>setEf(f=>({...f,name:e.target.value}))})),
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Category'),React.createElement('input',{value:ef.category,onChange:e=>setEf(f=>({...f,category:e.target.value}))})),
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Price (OMR)'),React.createElement('input',{type:'number',value:ef.price,onChange:e=>setEf(f=>({...f,price:e.target.value}))})),
-            React.createElement('div',{className:'form-group'},
-              React.createElement('label',null,'Stock'),
-              React.createElement('div',{style:{display:'flex',gap:7,alignItems:'center'}},
-                React.createElement('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:15},onClick:()=>setEf(f=>({...f,stock:Math.max(0,parseInt(f.stock||0)-1)}))},'-'),
-                React.createElement('input',{type:'number',value:ef.stock,onChange:e=>setEf(f=>({...f,stock:e.target.value})),style:{textAlign:'center'}}),
-                React.createElement('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:15},onClick:()=>setEf(f=>({...f,stock:parseInt(f.stock||0)+1}))},'+')
+    showEdit&&R('div',{className:'modal-overlay'},
+      R('div',{className:'modal',style:{maxWidth:440}},
+        R('div',{className:'modal-title'},'Edit Product'),
+        R('div',{className:'form-grid'},
+          R('div',{className:'form-group'},R('label',null,'Name'),R('input',{value:ef.name,onChange:e=>setEf(f=>({...f,name:e.target.value}))})),
+          R('div',{className:'form-group'},R('label',null,'Category'),R('input',{value:ef.category,onChange:e=>setEf(f=>({...f,category:e.target.value}))})),
+          R('div',{className:'form-row'},
+            R('div',{className:'form-group'},R('label',null,'Price (OMR)'),R('input',{type:'number',value:ef.price,onChange:e=>setEf(f=>({...f,price:e.target.value}))})),
+            R('div',{className:'form-group'},R('label',null,'Stock'),
+              R('div',{style:{display:'flex',gap:7,alignItems:'center'}},
+                R('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:16},onClick:()=>setEf(f=>({...f,stock:Math.max(0,parseInt(f.stock||0)-1)}))},'-'),
+                R('input',{type:'number',value:ef.stock,onChange:e=>setEf(f=>({...f,stock:e.target.value})),style:{textAlign:'center'}}),
+                R('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:16},onClick:()=>setEf(f=>({...f,stock:parseInt(f.stock||0)+1}))},'+')
               )
             )
           )
         ),
-        React.createElement('div',{className:'modal-actions'},
-          React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowEdit(null)},'Cancel'),
-          React.createElement('button',{className:'btn btn-primary',onClick:saveEdit},'Save')
-        )
+        R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setShowEdit(null)},'Cancel'),R('button',{className:'btn btn-primary',onClick:saveEdit},'Save'))
       )
     ),
-    showImport&&React.createElement('div',{className:'modal-overlay'},
-      React.createElement('div',{className:'modal',style:{width:700}},
-        React.createElement('div',{className:'modal-title'},'Import Products'),
-        React.createElement('div',{className:'form-group',style:{marginBottom:14}},React.createElement('label',null,'Arrival Date'),React.createElement('input',{type:'date',value:importDate,onChange:e=>setImportDate(e.target.value)})),
-        React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,overflow:'hidden',marginBottom:10}},
-          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto',gap:8,padding:'7px 12px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},React.createElement('span',null,'Name'),React.createElement('span',null,'Price'),React.createElement('span',null,'Stock'),React.createElement('span',null,'Category'),React.createElement('span',null,'')),
-          importItems.map((item,idx)=>React.createElement('div',{key:idx,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto',gap:8,padding:'8px 12px',borderTop:'1px solid var(--border)',alignItems:'center'}},
-            React.createElement('input',{value:item.name,onChange:e=>setImportItems(i=>i.map((it,ii)=>ii===idx?{...it,name:e.target.value}:it)),placeholder:'Name',style:{fontSize:12}}),
-            React.createElement('input',{type:'number',value:item.price,onChange:e=>setImportItems(i=>i.map((it,ii)=>ii===idx?{...it,price:e.target.value}:it)),placeholder:'0.00',style:{fontSize:12}}),
-            React.createElement('input',{type:'number',value:item.stock,onChange:e=>setImportItems(i=>i.map((it,ii)=>ii===idx?{...it,stock:e.target.value}:it)),placeholder:'0',style:{fontSize:12}}),
-            React.createElement('input',{value:item.category,onChange:e=>setImportItems(i=>i.map((it,ii)=>ii===idx?{...it,category:e.target.value}:it)),placeholder:'Category',style:{fontSize:12}}),
-            importItems.length>1&&React.createElement('button',{onClick:()=>setImportItems(i=>i.filter((_,ii)=>ii!==idx)),style:{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:15}},'×')
-          ))
+    showImport&&R('div',{className:'modal-overlay'},
+      R('div',{className:'modal',style:{maxWidth:680}},
+        importStep==='choose'&&R(React.Fragment,null,
+          R('div',{className:'modal-title'},'Import Products'),
+          R('div',{className:'import-choice'},
+            R('div',{className:'import-opt',onClick:()=>setImportStep('manual')},
+              R('div',{className:'import-opt-icon'},'📝'),
+              R('div',{className:'import-opt-title'},'Add Manually'),
+              R('div',{className:'import-opt-desc'},'Type each product row by row')
+            ),
+            R('div',{className:'import-opt',onClick:()=>setImportStep('excel-upload')},
+              R('div',{className:'import-opt-icon'},'📊'),
+              R('div',{className:'import-opt-title'},'Excel / CSV'),
+              R('div',{className:'import-opt-desc'},'Upload spreadsheet, map columns, merge stock')
+            )
+          ),
+          R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setShowImport(false)},'Cancel'))
         ),
-        React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setImportItems(i=>[...i,{name:'',price:'',stock:'',category:''}])},'+ Row'),
-        React.createElement('div',{className:'modal-actions'},
-          React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowImport(false)},'Cancel'),
-          React.createElement('button',{className:'btn btn-primary',onClick:doImport},'Import')
+        importStep==='manual'&&R(React.Fragment,null,
+          R('div',{className:'modal-title'},'Manual Import'),
+          R('div',{className:'form-group',style:{marginBottom:14}},R('label',null,'Arrival Date'),R('input',{type:'date',value:manualDate,onChange:e=>setManualDate(e.target.value)})),
+          R('div',{style:{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,overflow:'hidden',marginBottom:10}},
+            R('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1.2fr',gap:8,padding:'7px 12px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},R('span',null,'Name'),R('span',null,'Price (OMR)'),R('span',null,'Stock'),R('span',null,'Category')),
+            manualRows.map((row,idx)=>R('div',{key:idx,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1.2fr auto',gap:8,padding:'8px 12px',borderTop:'1px solid var(--border)',alignItems:'center'}},
+              R('input',{value:row.name,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,name:e.target.value}:x)),placeholder:'Name',style:{fontSize:12}}),
+              R('input',{type:'number',value:row.price,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,price:e.target.value}:x)),placeholder:'0.00',style:{fontSize:12}}),
+              R('input',{type:'number',value:row.stock,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,stock:e.target.value}:x)),placeholder:'0',style:{fontSize:12}}),
+              R('input',{value:row.category,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,category:e.target.value}:x)),placeholder:'Category',style:{fontSize:12}}),
+              manualRows.length>1&&R('button',{onClick:()=>setManualRows(r=>r.filter((_,i)=>i!==idx)),style:{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:16,flexShrink:0}},'×')
+            ))
+          ),
+          R('button',{className:'btn btn-ghost btn-sm',style:{marginBottom:14},onClick:()=>setManualRows(r=>[...r,{name:'',price:'',stock:'',category:''}])},'+ Add Row'),
+          R('div',{className:'modal-actions'},
+            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('choose')},'← Back'),
+            R('button',{className:'btn btn-primary',onClick:doManual},'Import Products')
+          )
+        ),
+        importStep==='excel-upload'&&R(React.Fragment,null,
+          R('div',{className:'modal-title'},'Upload Excel or CSV'),
+          R('div',{
+            className:`drop-zone${isDrag?' dz-over':''}`,
+            onClick:()=>fileRef.current.click(),
+            onDragOver:e=>{e.preventDefault();setIsDrag(true)},
+            onDragLeave:()=>setIsDrag(false),
+            onDrop:e=>{e.preventDefault();setIsDrag(false);handleFile(e)}
+          },
+            R('div',{className:'drop-zone-icon'},'📂'),
+            R('div',{style:{fontSize:13,color:'var(--text2)',marginBottom:4}},'Drop .xlsx or .csv here'),
+            R('div',{style:{fontSize:11,color:'var(--text3)'}},'or click to browse'),
+            R('input',{type:'file',accept:'.xlsx,.xls,.csv',ref:fileRef,style:{display:'none'},onChange:handleFile})
+          ),
+          R('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'12px 14px',marginTop:8}},
+            R('div',{style:{fontSize:11,fontWeight:600,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}},'Expected columns'),
+            R('div',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.8}},'Product Name · Price · Stock / Qty · Category'),
+            R('div',{style:{fontSize:11,color:'var(--text3)',marginTop:6}},'Matching names → stock added. New names → new products created.')
+          ),
+          R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('choose')},'← Back'))
+        ),
+        importStep==='excel-map'&&R(React.Fragment,null,
+          R('div',{className:'modal-title'},'Map Columns'),
+          R('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16}},xlsxRows?.length+' rows detected. Match columns:'),
+          [['name','Product Name'],['price','Price'],['stock','Stock / Qty'],['category','Category']].map(([field,lbl])=>
+            R('div',{key:field,className:'col-map-row'},
+              R('div',{style:{fontSize:12,color:'var(--text3)',fontWeight:500}},lbl),
+              R('span',{style:{color:'var(--text3)',textAlign:'center'}},'→'),
+              R('select',{value:colMap[field],onChange:e=>setColMap(m=>({...m,[field]:e.target.value})),style:{fontSize:12}},
+                R('option',{value:''},'— skip —'),
+                ...xlsxHeaders.map((h,i)=>R('option',{key:i,value:String(i)},h||'Col '+(i+1)))
+              )
+            )
+          ),
+          R('div',{className:'modal-actions'},
+            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('excel-upload')},'← Back'),
+            R('button',{className:'btn btn-primary',onClick:buildPreview},'Preview →')
+          )
+        ),
+        importStep==='excel-preview'&&R(React.Fragment,null,
+          R('div',{className:'modal-title'},'Import Preview'),
+          R('div',{style:{display:'flex',gap:10,marginBottom:12,flexWrap:'wrap'}},
+            R('div',{style:{background:'var(--green-bg)',border:'1px solid rgba(61,186,120,.2)',borderRadius:8,padding:'6px 12px',fontSize:12,color:'var(--green)'}},preview.filter(r=>r.action==='update').length+' stock updates'),
+            R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:8,padding:'6px 12px',fontSize:12,color:'var(--amber)'}},preview.filter(r=>r.action==='new').length+' new products')
+          ),
+          R('div',{className:'tbl-scroll',style:{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10}},
+            R('table',{style:{minWidth:500}},
+              R('thead',null,R('tr',null,R('th',null,'Product'),R('th',null,'Price'),R('th',null,'Import Qty'),R('th',null,'Existing'),R('th',null,'Result'))),
+              R('tbody',null,preview.map((r,i)=>R('tr',{key:i,style:{background:r.action==='update'?'rgba(61,186,120,.06)':'rgba(212,160,48,.06)'}},
+                R('td',{className:'primary'},r.name),
+                R('td',null,r.price?'OMR '+r.price.toFixed(2):'—'),
+                R('td',null,r.stock),
+                R('td',null,r.match?r.match.stock:'—'),
+                R('td',{style:{fontWeight:600,color:r.action==='update'?'var(--green)':'var(--amber)'}},r.action==='update'?'→ '+(r.match.stock+r.stock)+' total':'New')
+              )))
+            )
+          ),
+          R('div',{className:'modal-actions'},
+            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('excel-map')},'← Back'),
+            R('button',{className:'btn btn-primary',onClick:doXlsx},'Confirm Import')
+          )
         )
       )
     )
@@ -1520,23 +1713,23 @@ function UsersPage({data,setData,notify}){
       if(!group.length)return null;
       return React.createElement('div',{key:role,className:'card',style:{marginBottom:14}},
         React.createElement('div',{className:'card-title',style:{color:roleColors[role]}},role.charAt(0).toUpperCase()+role.slice(1)+'s'),
-        React.createElement('table',null,
+        React.createElement('div',{className:'tbl-scroll'},React.createElement('table',{style:{minWidth:600}},
           React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Name'),React.createElement('th',null,'Email'),React.createElement('th',null,'Passcode'),React.createElement('th',null,'Status'),React.createElement('th',null,'Actions'))),
           React.createElement('tbody',null,group.map(u=>React.createElement('tr',{key:u.id},
             React.createElement('td',{className:'primary'},u.name),
-            React.createElement('td',null,u.email),
+            React.createElement('td',null,React.createElement('span',{style:{fontSize:11}},u.email)),
             React.createElement('td',null,React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:11,cursor:'pointer',color:'var(--text2)',filter:showPass[u.id]?'none':'blur(4px)',userSelect:'none'},onClick:()=>setShowPass(p=>({...p,[u.id]:!p[u.id]}))},u.password)),
-            React.createElement('td',null,React.createElement('span',{className:u.active?'badge approved':'badge rejected'},u.active?'Active':'Disabled')),
+            React.createElement('td',null,React.createElement('span',{className:u.active?'badge approved':'badge rejected'},u.active?'Active':'Off')),
             React.createElement('td',null,
-              React.createElement('div',{style:{display:'flex',gap:5}},
+              React.createElement('div',{className:'user-actions'},
                 React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:u.name,email:u.email,role:u.role,active:u.active,password:u.password});setEditUser(u);setShowModal(true)}},'Edit'),
-                React.createElement('button',{className:'btn btn-ghost btn-sm',title:'Regen',onClick:()=>{const np=genPasscode(u.role);setData(d=>({...d,users:d.users.map(x=>x.id===u.id?{...x,password:np}:x)}));notify('New passcode: '+np,'success')}},'⟳'),
+                React.createElement('button',{className:'btn btn-ghost btn-sm',title:'Regen passcode',onClick:()=>{const np=genPasscode(u.role);setData(d=>({...d,users:d.users.map(x=>x.id===u.id?{...x,password:np}:x)}));notify('New passcode: '+np,'success')}},'⟳'),
                 React.createElement('button',{className:`btn btn-sm ${u.active?'btn-amber':'btn-success'}`,onClick:()=>{setData(d=>({...d,users:d.users.map(x=>x.id===u.id?{...x,active:!x.active}:x)}));notify(u.name+(u.active?' disabled':' enabled'),'success')}},u.active?'Disable':'Enable'),
                 u.role!=='admin'&&React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{setData(d=>({...d,users:d.users.filter(x=>x.id!==u.id)}));notify('Deleted','success')}},'Delete')
               )
             )
           )))
-        )
+        ))
       );
     }),
     showModal&&React.createElement('div',{className:'modal-overlay'},
@@ -1608,6 +1801,7 @@ function App(){
   const [data,setData]=useState({leads:LEADS_INIT,invoices:INVOICES_INIT,products:PRODUCTS_INIT,users:USERS_INIT,quotations:QUOTATIONS_INIT,formalQuotations:FORMAL_QUOT_INIT});
   const [notif,setNotif]=useState(null);
   const [theme,setTheme]=useState('dark');
+  const [mobProfile,setMobProfile]=useState(false);
   const notify=(msg,type='success')=>setNotif({msg,type});
   useEffect(()=>{document.body.className=theme},[theme]);
   if(!user)return React.createElement(Login,{onLogin:u=>{setUser(u);setActive('dashboard')},users:data.users,theme,setTheme});
@@ -1625,6 +1819,7 @@ function App(){
   };
   const [pt,ps]=titles[active]||['Dashboard',''];
   const props={user,data,setData,notify};
+  const logout=()=>setUser(null);
   const page=()=>{
     if(active==='dashboard'){
       if(user.role==='employee')return React.createElement(EmployeeDashboard,props);
@@ -1645,14 +1840,34 @@ function App(){
   };
   return React.createElement('div',{className:'app'},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
-    React.createElement(Sidebar,{user,active,setActive,onLogout:()=>setUser(null),theme,setTheme}),
-    React.createElement(MobileNav,{user,active,setActive}),
+    React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme}),
+    React.createElement(MobileNav,{user,active,setActive,onLogout:logout}),
     React.createElement('div',{className:'main'},
       React.createElement('div',{className:'topbar'},
         React.createElement('div',null,React.createElement('div',{className:'page-title'},pt),React.createElement('div',{className:'page-sub'},ps)),
-        React.createElement('span',{style:{fontSize:11,color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",background:'var(--bg3)',padding:'5px 10px',borderRadius:10,border:'1px solid var(--border)'}},new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10}},
+          React.createElement('span',{className:'topbar-date',style:{fontSize:11,color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",background:'var(--bg3)',padding:'5px 10px',borderRadius:10,border:'1px solid var(--border)'}},new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})),
+          React.createElement(MobProfileBtn,{user,onOpen:()=>setMobProfile(true)})
+        )
       ),
       React.createElement('div',{className:'content'},page())
+    ),
+    mobProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setMobProfile(false)},
+      React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
+        React.createElement('div',{className:'mob-profile-header'},
+          React.createElement('div',{className:'mob-big-avatar'},getInitials(user.name)),
+          React.createElement('div',null,
+            React.createElement('div',{className:'mob-profile-info-name'},user.name),
+            React.createElement('div',{className:'mob-profile-info-role'},user.role.charAt(0).toUpperCase()+user.role.slice(1)),
+            React.createElement('div',{className:'mob-profile-info-email'},user.email||'')
+          )
+        ),
+        React.createElement('button',{
+          className:'btn btn-danger',
+          style:{width:'100%',padding:'14px',fontSize:14},
+          onClick:()=>{setMobProfile(false);logout();}
+        },'Sign Out')
+      )
     )
   );
 }
