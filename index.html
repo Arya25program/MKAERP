@@ -93,10 +93,11 @@ tr:hover td{background:var(--bg3)}
 .item-row:last-child{border-bottom:none}
 .item-header{background:var(--bg4);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
 .empty{text-align:center;padding:40px;color:var(--text3)}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:26px;width:580px;max-height:85vh;overflow-y:auto}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;overflow-y:auto}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px 20px;width:100%;max-width:560px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;margin:auto}
 .modal-title{font-size:14px;font-weight:600;margin-bottom:18px;color:var(--text)}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap}
+.modal-actions .btn{flex:1;min-width:80px;text-align:center;padding:11px 10px}
 .notif{position:fixed;top:18px;right:18px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:10px 14px;z-index:300;font-size:12px;display:flex;align-items:center;gap:9px;max-width:340px;box-shadow:0 4px 20px var(--shadow)}
 .notif.success{border-color:var(--green)}
 .notif.error{border-color:var(--red)}
@@ -244,15 +245,16 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .mob-profile-avatar{width:26px;height:26px;border-radius:50%;background:var(--bg4);color:var(--text);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0}
 .mob-profile-name{font-size:11px;font-weight:500;color:var(--text)}
 
-/* ── MOBILE PROFILE SHEET ── */
+/* ── MOBILE PROFILE SHEET — stays as bottom sheet intentionally ── */
 .mob-profile-sheet{
   position:fixed;inset:0;z-index:400;
-  display:flex;align-items:flex-end;
-  background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);
+  padding:20px;
 }
 .mob-profile-inner{
-  background:var(--bg2);border-top:1px solid var(--border2);
-  border-radius:20px 20px 0 0;width:100%;padding:24px 20px 40px;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:16px;width:100%;max-width:400px;padding:24px 20px 28px;
 }
 .mob-profile-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--border)}
 .mob-big-avatar{width:52px;height:52px;border-radius:50%;background:var(--bg4);color:var(--text);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
@@ -283,10 +285,6 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .drop-zone:hover,.drop-zone.dz-over{border-color:var(--text3);background:var(--bg3)}
 .drop-zone-icon{font-size:34px;margin-bottom:10px}
 
-/* ── MODAL ACTIONS ALWAYS WRAP ── */
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap}
-.modal-actions .btn{min-width:80px;text-align:center}
-
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
   .sidebar{display:none!important}
@@ -304,10 +302,11 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   .item-row{grid-template-columns:1.3fr 52px 64px auto!important;gap:6px!important;padding:8px 10px!important}
   .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:36px!important}
   .login-card{width:100%!important;max-width:440px!important;padding:22px!important}
-  .modal-overlay{align-items:flex-end!important;padding:0!important}
-  .modal{border-radius:20px 20px 0 0!important;width:100%!important;max-width:100%!important;padding:22px 18px 32px!important;max-height:90vh!important}
+  /* MODALS: always centered on mobile too */
+  .modal-overlay{padding:14px!important;align-items:center!important}
+  .modal{border-radius:16px!important;width:100%!important;max-width:100%!important;padding:20px 16px!important;max-height:82vh!important}
   .modal-actions{justify-content:stretch!important}
-  .modal-actions .btn{flex:1!important;text-align:center!important;padding:11px!important;font-size:13px!important}
+  .modal-actions .btn{flex:1!important;text-align:center!important;padding:12px!important;font-size:13px!important}
   .notif{top:10px!important;right:10px!important;left:10px!important;max-width:none!important}
   .dev-chat-popup{left:10px!important;right:10px!important;bottom:80px!important;width:auto!important}
   .quot-chip{margin:3px!important}
@@ -616,7 +615,6 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
 
 /* ── MOBILE NAV + PROFILE ── */
 function MobileNav({user,active,setActive,onLogout}){
-  const [showProfile,setShowProfile]=useState(false);
   const empNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'customers',icon:'◎',label:'Leads'},
@@ -644,34 +642,15 @@ function MobileNav({user,active,setActive,onLogout}){
     {id:'quotation',icon:'❖',label:'Quotes'},
   ];
   const nav=user.role==='employee'?empNav:user.role==='accountant'?accNav:user.role==='admin'?adminNav:ownerNav;
-  return React.createElement(React.Fragment,null,
-    React.createElement('div',{className:'mobile-nav'},
-      nav.map(item=>React.createElement('button',{
-        key:item.id,
-        className:`mob-item${active===item.id?' active':''}`,
-        onClick:()=>setActive(item.id)
-      },
-        React.createElement('span',{className:'mob-icon'},item.icon),
-        React.createElement('span',{className:'mob-label'},item.label)
-      ))
-    ),
-    showProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setShowProfile(false)},
-      React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
-        React.createElement('div',{className:'mob-profile-header'},
-          React.createElement('div',{className:'mob-big-avatar'},getInitials(user.name)),
-          React.createElement('div',null,
-            React.createElement('div',{className:'mob-profile-info-name'},user.name),
-            React.createElement('div',{className:'mob-profile-info-role'},user.role.charAt(0).toUpperCase()+user.role.slice(1)),
-            React.createElement('div',{className:'mob-profile-info-email'},user.email||'')
-          )
-        ),
-        React.createElement('button',{
-          className:'btn btn-danger',
-          style:{width:'100%',padding:'14px',fontSize:14,marginBottom:8},
-          onClick:()=>{setShowProfile(false);onLogout();}
-        },'Sign Out')
-      )
-    )
+  return React.createElement('div',{className:'mobile-nav'},
+    nav.map(item=>React.createElement('button',{
+      key:item.id,
+      className:`mob-item${active===item.id?' active':''}`,
+      onClick:()=>setActive(item.id)
+    },
+      React.createElement('span',{className:'mob-icon'},item.icon),
+      React.createElement('span',{className:'mob-label'},item.label)
+    ))
   );
 }
 
