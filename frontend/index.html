@@ -2006,12 +2006,12 @@ function App(){
   const [user,setUser]=useState(null);
   const [active,setActive]=useState('dashboard');
 
-  // 🔥 MAIN DATA STATE (keep this)
+  // 🔥 MAIN DATA STATE
   const [data,setData]=useState({
     leads:LEADS_INIT,
     invoices:INVOICES_INIT,
     products:PRODUCTS_INIT,
-    users:[], // 👈 IMPORTANT: start empty
+    users:[], // 👈 SAFE EMPTY
     quotations:QUOTATIONS_INIT,
     formalQuotations:FORMAL_QUOT_INIT
   });
@@ -2037,20 +2037,20 @@ function App(){
 
         setData(prev => ({
           ...prev,
-          users: usersFromDB // 👈 inject into main system
+          users: usersFromDB || [] // ✅ SAFE
         }));
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("Fetch error:", err));
   }, []);
 
-  // 🔐 LOGIN
+  // 🔐 LOGIN (SAFE CHECK ADDED)
   if(!user)
     return React.createElement(Login,{
       onLogin:u=>{
         setUser(u);
         setActive('dashboard');
       },
-      users:data.users,
+      users:data.users || [], // ✅ SAFE PASS
       theme,
       setTheme
     });
