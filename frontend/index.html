@@ -352,16 +352,6 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 const {useState,useEffect,useRef}=React;
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
-const USERS_INIT=[
-  {id:1,name:'Ramachandran',email:'owner1@mka.com',password:'Owner@001',role:'owner',active:true},
-  {id:2,name:'Asha',email:'owner2@mka.com',password:'Owner@002',role:'owner',active:true},
-  {id:3,name:'Dev Admin',email:'dev@mka.com',password:'Dev@002',role:'admin',active:true},
-  {id:5,name:'Saleh',email:'saleh@mka.com',password:'Emp@5501',role:'employee',active:true},
-  {id:6,name:'Atif',email:'atif@mka.com',password:'Emp@6612',role:'employee',active:true},
-  {id:7,name:'Awais',email:'awais@mka.com',password:'Emp@7723',role:'employee',active:true},
-  {id:8,name:'Sajad',email:'sajad@mka.com',password:'Emp@7003',role:'employee',active:true},
-  {id:9,name:'Tanveer',email:'tanveer@mka.com',password:'Acc@8834',role:'accountant',active:true},
-];
 const PRODUCTS_INIT=[
   {id:1,name:'Bosch Dishwasher Pro',price:320,stock:12,category:'Dishwashers',addedDate:'2024-01-01'},
   {id:2,name:'Samsung French Door Fridge',price:890,stock:5,category:'Refrigerators',addedDate:'2024-01-01'},
@@ -520,15 +510,63 @@ function Login({onLogin,users,theme,setTheme}){
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [err,setErr]=useState('');
-  const handle=()=>{
-    const u=users.find(x=>x.email===email&&x.password===pass);
-    if(u&&u.active)onLogin(u);
-    else if(u)setErr('Account disabled.');
-    else setErr('Invalid credentials.');
+  const [loading,setLoading]=useState(false); 
+
+  const handle = () => {
+    setErr('');
+    setLoading(true);
+
+    fetch("https://mkaerp-production.up.railway.app/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: email,
+        password: pass
+      })
+    })
+    .then(async res => {
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Login failed");
+      }
+      return res.json();
+    })
+    .then(user => {
+      if (!user.active) {
+        setErr("Account disabled.");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Logged in user:", user);
+      onLogin(user);
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error(err);
+      setErr(err.message || "Invalid credentials.");
+      setLoading(false); // ✅ FIX 2
+    });
   };
+
+  // ✅ SAFE GROUPING (no crash if users empty)
   const grouped={};
-  users.forEach(u=>{if(!grouped[u.role])grouped[u.role]=[];grouped[u.role].push(u)});
-  const roleLabels={owner:'Owners',employee:'Employees',admin:'Admin',accountant:'Accountants'};
+  if(users && users.length){
+    users.forEach(u=>{
+      if(!grouped[u.role])grouped[u.role]=[];
+      grouped[u.role].push(u);
+    });
+  }
+
+  const roleLabels={
+    owner:'Owners',
+    employee:'Employees',
+    admin:'Admin',
+    accountant:'Accountants'
+  };
+
   return React.createElement('div',{className:'login-wrap'},
     React.createElement('div',{className:'login-card'},
       React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24}},
@@ -538,25 +576,56 @@ function Login({onLogin,users,theme,setTheme}){
         ),
         React.createElement('div',{style:{display:'flex',alignItems:'center',gap:7,fontSize:11,color:'var(--text3)'}},
           theme==='dark'?'🌙':'☀️',
-          React.createElement('div',{className:`toggle-track${theme==='light'?' on':''}`,onClick:()=>setTheme(t=>t==='easter'?'dark':t==='dark'?'light':'dark')},
+          React.createElement('div',{
+            className:`toggle-track${theme==='light'?' on':''}`,
+            onClick:()=>setTheme(t=>t==='easter'?'dark':t==='dark'?'light':'dark')
+          },
             React.createElement('div',{className:'toggle-thumb'})
           )
         )
       ),
+
       React.createElement('div',{style:{fontSize:16,fontWeight:600,marginBottom:3,color:'var(--text)'}},'Sign in'),
       React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'Enter your credentials'),
+
       React.createElement('div',{className:'login-form'},
-        React.createElement('div',{className:'form-group'},React.createElement('label',null,'Email'),React.createElement('input',{type:'email',value:email,onChange:e=>setEmail(e.target.value),placeholder:'your@email.com'})),
-        React.createElement('div',{className:'form-group'},React.createElement('label',null,'Password'),React.createElement('input',{type:'password',value:pass,onChange:e=>setPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&handle(),placeholder:'••••••••'})),
-        err&&React.createElement('div',{style:{fontSize:11,color:'var(--red)',padding:'7px 11px',background:'var(--red-bg)',borderRadius:10}},err),
-        React.createElement('button',{className:'btn btn-primary',onClick:handle,style:{width:'100%',padding:'11px'}},'Sign in →')
-      ),
-      React.createElement('div',{style:{marginTop:20,borderTop:'1px solid var(--border)',paddingTop:18}},
-        React.createElement('div',{className:'demo-label'},'Quick login'),
-        Object.entries(grouped).map(([role,us])=>React.createElement('div',{key:role,style:{marginBottom:8}},
-          React.createElement('div',{style:{fontSize:10,color:'var(--text3)',marginBottom:4}},roleLabels[role]),
-          React.createElement('div',{className:'role-btns'},us.map(u=>React.createElement('button',{key:u.id,className:'role-btn',onClick:()=>{setEmail(u.email);setPass(u.password);setErr('')}},u.name)))
-        ))
+        React.createElement('div',{className:'form-group'},
+          React.createElement('label',null,'Email'),
+          React.createElement('input',{
+            type:'email',
+            value:email,
+            onChange:e=>setEmail(e.target.value),
+            placeholder:'your@email.com'
+          })
+        ),
+
+        React.createElement('div',{className:'form-group'},
+          React.createElement('label',null,'Password'),
+          React.createElement('input',{
+            type:'password',
+            value:pass,
+            onChange:e=>setPass(e.target.value),
+            onKeyDown:e=>e.key==='Enter'&&handle(),
+            placeholder:'••••••••'
+          })
+        ),
+
+        err && React.createElement('div',{
+          style:{
+            fontSize:11,
+            color:'var(--red)',
+            padding:'7px 11px',
+            background:'var(--red-bg)',
+            borderRadius:10
+          }
+        },err),
+
+        React.createElement('button',{
+          className:'btn btn-primary',
+          onClick:handle,
+          style:{width:'100%',padding:'11px'},
+          disabled: loading
+        }, loading ? 'Signing in...' : 'Sign in →')
       )
     )
   );
@@ -766,6 +835,7 @@ function MobThemeBtn({theme,setTheme}){
     theme==='dark'?'☀️':theme==='easter'?'🌊':'🌙'
   );
 }
+
 function MobProfileBtn({user,onOpen}){
   return React.createElement('button',{className:'mob-profile-btn',onClick:onOpen},
     React.createElement('div',{className:'mob-profile-avatar'},getInitials(user.name)),
@@ -1935,28 +2005,76 @@ function ActionButton(label) {
 function App(){
   const [user,setUser]=useState(null);
   const [active,setActive]=useState('dashboard');
-  const [data,setData]=useState({leads:LEADS_INIT,invoices:INVOICES_INIT,products:PRODUCTS_INIT,users:USERS_INIT,quotations:QUOTATIONS_INIT,formalQuotations:FORMAL_QUOT_INIT});
+
+  // 🔥 MAIN DATA STATE (keep this)
+  const [data,setData]=useState({
+    leads:LEADS_INIT,
+    invoices:INVOICES_INIT,
+    products:PRODUCTS_INIT,
+    users:[], // 👈 IMPORTANT: start empty
+    quotations:QUOTATIONS_INIT,
+    formalQuotations:FORMAL_QUOT_INIT
+  });
+
   const [notif,setNotif]=useState(null);
   const [theme,setTheme]=useState('dark');
   const [mobProfile,setMobProfile]=useState(false);
+
   const notify=(msg,type='success')=>setNotif({msg,type});
-  useEffect(()=>{document.body.className=theme;if(theme==='easter'){document.body.style.backgroundImage='none';}else{document.body.style.backgroundImage='none';}},[theme]);
-  if(!user)return React.createElement(Login,{onLogin:u=>{setUser(u);setActive('dashboard')},users:data.users,theme,setTheme});
-  const titles={dashboard:['Dashboard','Overview'],
-                customers:['Customers','Manage records'],
-                invoices:['Invoices','Invoice records'],
-                'create-invoice':['New Invoice','Create and submit'],
-                approvals:['Approvals','Review pending'],
-                'approved-invoices':['Approved Invoices','Generate and print'],
-                products:['Product Catalog','All products'],
-                users:['Users','User management'],
-                quotation:['Quotation Uphold','Demand & formal quotations'],
-                delivery:['Delivery','Schedule and track deliveries'],
-                devtools: ['Dev Tools','Developer utilities']
+
+  // 🎨 theme
+  useEffect(()=>{
+    document.body.className=theme;
+    document.body.style.backgroundImage='none';
+  },[theme]);
+
+  // 🚀 FETCH USERS FROM BACKEND
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/users")
+      .then(res => res.json())
+      .then(usersFromDB => {
+        console.log("Users from backend:", usersFromDB);
+
+        setData(prev => ({
+          ...prev,
+          users: usersFromDB // 👈 inject into main system
+        }));
+      })
+      .catch(err => console.error(err));
+  }, []);
+
+  // 🔐 LOGIN
+  if(!user)
+    return React.createElement(Login,{
+      onLogin:u=>{
+        setUser(u);
+        setActive('dashboard');
+      },
+      users:data.users,
+      theme,
+      setTheme
+    });
+
+  const titles={
+    dashboard:['Dashboard','Overview'],
+    customers:['Customers','Manage records'],
+    invoices:['Invoices','Invoice records'],
+    'create-invoice':['New Invoice','Create and submit'],
+    approvals:['Approvals','Review pending'],
+    'approved-invoices':['Approved Invoices','Generate and print'],
+    products:['Product Catalog','All products'],
+    users:['Users','User management'],
+    quotation:['Quotation Uphold','Demand & formal quotations'],
+    delivery:['Delivery','Schedule and track deliveries'],
+    devtools:['Dev Tools','Developer utilities']
   };
+
   const [pt,ps]=titles[active]||['Dashboard',''];
+
   const props={user,data,setData,notify};
+
   const logout=()=>setUser(null);
+
   const page=()=>{
     if(active==='dashboard'){
       if(user.role==='employee')return React.createElement(EmployeeDashboard,props);
@@ -1975,28 +2093,50 @@ function App(){
     if(active==='devtools')return React.createElement(DevToolsPage, props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
+
   return React.createElement('div',{className:'app'},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
+
     React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme}),
     React.createElement(MobileNav,{user,active,setActive,onLogout:logout}),
+
     React.createElement('div',{className:'main'},
       React.createElement('div',{className:'topbar'},
-        React.createElement('div',null,React.createElement('div',{className:'page-title'},pt),React.createElement('div',{className:'page-sub'},ps)),
+        React.createElement('div',null,
+          React.createElement('div',{className:'page-title'},pt),
+          React.createElement('div',{className:'page-sub'},ps)
+        ),
         React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10}},
-          React.createElement('span',{className:'topbar-date',title:theme==='easter'?'Ocean mode active — toggle to exit':'🌊 Click for a hidden theme',style:{fontSize:11,color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",background:'var(--bg3)',padding:'5px 10px',borderRadius:10,border:'1px solid var(--border)',cursor:'pointer',userSelect:'none'},onClick:()=>{if(theme!=='easter')setTheme('easter');}},new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})),
+          React.createElement('span',{
+            className:'topbar-date',
+            style:{
+              fontSize:11,
+              color:'var(--text3)',
+              fontFamily:"'JetBrains Mono',monospace",
+              background:'var(--bg3)',
+              padding:'5px 10px',
+              borderRadius:10,
+              border:'1px solid var(--border)',
+              cursor:'pointer'
+            },
+            onClick:()=>{if(theme!=='easter')setTheme('easter');}
+          },new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})),
+
           React.createElement(MobThemeBtn,{theme,setTheme}),
           React.createElement(MobProfileBtn,{user,onOpen:()=>setMobProfile(true)})
         )
       ),
+
       React.createElement('div',{className:'content'},page())
     ),
+
     mobProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setMobProfile(false)},
       React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
         React.createElement('div',{className:'mob-profile-header'},
           React.createElement('div',{className:'mob-big-avatar'},getInitials(user.name)),
           React.createElement('div',null,
             React.createElement('div',{className:'mob-profile-info-name'},user.name),
-            React.createElement('div',{className:'mob-profile-info-role'},user.role.charAt(0).toUpperCase()+user.role.slice(1)),
+            React.createElement('div',{className:'mob-profile-info-role'},user.role),
             React.createElement('div',{className:'mob-profile-info-email'},user.email||'')
           )
         ),
@@ -2009,6 +2149,7 @@ function App(){
     )
   );
 }
+
 ReactDOM.render(React.createElement(App),document.getElementById('root'));
 </script>
 </body>
