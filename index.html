@@ -352,16 +352,6 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 const {useState,useEffect,useRef}=React;
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
-const PRODUCTS_INIT=[
-  {id:1,name:'Bosch Dishwasher Pro',price:320,stock:12,category:'Dishwashers',addedDate:'2024-01-01'},
-  {id:2,name:'Samsung French Door Fridge',price:890,stock:5,category:'Refrigerators',addedDate:'2024-01-01'},
-  {id:3,name:'Miele Oven Series 6',price:650,stock:8,category:'Ovens',addedDate:'2024-01-01'},
-  {id:4,name:'Nespresso Expert Coffee Maker',price:180,stock:3,category:'Coffee Makers',addedDate:'2024-01-01'},
-  {id:5,name:'KitchenAid Stand Mixer',price:420,stock:15,category:'Mixers',addedDate:'2024-01-01'},
-  {id:6,name:'Dyson Air Purifier',price:540,stock:2,category:'Air Purifiers',addedDate:'2024-01-01'},
-  {id:7,name:'Philips Air Fryer XXL',price:130,stock:20,category:'Air Fryers',addedDate:'2024-01-01'},
-  {id:8,name:'Smeg Toaster Pastel',price:95,stock:0,category:'Toasters',addedDate:'2024-01-01'},
-];
 const LEADS_INIT=[
   {id:1,name:'Fatima Al-Zahra',phone:'99123456',source:'Instagram',product:'Bosch Dishwasher Pro',status:'new',employeeId:5,notes:'',created:'2024-01-15',address:''},
   {id:2,name:'Khalid Hamdan',phone:'98765432',source:'WhatsApp',product:'Samsung French Door Fridge',status:'converted',employeeId:5,notes:'',created:'2024-01-14',address:''},
