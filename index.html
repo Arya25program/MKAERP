@@ -2010,7 +2010,7 @@ function App(){
   const [data,setData]=useState({
     leads:LEADS_INIT,
     invoices:INVOICES_INIT,
-    products:PRODUCTS_INIT,
+    products:[], // ✅ REMOVED DEMO DATA
     users:[],
     quotations:QUOTATIONS_INIT,
     formalQuotations:FORMAL_QUOT_INIT
@@ -2028,40 +2028,59 @@ function App(){
     document.body.style.backgroundImage='none';
   },[theme]);
 
-  // 🔐 ✅ RESTORE LOGIN FROM LOCALSTORAGE
+  // 🔐 RESTORE LOGIN
   useEffect(()=>{
     const savedUser = localStorage.getItem("user");
     if(savedUser){
       try{
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-      }catch(e){
-        console.error("Failed to parse saved user");
+        setUser(JSON.parse(savedUser));
+      }catch{
         localStorage.removeItem("user");
       }
     }
   },[]);
 
-  // 🚀 FETCH USERS FROM BACKEND
+  // 🚀 FETCH USERS
   useEffect(() => {
     fetch("https://mkaerp-production.up.railway.app/users")
       .then(res => res.json())
       .then(usersFromDB => {
-        console.log("Users from backend:", usersFromDB);
-
         setData(prev => ({
           ...prev,
           users: usersFromDB || []
         }));
       })
-      .catch(err => console.error("Fetch error:", err));
+      .catch(err => console.error("Users fetch error:", err));
+  }, []);
+
+  // 🚀 FETCH PRODUCTS (FIXED PROPERLY)
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/products")
+      .then(res => res.json())
+      .then(productsFromDB => {
+
+        const formatted = (productsFromDB || []).map(p => ({
+          ...p,
+          price: Number(p.price || 0),
+          stock: Number(p.stock || 0),
+          addedDate: p.added_date || null
+        }));
+
+        console.log("Products:", formatted);
+
+        setData(prev => ({
+          ...prev,
+          products: formatted
+        }));
+      })
+      .catch(err => console.error("Products fetch error:", err));
   }, []);
 
   // 🔐 LOGIN
   if(!user)
     return React.createElement(Login,{
       onLogin:u=>{
-        localStorage.setItem("user", JSON.stringify(u)); // ✅ SAVE
+        localStorage.setItem("user", JSON.stringify(u));
         setUser(u);
         setActive('dashboard');
       },
@@ -2088,9 +2107,9 @@ function App(){
 
   const props={user,data,setData,notify};
 
-  // 🔐 LOGOUT (CLEAN)
+  // 🔐 LOGOUT
   const logout=()=>{
-    localStorage.removeItem("user"); // ✅ CLEAR STORAGE
+    localStorage.removeItem("user");
     setUser(null);
   };
 
