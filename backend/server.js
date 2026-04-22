@@ -20,13 +20,21 @@ const pool = new Pool({
     }
 });
 
-app.get('/products', async (req, res) => {
+app.post('/products', async (req, res) => {
+  const { name, price, stock, category } = req.body;
+
   try {
-    const result = await pool.query('SELECT * FROM products');
-    res.json(result.rows);
+    const result = await pool.query(
+      `INSERT INTO products (name, price, stock, category)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [name, price, stock, category]
+    );
+
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server error");
+    res.status(500).json({ error: 'Insert failed' });
   }
 });
 
