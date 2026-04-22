@@ -1327,346 +1327,203 @@ function CustomersPage({user,data,setData,notify}){
   );
 }
 
-function ProductsPage({user,data,setData,notify}){
-  const {products}=data;
+function ProductsPage({ user, data, setData, notify }) {
+  const products = data.products || [];
   console.log("UI PRODUCTS:", products);
-  const [showImport,setShowImport]=useState(false);
-  const [importStep,setImportStep]=useState('choose'); // choose|manual|excel-upload|excel-map|excel-preview
-  const [showEdit,setShowEdit]=useState(null);
-  const [ef,setEf]=useState({});
-  // manual
-  const [manualDate,setManualDate]=useState('');
-  const [manualRows,setManualRows]=useState([{name:'',price:'',stock:'',category:''}]);
-  // excel
-  const [xlsxRows,setXlsxRows]=useState(null);
-  const [xlsxHeaders,setXlsxHeaders]=useState([]);
-  const [colMap,setColMap]=useState({name:'',price:'',stock:'',category:''});
-  const [preview,setPreview]=useState([]);
-  const [isDrag,setIsDrag]=useState(false);
-  const fileRef=useRef();
-  const isAdmin=user.role==='admin';
 
-  const openImport=()=>{setImportStep('choose');setManualRows([{name:'',price:'',stock:'',category:''}]);setManualDate('');setXlsxRows(null);setXlsxHeaders([]);setColMap({name:'',price:'',stock:'',category:''});setPreview([]);setShowImport(true)};
+  const [showEdit, setShowEdit] = useState(null);
+  const [ef, setEf] = useState({});
 
+  const isAdmin = user.role === 'admin';
+
+  // ✅ LOCAL EDIT ONLY (no backend)
   const saveEdit = () => {
-    if(!ef.name.trim()){
-      notify('Name required','error');
+    if (!ef.name.trim()) {
+      notify('Name required', 'error');
       return;
     }
 
-    fetch(`https://mkaerp-production.up.railway.app/products/${showEdit.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...ef,
-        price: Number(ef.price),
-        stock: Number(ef.stock)
-      })
-    })
-    .then(res => res.json())
-    .then(updated => {
-      setData(d => ({
-        ...d,
-        products: d.products.map(p =>
-          p.id === updated.id ? updated : p
+    setData(d => ({
+      ...d,
+      products: (d.products || []).map(p =>
+        p.id === showEdit.id
+          ? { ...p, ...ef }
+          : p
+      )
+    }));
+
+    notify('Product updated (local only)', 'success');
+    setShowEdit(null);
+  };
+
+  const R = React.createElement;
+
+  return R('div', null,
+
+    // 🔹 METRICS
+    R('div', { className: 'grid-3', style: { marginBottom: 18 } },
+      [
+        { label: 'Total', val: products.length },
+        { label: 'In Stock', val: products.filter(p => p.stock > 0).length },
+        { label: 'Out of Stock', val: products.filter(p => p.stock === 0).length }
+      ].map(m =>
+        R('div', { key: m.label, className: 'metric' },
+          R('div', { className: 'metric-label' }, m.label),
+          R('div', { className: 'metric-value' }, m.val)
         )
-      }));
-
-      notify('Product updated','success');
-      setShowEdit(null);
-    })
-    .catch(err => {
-      console.error(err);
-      notify('Update failed','error');
-    });
-  };
-
-  const doManual = async () => {
-    if(!manualDate){
-      notify('Arrival date required','error');
-      return;
-    }
-
-    const valid = manualRows.filter(r =>
-      r.name.trim() && r.price && r.stock && r.category.trim()
-    );
-
-    if(!valid.length){
-      notify('Add at least one complete row','error');
-      return;
-    }
-
-    try {
-      const responses = await Promise.all(
-        valid.map(r =>
-          fetch("https://mkaerp-production.up.railway.app/products", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: r.name.trim(),
-              price: Number(r.price),
-              stock: Number(r.stock),
-              category: r.category.trim(),
-              added_date: manualDate
-            })
-          }).then(res => res.json())
-        )
-      );
-
-      const formatted = responses.map(p => ({
-        ...p,
-        price: Number(p.price || 0),
-        stock: Number(p.stock || 0),
-        addedDate: p.added_date || null
-      }));
-
-      setData(d => ({
-        ...d,
-        products: [...(d.products || []), ...formatted]
-      }));
-
-      notify(valid.length + ' product(s) imported','success');
-      setShowImport(false);
-
-    } catch(err){
-      console.error(err);
-      notify('Import failed','error');
-    }
-  };
-
-  const handleFile=e=>{
-    const file=e.target?.files?.[0]||e.dataTransfer?.files?.[0];
-    if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      try{
-        const wb=XLSX.read(ev.target.result,{type:'array'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        if(raw.length<2){notify('Sheet appears empty','error');return}
-        const hdrs=raw[0].map(String);
-        const rows=raw.slice(1).filter(r=>r.some(c=>String(c).trim()));
-        setXlsxHeaders(hdrs);setXlsxRows(rows);
-        const g={name:'',price:'',stock:'',category:''};
-        hdrs.forEach((h,i)=>{
-          const n=normalize(h);
-          if(!g.name&&(n.includes('name')||n.includes('product')||n.includes('item')))g.name=String(i);
-          if(!g.price&&(n.includes('price')||n.includes('cost')||n.includes('rate')))g.price=String(i);
-          if(!g.stock&&(n.includes('stock')||n.includes('qty')||n.includes('quantity')||n.includes('count')))g.stock=String(i);
-          if(!g.category&&(n.includes('category')||n.includes('type')||n.includes('class')))g.category=String(i);
-        });
-        setColMap(g);setImportStep('excel-map');
-      }catch(err){notify('Could not read file — use .xlsx or .csv','error')}
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  const buildPreview=()=>{
-    if(!colMap.name){notify('Map the Product Name column','error');return}
-    const rows=xlsxRows.map(r=>({
-      name:String(r[parseInt(colMap.name)]||'').trim(),
-      price:parseFloat(r[colMap.price!==''?parseInt(colMap.price):-1])||0,
-      stock:parseInt(r[colMap.stock!==''?parseInt(colMap.stock):-1])||0,
-      category:String(r[colMap.category!==''?parseInt(colMap.category):-1]||'Imported').trim(),
-    })).filter(r=>r.name);
-    const tagged=rows.map(r=>{
-      const match=products.find(p=>normalize(p.name)===normalize(r.name));
-      return{...r,match:match||null,action:match?'update':'new'};
-    });
-    setPreview(tagged);setImportStep('excel-preview');
-  };
-
-  const doXlsx = async () => {
-    const today = new Date().toISOString().split('T')[0];
-
-    try {
-      const results = await Promise.all(
-        preview.map(r => {
-          if (r.action === 'update' && r.match) {
-            return fetch(`https://mkaerp-production.up.railway.app/products/${r.match.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ...r.match,
-                stock: r.match.stock + r.stock,
-                price: r.price || r.match.price
-              })
-            }).then(res => res.json());
-          } else {
-            return fetch("https://mkaerp-production.up.railway.app/products", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: r.name,
-                price: Number(r.price),
-                stock: Number(r.stock),
-                category: r.category,
-                added_date: today
-              })
-            }).then(res => res.json());
-          }
-        })
-      );
-
-      setData(d => ({
-        ...d,
-        products: [
-          ...d.products.filter(p => !results.find(r => r.id === p.id)),
-          ...results
-        ]
-      }));
-
-      notify('Import completed','success');
-      setShowImport(false);
-
-    } catch(err){
-      console.error(err);
-      notify('Excel import failed','error');
-    }
-  };
-
-  const R=React.createElement;
-  return R('div',null,
-    R('div',{className:'grid-3',style:{marginBottom:18}},
-      [{label:'Total',val:products.length},{label:'In Stock',val:products.filter(p=>p.stock>0).length},{label:'Out of Stock',val:products.filter(p=>p.stock===0).length}]
-        .map(m=>R('div',{key:m.label,className:'metric'},R('div',{className:'metric-label'},m.label),R('div',{className:'metric-value'},m.val)))
-    ),
-    R('div',{className:'card'},
-      R('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,gap:10,flexWrap:'wrap'}},
-        R('div',{className:'card-title',style:{margin:0}},'Product Catalog'),
-        isAdmin&&R('button',{className:'btn btn-primary',onClick:openImport},'+ Import Products')
-      ),
-      R('div',{className:'tbl-scroll'},R('table',null,
-        R('thead',null,R('tr',null,R('th',null,'Product'),R('th',null,'Category'),R('th',null,'Price'),R('th',null,'Stock'),R('th',null,'Added'),R('th',null,'Status'),isAdmin&&R('th',null,''))),
-        R('tbody',null,products.map(p=>R('tr',{key:p.id},
-          R('td',{className:'primary'},p.name),
-          R('td',null,p.category),
-          R('td',null,R('span',{style:{fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(p.price))),
-          R('td',null,p.stock),
-          R('td',null,p.addedDate||'—'),
-          R('td',null,R('span',{className:`badge ${p.stock===0?'rejected':p.stock<=10?'low-stock':'in-stock'}`},p.stock===0?'Out of stock':p.stock<=10?'Low stock':'In stock')),
-          isAdmin&&R('td',null,R('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setEf({name:p.name,price:p.price,stock:p.stock,category:p.category});setShowEdit(p)}},'Edit'))
-        )))
-      ))
-    ),
-    showEdit&&R('div',{className:'modal-overlay'},
-      R('div',{className:'modal',style:{maxWidth:440}},
-        R('div',{className:'modal-title'},'Edit Product'),
-        R('div',{className:'form-grid'},
-          R('div',{className:'form-group'},R('label',null,'Name'),R('input',{value:ef.name,onChange:e=>setEf(f=>({...f,name:e.target.value}))})),
-          R('div',{className:'form-group'},R('label',null,'Category'),R('input',{value:ef.category,onChange:e=>setEf(f=>({...f,category:e.target.value}))})),
-          R('div',{className:'form-row'},
-            R('div',{className:'form-group'},R('label',null,'Price (OMR)'),R('input',{type:'number',value:ef.price,onChange:e=>setEf(f=>({...f,price:e.target.value}))})),
-            R('div',{className:'form-group'},R('label',null,'Stock'),
-              R('div',{style:{display:'flex',gap:7,alignItems:'center'}},
-                R('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:16},onClick:()=>setEf(f=>({...f,stock:Math.max(0,parseInt(f.stock||0)-1)}))},'-'),
-                R('input',{type:'number',value:ef.stock,onChange:e=>setEf(f=>({...f,stock:e.target.value})),style:{textAlign:'center'}}),
-                R('button',{className:'btn btn-ghost btn-sm',style:{padding:'7px 13px',fontSize:16},onClick:()=>setEf(f=>({...f,stock:parseInt(f.stock||0)+1}))},'+')
-              )
-            )
-          )
-        ),
-        R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setShowEdit(null)},'Cancel'),R('button',{className:'btn btn-primary',onClick:saveEdit},'Save'))
       )
     ),
-    showImport&&R('div',{className:'modal-overlay'},
-      R('div',{className:'modal',style:{maxWidth:680}},
-        importStep==='choose'&&R(React.Fragment,null,
-          R('div',{className:'modal-title'},'Import Products'),
-          R('div',{className:'import-choice'},
-            R('div',{className:'import-opt',onClick:()=>setImportStep('manual')},
-              R('div',{className:'import-opt-icon'},'📝'),
-              R('div',{className:'import-opt-title'},'Add Manually'),
-              R('div',{className:'import-opt-desc'},'Type each product row by row')
+
+    // 🔹 TABLE
+    R('div', { className: 'card' },
+
+      R('div', {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 14
+        }
+      },
+        R('div', { className: 'card-title' }, 'Product Catalog')
+      ),
+
+      R('div', { className: 'tbl-scroll' },
+        R('table', null,
+
+          R('thead', null,
+            R('tr', null,
+              R('th', null, 'Product'),
+              R('th', null, 'Category'),
+              R('th', null, 'Price'),
+              R('th', null, 'Stock'),
+              R('th', null, 'Added'),
+              R('th', null, 'Status'),
+              isAdmin && R('th', null, '')
+            )
+          ),
+
+          R('tbody', null,
+
+            products.length === 0
+              ? R('tr', null,
+                  R('td', {
+                    colSpan: 7,
+                    style: { textAlign: 'center', padding: 20, color: 'var(--text3)' }
+                  }, 'No products found')
+                )
+
+              : (products || []).map(p =>
+                  R('tr', { key: p.id },
+
+                    R('td', { className: 'primary' }, p.name),
+                    R('td', null, p.category),
+
+                    R('td', null,
+                      R('span', {
+                        style: { fontFamily: "'JetBrains Mono', monospace" }
+                      }, `OMR ${Number(p.price || 0).toFixed(2)}`)
+                    ),
+
+                    R('td', null, p.stock),
+
+                    R('td', null, p.addedDate || '—'),
+
+                    R('td', null,
+                      R('span', {
+                        className: `badge ${
+                          p.stock === 0
+                            ? 'rejected'
+                            : p.stock <= 10
+                            ? 'low-stock'
+                            : 'in-stock'
+                        }`
+                      },
+                        p.stock === 0
+                          ? 'Out of stock'
+                          : p.stock <= 10
+                          ? 'Low stock'
+                          : 'In stock'
+                      )
+                    ),
+
+                    isAdmin && R('td', null,
+                      R('button', {
+                        className: 'btn btn-ghost btn-sm',
+                        onClick: () => {
+                          setEf({
+                            name: p.name,
+                            price: p.price,
+                            stock: p.stock,
+                            category: p.category
+                          });
+                          setShowEdit(p);
+                        }
+                      }, 'Edit')
+                    )
+                  )
+                )
+          )
+        )
+      )
+    ),
+
+    // 🔹 EDIT MODAL (LOCAL ONLY)
+    showEdit && R('div', { className: 'modal-overlay' },
+      R('div', { className: 'modal', style: { maxWidth: 440 } },
+
+        R('div', { className: 'modal-title' }, 'Edit Product'),
+
+        R('div', { className: 'form-grid' },
+
+          R('div', { className: 'form-group' },
+            R('label', null, 'Name'),
+            R('input', {
+              value: ef.name,
+              onChange: e => setEf(f => ({ ...f, name: e.target.value }))
+            })
+          ),
+
+          R('div', { className: 'form-group' },
+            R('label', null, 'Category'),
+            R('input', {
+              value: ef.category,
+              onChange: e => setEf(f => ({ ...f, category: e.target.value }))
+            })
+          ),
+
+          R('div', { className: 'form-row' },
+
+            R('div', { className: 'form-group' },
+              R('label', null, 'Price'),
+              R('input', {
+                type: 'number',
+                value: ef.price,
+                onChange: e => setEf(f => ({ ...f, price: e.target.value }))
+              })
             ),
-            R('div',{className:'import-opt',onClick:()=>setImportStep('excel-upload')},
-              R('div',{className:'import-opt-icon'},'📊'),
-              R('div',{className:'import-opt-title'},'Excel / CSV'),
-              R('div',{className:'import-opt-desc'},'Upload spreadsheet, map columns, merge stock')
+
+            R('div', { className: 'form-group' },
+              R('label', null, 'Stock'),
+              R('input', {
+                type: 'number',
+                value: ef.stock,
+                onChange: e => setEf(f => ({ ...f, stock: e.target.value }))
+              })
             )
-          ),
-          R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setShowImport(false)},'Cancel'))
-        ),
-        importStep==='manual'&&R(React.Fragment,null,
-          R('div',{className:'modal-title'},'Manual Import'),
-          R('div',{className:'form-group',style:{marginBottom:14}},R('label',null,'Arrival Date'),R('input',{type:'date',value:manualDate,onChange:e=>setManualDate(e.target.value)})),
-          R('div',{style:{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,overflow:'hidden',marginBottom:10}},
-            R('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1.2fr',gap:8,padding:'7px 12px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},R('span',null,'Name'),R('span',null,'Price (OMR)'),R('span',null,'Stock'),R('span',null,'Category')),
-            manualRows.map((row,idx)=>R('div',{key:idx,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1.2fr auto',gap:8,padding:'8px 12px',borderTop:'1px solid var(--border)',alignItems:'center'}},
-              R('input',{value:row.name,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,name:e.target.value}:x)),placeholder:'Name',style:{fontSize:12}}),
-              R('input',{type:'number',value:row.price,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,price:e.target.value}:x)),placeholder:'0.00',style:{fontSize:12}}),
-              R('input',{type:'number',value:row.stock,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,stock:e.target.value}:x)),placeholder:'0',style:{fontSize:12}}),
-              R('input',{value:row.category,onChange:e=>setManualRows(r=>r.map((x,i)=>i===idx?{...x,category:e.target.value}:x)),placeholder:'Category',style:{fontSize:12}}),
-              manualRows.length>1&&R('button',{onClick:()=>setManualRows(r=>r.filter((_,i)=>i!==idx)),style:{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:16,flexShrink:0}},'×')
-            ))
-          ),
-          R('button',{className:'btn btn-ghost btn-sm',style:{marginBottom:14},onClick:()=>setManualRows(r=>[...r,{name:'',price:'',stock:'',category:''}])},'+ Add Row'),
-          R('div',{className:'modal-actions'},
-            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('choose')},'← Back'),
-            R('button',{className:'btn btn-primary',onClick:doManual},'Import Products')
           )
         ),
-        importStep==='excel-upload'&&R(React.Fragment,null,
-          R('div',{className:'modal-title'},'Upload Excel or CSV'),
-          R('div',{
-            className:`drop-zone${isDrag?' dz-over':''}`,
-            onClick:()=>fileRef.current.click(),
-            onDragOver:e=>{e.preventDefault();setIsDrag(true)},
-            onDragLeave:()=>setIsDrag(false),
-            onDrop:e=>{e.preventDefault();setIsDrag(false);handleFile(e)}
-          },
-            R('div',{className:'drop-zone-icon'},'📂'),
-            R('div',{style:{fontSize:13,color:'var(--text2)',marginBottom:4}},'Drop .xlsx or .csv here'),
-            R('div',{style:{fontSize:11,color:'var(--text3)'}},'or click to browse'),
-            R('input',{type:'file',accept:'.xlsx,.xls,.csv',ref:fileRef,style:{display:'none'},onChange:handleFile})
-          ),
-          R('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'12px 14px',marginTop:8}},
-            R('div',{style:{fontSize:11,fontWeight:600,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:6}},'Expected columns'),
-            R('div',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.8}},'Product Name · Price · Stock / Qty · Category'),
-            R('div',{style:{fontSize:11,color:'var(--text3)',marginTop:6}},'Matching names → stock added. New names → new products created.')
-          ),
-          R('div',{className:'modal-actions'},R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('choose')},'← Back'))
-        ),
-        importStep==='excel-map'&&R(React.Fragment,null,
-          R('div',{className:'modal-title'},'Map Columns'),
-          R('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16}},xlsxRows?.length+' rows detected. Match columns:'),
-          [['name','Product Name'],['price','Price'],['stock','Stock / Qty'],['category','Category']].map(([field,lbl])=>
-            R('div',{key:field,className:'col-map-row'},
-              R('div',{style:{fontSize:12,color:'var(--text3)',fontWeight:500}},lbl),
-              R('span',{style:{color:'var(--text3)',textAlign:'center'}},'→'),
-              R('select',{value:colMap[field],onChange:e=>setColMap(m=>({...m,[field]:e.target.value})),style:{fontSize:12}},
-                R('option',{value:''},'— skip —'),
-                ...xlsxHeaders.map((h,i)=>R('option',{key:i,value:String(i)},h||'Col '+(i+1)))
-              )
-            )
-          ),
-          R('div',{className:'modal-actions'},
-            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('excel-upload')},'← Back'),
-            R('button',{className:'btn btn-primary',onClick:buildPreview},'Preview →')
-          )
-        ),
-        importStep==='excel-preview'&&R(React.Fragment,null,
-          R('div',{className:'modal-title'},'Import Preview'),
-          R('div',{style:{display:'flex',gap:10,marginBottom:12,flexWrap:'wrap'}},
-            R('div',{style:{background:'var(--green-bg)',border:'1px solid rgba(61,186,120,.2)',borderRadius:8,padding:'6px 12px',fontSize:12,color:'var(--green)'}},preview.filter(r=>r.action==='update').length+' stock updates'),
-            R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:8,padding:'6px 12px',fontSize:12,color:'var(--amber)'}},preview.filter(r=>r.action==='new').length+' new products')
-          ),
-          R('div',{className:'tbl-scroll',style:{maxHeight:280,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10}},
-            R('table',{style:{minWidth:500}},
-              R('thead',null,R('tr',null,R('th',null,'Product'),R('th',null,'Price'),R('th',null,'Import Qty'),R('th',null,'Existing'),R('th',null,'Result'))),
-              R('tbody',null,preview.map((r,i)=>R('tr',{key:i,style:{background:r.action==='update'?'rgba(61,186,120,.06)':'rgba(212,160,48,.06)'}},
-                R('td',{className:'primary'},r.name),
-                R('td',null,r.price?'OMR '+r.price.toFixed(2):'—'),
-                R('td',null,r.stock),
-                R('td',null,r.match?r.match.stock:'—'),
-                R('td',{style:{fontWeight:600,color:r.action==='update'?'var(--green)':'var(--amber)'}},r.action==='update'?'→ '+(r.match.stock+r.stock)+' total':'New')
-              )))
-            )
-          ),
-          R('div',{className:'modal-actions'},
-            R('button',{className:'btn btn-ghost',onClick:()=>setImportStep('excel-map')},'← Back'),
-            R('button',{className:'btn btn-primary',onClick:doXlsx},'Confirm Import')
-          )
+
+        R('div', { className: 'modal-actions' },
+          R('button', {
+            className: 'btn btn-ghost',
+            onClick: () => setShowEdit(null)
+          }, 'Cancel'),
+
+          R('button', {
+            className: 'btn btn-primary',
+            onClick: saveEdit
+          }, 'Save')
         )
       )
     )
