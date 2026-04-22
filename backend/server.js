@@ -16,6 +16,36 @@ const pool = new Pool({
     }
 });
 
+app.get('/products', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM products');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
+app.get('/leads', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM leads');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
+app.get('/invoices', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM invoices');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
+});
+
 app.get('/users', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM users');
