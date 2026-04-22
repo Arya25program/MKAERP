@@ -16,6 +16,16 @@ const pool = new Pool({
     }
 });
 
+app.get('/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM users');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching users");
+  }
+});
+
 app.get('/test', async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
