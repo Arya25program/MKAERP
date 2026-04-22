@@ -9,6 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/test-route', (req, res) => {
+  res.send("Route working");
+});
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
