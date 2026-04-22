@@ -1329,6 +1329,7 @@ function CustomersPage({user,data,setData,notify}){
 
 function ProductsPage({user,data,setData,notify}){
   const {products}=data;
+  console.log("UI PRODUCTS:", products);
   const [showImport,setShowImport]=useState(false);
   const [importStep,setImportStep]=useState('choose'); // choose|manual|excel-upload|excel-map|excel-preview
   const [showEdit,setShowEdit]=useState(null);
@@ -1412,9 +1413,16 @@ function ProductsPage({user,data,setData,notify}){
         )
       );
 
+      const formatted = responses.map(p => ({
+        ...p,
+        price: Number(p.price || 0),
+        stock: Number(p.stock || 0),
+        addedDate: p.added_date || null
+      }));
+
       setData(d => ({
         ...d,
-        products: [...d.products, ...responses]
+        products: [...(d.products || []), ...formatted]
       }));
 
       notify(valid.length + ' product(s) imported','success');
@@ -2166,7 +2174,7 @@ function App(){
           addedDate: p.added_date || null
         }));
 
-        console.log("Products:", formatted);
+        console.log("LOADED PRODUCTS:", formatted); // 🔥 DEBUG
 
         setData(prev => ({
           ...prev,
