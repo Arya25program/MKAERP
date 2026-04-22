@@ -2011,7 +2011,7 @@ function App(){
     leads:LEADS_INIT,
     invoices:INVOICES_INIT,
     products:PRODUCTS_INIT,
-    users:[], // 👈 SAFE EMPTY
+    users:[],
     quotations:QUOTATIONS_INIT,
     formalQuotations:FORMAL_QUOT_INIT
   });
@@ -2028,6 +2028,20 @@ function App(){
     document.body.style.backgroundImage='none';
   },[theme]);
 
+  // 🔐 ✅ RESTORE LOGIN FROM LOCALSTORAGE
+  useEffect(()=>{
+    const savedUser = localStorage.getItem("user");
+    if(savedUser){
+      try{
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+      }catch(e){
+        console.error("Failed to parse saved user");
+        localStorage.removeItem("user");
+      }
+    }
+  },[]);
+
   // 🚀 FETCH USERS FROM BACKEND
   useEffect(() => {
     fetch("https://mkaerp-production.up.railway.app/users")
@@ -2037,20 +2051,21 @@ function App(){
 
         setData(prev => ({
           ...prev,
-          users: usersFromDB || [] // ✅ SAFE
+          users: usersFromDB || []
         }));
       })
       .catch(err => console.error("Fetch error:", err));
   }, []);
 
-  // 🔐 LOGIN (SAFE CHECK ADDED)
+  // 🔐 LOGIN
   if(!user)
     return React.createElement(Login,{
       onLogin:u=>{
+        localStorage.setItem("user", JSON.stringify(u)); // ✅ SAVE
         setUser(u);
         setActive('dashboard');
       },
-      users:data.users || [], // ✅ SAFE PASS
+      users:data.users || [],
       theme,
       setTheme
     });
@@ -2073,7 +2088,11 @@ function App(){
 
   const props={user,data,setData,notify};
 
-  const logout=()=>setUser(null);
+  // 🔐 LOGOUT (CLEAN)
+  const logout=()=>{
+    localStorage.removeItem("user"); // ✅ CLEAR STORAGE
+    setUser(null);
+  };
 
   const page=()=>{
     if(active==='dashboard'){
