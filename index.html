@@ -1347,18 +1347,83 @@ function ProductsPage({user,data,setData,notify}){
 
   const openImport=()=>{setImportStep('choose');setManualRows([{name:'',price:'',stock:'',category:''}]);setManualDate('');setXlsxRows(null);setXlsxHeaders([]);setColMap({name:'',price:'',stock:'',category:''});setPreview([]);setShowImport(true)};
 
-  const saveEdit=()=>{
-    if(!ef.name.trim()){notify('Name required','error');return}
-    setData(d=>({...d,products:d.products.map(p=>p.id===showEdit.id?{...p,...ef,price:parseFloat(ef.price),stock:parseInt(ef.stock)}:p)}));
-    notify('Product updated','success');setShowEdit(null);
+  const saveEdit = () => {
+    if(!ef.name.trim()){
+      notify('Name required','error');
+      return;
+    }
+
+    fetch(`https://mkaerp-production.up.railway.app/products/${showEdit.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...ef,
+        price: Number(ef.price),
+        stock: Number(ef.stock)
+      })
+    })
+    .then(res => res.json())
+    .then(updated => {
+      setData(d => ({
+        ...d,
+        products: d.products.map(p =>
+          p.id === updated.id ? updated : p
+        )
+      }));
+
+      notify('Product updated','success');
+      setShowEdit(null);
+    })
+    .catch(err => {
+      console.error(err);
+      notify('Update failed','error');
+    });
   };
 
-  const doManual=()=>{
-    if(!manualDate){notify('Arrival date required','error');return}
-    const valid=manualRows.filter(r=>r.name.trim()&&r.price&&r.stock&&r.category.trim());
-    if(!valid.length){notify('Add at least one complete row','error');return}
-    setData(d=>({...d,products:[...d.products,...valid.map((r,i)=>({id:Date.now()+i,name:r.name.trim(),price:parseFloat(r.price),stock:parseInt(r.stock),category:r.category.trim(),addedDate:manualDate}))]}));
-    notify(valid.length+' product(s) imported','success');setShowImport(false);
+  const doManual = async () => {
+    if(!manualDate){
+      notify('Arrival date required','error');
+      return;
+    }
+
+    const valid = manualRows.filter(r =>
+      r.name.trim() && r.price && r.stock && r.category.trim()
+    );
+
+    if(!valid.length){
+      notify('Add at least one complete row','error');
+      return;
+    }
+
+    try {
+      const responses = await Promise.all(
+        valid.map(r =>
+          fetch("https://mkaerp-production.up.railway.app/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: r.name.trim(),
+              price: Number(r.price),
+              stock: Number(r.stock),
+              category: r.category.trim(),
+              added_date: manualDate
+            })
+          }).then(res => res.json())
+        )
+      );
+
+      setData(d => ({
+        ...d,
+        products: [...d.products, ...responses]
+      }));
+
+      notify(valid.length + ' product(s) imported','success');
+      setShowImport(false);
+
+    } catch(err){
+      console.error(err);
+      notify('Import failed','error');
+    }
   };
 
   const handleFile=e=>{
@@ -1403,18 +1468,53 @@ function ProductsPage({user,data,setData,notify}){
     setPreview(tagged);setImportStep('excel-preview');
   };
 
-  const doXlsx=()=>{
-    const today=new Date().toISOString().split('T')[0];
-    let added=0,updated=0;
-    setData(d=>{
-      let prods=[...d.products];
-      preview.forEach(r=>{
-        if(r.action==='update'&&r.match){prods=prods.map(p=>p.id===r.match.id?{...p,stock:p.stock+r.stock,price:r.price||p.price,addedDate:today}:p);updated++;}
-        else if(r.action==='new'){prods.push({id:Date.now()+Math.random(),name:r.name,price:r.price,stock:r.stock,category:r.category,addedDate:today});added++;}
-      });
-      return{...d,products:prods};
-    });
-    notify(`Imported: ${added} new, ${updated} stock updated`,'success');setShowImport(false);
+  const doXlsx = async () => {
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      const results = await Promise.all(
+        preview.map(r => {
+          if (r.action === 'update' && r.match) {
+            return fetch(`https://mkaerp-production.up.railway.app/products/${r.match.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...r.match,
+                stock: r.match.stock + r.stock,
+                price: r.price || r.match.price
+              })
+            }).then(res => res.json());
+          } else {
+            return fetch("https://mkaerp-production.up.railway.app/products", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: r.name,
+                price: Number(r.price),
+                stock: Number(r.stock),
+                category: r.category,
+                added_date: today
+              })
+            }).then(res => res.json());
+          }
+        })
+      );
+
+      setData(d => ({
+        ...d,
+        products: [
+          ...d.products.filter(p => !results.find(r => r.id === p.id)),
+          ...results
+        ]
+      }));
+
+      notify('Import completed','success');
+      setShowImport(false);
+
+    } catch(err){
+      console.error(err);
+      notify('Excel import failed','error');
+    }
   };
 
   const R=React.createElement;
