@@ -1324,6 +1324,7 @@ function ProductsPage({ user, data, setData, notify }) {
   const [ef, setEf] = useState({});
   const [search, setSearch] = useState('');
   const [stockFilter, setStockFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const isAdmin = user.role === 'admin';
 
@@ -1342,6 +1343,8 @@ function ProductsPage({ user, data, setData, notify }) {
     setShowEdit(null);
   };
 
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort()];
+
   const filtered = products.filter(p => {
     const matchSearch = !search ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -1351,7 +1354,8 @@ function ProductsPage({ user, data, setData, notify }) {
       stockFilter === 'out-of-stock' ? p.stock === 0 :
       stockFilter === 'low-stock' ? p.stock > 0 && p.stock <= 10 :
       stockFilter === 'in-stock' ? p.stock > 10 : true;
-    return matchSearch && matchStock;
+    const matchCategory = categoryFilter === 'all' || p.category === categoryFilter;
+    return matchSearch && matchStock && matchCategory;
   });
 
   const R = React.createElement;
@@ -1401,6 +1405,15 @@ function ProductsPage({ user, data, setData, notify }) {
             R('option', { value: 'in-stock' }, 'In Stock (>10)'),
             R('option', { value: 'low-stock' }, 'Low Stock (1–10)'),
             R('option', { value: 'out-of-stock' }, 'Out of Stock')
+          ),
+          R('select', {
+            value: categoryFilter,
+            onChange: e => setCategoryFilter(e.target.value),
+            style: { fontSize: 12, padding: '6px 10px', width: 150 }
+          },
+            categories.map(c =>
+              R('option', { key: c, value: c }, c === 'all' ? 'All Categories' : c)
+            )
           )
         )
       ),
