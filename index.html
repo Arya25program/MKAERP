@@ -1319,38 +1319,45 @@ function CustomersPage({user,data,setData,notify}){
 
 function ProductsPage({ user, data, setData, notify }) {
   const products = data.products || [];
-  console.log("UI PRODUCTS:", products);
 
   const [showEdit, setShowEdit] = useState(null);
   const [ef, setEf] = useState({});
+  const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
 
   const isAdmin = user.role === 'admin';
 
-  // ✅ LOCAL EDIT ONLY (no backend)
   const saveEdit = () => {
     if (!ef.name.trim()) {
       notify('Name required', 'error');
       return;
     }
-
     setData(d => ({
       ...d,
       products: (d.products || []).map(p =>
-        p.id === showEdit.id
-          ? { ...p, ...ef }
-          : p
+        p.id === showEdit.id ? { ...p, ...ef } : p
       )
     }));
-
-    notify('Product updated (local only)', 'success');
+    notify('Product updated', 'success');
     setShowEdit(null);
   };
+
+  const filtered = products.filter(p => {
+    const matchSearch = !search ||
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.category || '').toLowerCase().includes(search.toLowerCase());
+    const matchStock =
+      stockFilter === 'all' ? true :
+      stockFilter === 'out-of-stock' ? p.stock === 0 :
+      stockFilter === 'low-stock' ? p.stock > 0 && p.stock <= 10 :
+      stockFilter === 'in-stock' ? p.stock > 10 : true;
+    return matchSearch && matchStock;
+  });
 
   const R = React.createElement;
 
   return R('div', null,
 
-    // 🔹 METRICS
     R('div', { className: 'grid-3', style: { marginBottom: 18 } },
       [
         { label: 'Total', val: products.length },
@@ -1364,7 +1371,6 @@ function ProductsPage({ user, data, setData, notify }) {
       )
     ),
 
-    // 🔹 TABLE
     R('div', { className: 'card' },
 
       R('div', {
@@ -1372,15 +1378,35 @@ function ProductsPage({ user, data, setData, notify }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 14
+          marginBottom: 14,
+          flexWrap: 'wrap',
+          gap: 10
         }
       },
-        R('div', { className: 'card-title' }, 'Product Catalog')
+        R('div', { className: 'card-title', style: { margin: 0 } }, 'Product Catalog'),
+        R('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
+          R('input', {
+            type: 'text',
+            placeholder: '🔍 Search products…',
+            value: search,
+            onChange: e => setSearch(e.target.value),
+            style: { width: 200, fontSize: 12, padding: '6px 10px' }
+          }),
+          R('select', {
+            value: stockFilter,
+            onChange: e => setStockFilter(e.target.value),
+            style: { fontSize: 12, padding: '6px 10px', width: 150 }
+          },
+            R('option', { value: 'all' }, 'All Stock'),
+            R('option', { value: 'in-stock' }, 'In Stock (>10)'),
+            R('option', { value: 'low-stock' }, 'Low Stock (1–10)'),
+            R('option', { value: 'out-of-stock' }, 'Out of Stock')
+          )
+        )
       ),
 
       R('div', { className: 'tbl-scroll' },
         R('table', null,
-
           R('thead', null,
             R('tr', null,
               R('th', null, 'Product'),
@@ -1392,51 +1418,35 @@ function ProductsPage({ user, data, setData, notify }) {
               isAdmin && R('th', null, '')
             )
           ),
-
           R('tbody', null,
-
-            products.length === 0
+            filtered.length === 0
               ? R('tr', null,
                   R('td', {
                     colSpan: 7,
                     style: { textAlign: 'center', padding: 20, color: 'var(--text3)' }
-                  }, 'No products found')
+                  }, products.length === 0 ? 'No products found' : 'No products match your filter')
                 )
-
-              : (products || []).map(p =>
+              : filtered.map(p =>
                   R('tr', { key: p.id },
-
                     R('td', { className: 'primary' }, p.name),
                     R('td', null, p.category),
-
                     R('td', null,
-                      R('span', {
-                        style: { fontFamily: "'JetBrains Mono', monospace" }
-                      }, `OMR ${Number(p.price || 0).toFixed(2)}`)
+                      R('span', { style: { fontFamily: "'JetBrains Mono', monospace" } },
+                        `OMR ${Number(p.price || 0).toFixed(2)}`)
                     ),
-
                     R('td', null, p.stock),
-
                     R('td', null, p.addedDate || '—'),
-
                     R('td', null,
                       R('span', {
                         className: `badge ${
-                          p.stock === 0
-                            ? 'rejected'
-                            : p.stock <= 10
-                            ? 'low-stock'
-                            : 'in-stock'
+                          p.stock === 0 ? 'rejected' :
+                          p.stock <= 10 ? 'low-stock' : 'in-stock'
                         }`
                       },
-                        p.stock === 0
-                          ? 'Out of stock'
-                          : p.stock <= 10
-                          ? 'Low stock'
-                          : 'In stock'
+                        p.stock === 0 ? 'Out of stock' :
+                        p.stock <= 10 ? 'Low stock' : 'In stock'
                       )
                     ),
-
                     isAdmin && R('td', null,
                       R('button', {
                         className: 'btn btn-ghost btn-sm',
@@ -1458,14 +1468,10 @@ function ProductsPage({ user, data, setData, notify }) {
       )
     ),
 
-    // 🔹 EDIT MODAL (LOCAL ONLY)
     showEdit && R('div', { className: 'modal-overlay' },
       R('div', { className: 'modal', style: { maxWidth: 440 } },
-
         R('div', { className: 'modal-title' }, 'Edit Product'),
-
         R('div', { className: 'form-grid' },
-
           R('div', { className: 'form-group' },
             R('label', null, 'Name'),
             R('input', {
@@ -1473,7 +1479,6 @@ function ProductsPage({ user, data, setData, notify }) {
               onChange: e => setEf(f => ({ ...f, name: e.target.value }))
             })
           ),
-
           R('div', { className: 'form-group' },
             R('label', null, 'Category'),
             R('input', {
@@ -1481,9 +1486,7 @@ function ProductsPage({ user, data, setData, notify }) {
               onChange: e => setEf(f => ({ ...f, category: e.target.value }))
             })
           ),
-
           R('div', { className: 'form-row' },
-
             R('div', { className: 'form-group' },
               R('label', null, 'Price'),
               R('input', {
@@ -1492,7 +1495,6 @@ function ProductsPage({ user, data, setData, notify }) {
                 onChange: e => setEf(f => ({ ...f, price: e.target.value }))
               })
             ),
-
             R('div', { className: 'form-group' },
               R('label', null, 'Stock'),
               R('input', {
@@ -1503,13 +1505,11 @@ function ProductsPage({ user, data, setData, notify }) {
             )
           )
         ),
-
         R('div', { className: 'modal-actions' },
           R('button', {
             className: 'btn btn-ghost',
             onClick: () => setShowEdit(null)
           }, 'Cancel'),
-
           R('button', {
             className: 'btn btn-primary',
             onClick: saveEdit
