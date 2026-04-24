@@ -59,6 +59,24 @@ app.post('/products', async (req, res) => {
   }
 });
 
+app.get('/approvals', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        i.*,
+        u.name AS employee_name
+      FROM invoices i
+      LEFT JOIN users u ON u.id = i.employee_id
+      WHERE i.status = 'pending'
+      ORDER BY i.created DESC
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching approvals");
+  }
+});
 
 // 🔹 OTHER READ ROUTES
 app.get('/leads', async (req, res) => {
