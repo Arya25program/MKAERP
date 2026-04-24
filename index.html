@@ -1048,7 +1048,39 @@ function ApprovalsPage({user,data,setData,notify}){
   const pending=data.invoices.filter(i=>i.status==='pending');
   const [rejModal,setRejModal]=useState(null);
   const [rejNote,setRejNote]=useState('');
-  const approve=id=>{setData(d=>({...d,invoices:d.invoices.map(i=>i.id===id?{...i,status:'approved',approvedBy:user.name,approvedAt:tsNow()}:i)}));notify('Invoice approved','success')};
+  const approve = (id) => {
+    fetch(`https://mkaerp-production.up.railway.app/invoices/${id}/approve`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        approved_by: user.name
+      })
+    })
+    .then(res => res.json())
+    .then(updated => {
+
+      notify('Invoice approved','success');
+
+      setData(d => ({
+        ...d,
+        invoices: d.invoices.map(i =>
+          i.id === updated.id
+            ? {
+                ...i,
+                status: updated.status,
+                approvedBy: updated.approved_by,
+                approvedAt: updated.approved_at
+              }
+            : i
+        )
+      }));
+
+    })
+    .catch(err => {
+      console.error(err);
+      notify('Approval failed','error');
+    });
+  };
   const confirmReject=()=>{
     if(!rejNote.trim()){notify('Rejection reason required','error');return}
     setData(d=>({...d,invoices:d.invoices.map(i=>i.id===rejModal.id?{...i,status:'rejected',rejectionNote:rejNote}:i)}));
