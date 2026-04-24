@@ -89,18 +89,22 @@ app.get('/leads', async (req, res) => {
 
 app.get('/invoices', async (req, res) => {
   try {
+    // 🔹 1. Get invoices + employee name
     const invoices = await pool.query(`
-      SELECT * FROM invoices ORDER BY created DESC
-    `);
-
-    const result = await pool.query(`
       SELECT 
-        invoices.*,
-        users.name AS employee_name
-      FROM invoices
-      LEFT JOIN users ON users.id = invoices.employee_id
+        i.*,
+        u.name AS employee_name
+      FROM invoices i
+      LEFT JOIN users u ON u.id = i.employee_id
+      ORDER BY i.created DESC
     `);
 
+    // 🔹 2. Get invoice items
+    const items = await pool.query(`
+      SELECT * FROM invoice_items
+    `);
+
+    // 🔹 3. Group items by invoice_id
     const map = {};
 
     items.rows.forEach(item => {
@@ -116,16 +120,17 @@ app.get('/invoices', async (req, res) => {
       });
     });
 
+    // 🔹 4. Attach items to invoices
     const final = invoices.rows.map(inv => ({
       ...inv,
-      total: Number(inv.total),
+      total: Number(inv.total || 0),
       items: map[inv.id] || []
     }));
 
     res.json(final);
 
   } catch (err) {
-    console.error(err);
+    console.error("INVOICE ERROR:", err);
     res.status(500).send("Error fetching invoices");
   }
 });
