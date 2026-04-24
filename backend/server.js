@@ -124,6 +124,30 @@ app.post('/reject/:id', async (req, res) => {
   }
 });
 
+app.put('/invoices/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  const { approved_by } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE invoices
+       SET 
+         status = 'approved',
+         approved_by = $1,
+         approved_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [approved_by, id]
+    );
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error("Approve error:", err);
+    res.status(500).send("Failed to approve invoice");
+  }
+});
+
 // 🔹 OTHER READ ROUTES
 app.get('/leads', async (req, res) => {
   try {
