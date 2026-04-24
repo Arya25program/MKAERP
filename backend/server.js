@@ -63,11 +63,27 @@ app.post('/products', async (req, res) => {
 // 🔹 OTHER READ ROUTES
 app.get('/leads', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM leads');
+    const result = await pool.query(`
+      SELECT 
+        l.id,
+        l.name,
+        l.phone,
+        l.source,
+        p.name AS product,   -- 🔥 THIS FIX
+        l.status,
+        l.employee_id,
+        l.notes,
+        l.created,
+        l.address
+      FROM leads l
+      LEFT JOIN products p ON l.product_id = p.id
+      ORDER BY l.id DESC
+    `);
+
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Leads fetch failed" });
+    res.status(500).send("Error fetching leads");
   }
 });
 
