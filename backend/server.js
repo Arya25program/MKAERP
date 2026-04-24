@@ -152,44 +152,46 @@ app.get('/leads', async (req, res) => {
 });
 
 app.post('/invoices', async (req, res) => {
-  const {
-    id,
-    employee_id,
-    customer_name,
-    customer_phone,
-    customer_address,
-    total,
-    items
-  } = req.body;
-
-  console.log("Incoming invoice:", req.body);
+  console.log("📦 BODY RECEIVED:", req.body);
 
   try {
-    // 🔹 insert invoice
-    await pool.query(`
-      INSERT INTO invoices (
-        id, employee_id, customer_name,
-        customer_phone, customer_address,
-        status, total, created
+    const {
+      id,
+      employee_id,
+      customer_name,
+      customer_phone,
+      customer_address,
+      status,
+      total,
+      created,
+      comment
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO invoices (
+        id, employee_id, customer_name, customer_phone,
+        customer_address, status, total, created, comment
       )
-      VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW())
-    `, [id, employee_id, customer_name, customer_phone, customer_address, total]);
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      RETURNING *`,
+      [
+        id,
+        employee_id,
+        customer_name,
+        customer_phone,
+        customer_address,
+        status,
+        total,
+        created,
+        comment
+      ]
+    );
 
-    // 🔹 insert items
-    for (let item of items) {
-      await pool.query(`
-        INSERT INTO invoice_items (
-          invoice_id, product_id, name, qty, price
-        )
-        VALUES ($1,$2,$3,$4,$5)
-      `, [id, item.productId, item.name, item.qty, item.price]);
-    }
-
-    res.send("Invoice created");
+    res.json(result.rows[0]);
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Invoice creation failed");
+    console.error("❌ FULL ERROR:", err); // IMPORTANT
+    res.status(500).send(err.message);
   }
 });
 
