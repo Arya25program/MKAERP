@@ -59,6 +59,7 @@ app.post('/products', async (req, res) => {
   }
 });
 
+//Get pending APPROVALS
 app.get('/approvals', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -75,6 +76,51 @@ app.get('/approvals', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error fetching approvals");
+  }
+});
+
+//approve invoices
+app.post('/approve/:id', async (req, res) => {
+  const { id } = req.params;
+  const { approver } = req.body;
+
+  try {
+    await pool.query(`
+      UPDATE invoices
+      SET 
+        status = 'approved',
+        approved_by = $1,
+        approved_at = NOW()
+      WHERE id = $2
+    `, [approver, id]);
+
+    res.send("Approved");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Approval failed");
+  }
+});
+
+//reject invoices
+app.post('/reject/:id', async (req, res) => {
+  const { id } = req.params;
+  const { approver, note } = req.body;
+
+  try {
+    await pool.query(`
+      UPDATE invoices
+      SET 
+        status = 'rejected',
+        approved_by = $1,
+        rejection_note = $2,
+        approved_at = NOW()
+      WHERE id = $3
+    `, [approver, note, id]);
+
+    res.send("Rejected");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Rejection failed");
   }
 });
 
