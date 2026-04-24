@@ -89,11 +89,40 @@ app.get('/leads', async (req, res) => {
 
 app.get('/invoices', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM invoices');
-    res.json(result.rows);
+    const invoices = await pool.query(`
+      SELECT * FROM invoices ORDER BY created DESC
+    `);
+
+    const items = await pool.query(`
+      SELECT * FROM invoice_items
+    `);
+
+    const map = {};
+
+    items.rows.forEach(item => {
+      if (!map[item.invoice_id]) {
+        map[item.invoice_id] = [];
+      }
+
+      map[item.invoice_id].push({
+        productId: item.product_id,
+        name: item.name,
+        qty: item.qty,
+        price: Number(item.price)
+      });
+    });
+
+    const final = invoices.rows.map(inv => ({
+      ...inv,
+      total: Number(inv.total),
+      items: map[inv.id] || []
+    }));
+
+    res.json(final);
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Invoices fetch failed" });
+    res.status(500).send("Error fetching invoices");
   }
 });
 
