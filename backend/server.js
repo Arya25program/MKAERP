@@ -198,47 +198,47 @@ app.get('/leads', async (req, res) => {
   }
 });
 
-app.post('/invoices', async (req, res) => {
-  console.log("📦 BODY RECEIVED:", req.body);
-
+app.get('/invoices', async (req, res) => {
   try {
-    const {
-      id,
-      employee_id,
-      customer_name,
-      customer_phone,
-      customer_address,
-      status,
-      total,
-      created,
-      comment
-    } = req.body;
+    const invoices = await pool.query(`
+      SELECT 
+        invoices.*,
+        users.name AS employee_name
+      FROM invoices
+      LEFT JOIN users ON users.id = invoices.employee_id
+      ORDER BY created DESC
+    `);
 
-    const result = await pool.query(
-      `INSERT INTO invoices (
-        id, employee_id, customer_name, customer_phone,
-        customer_address, status, total, created, comment
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      RETURNING *`,
-      [
-        id,
-        employee_id,
-        customer_name,
-        customer_phone,
-        customer_address,
-        status,
-        total,
-        created,
-        comment
-      ]
-    );
+    const items = await pool.query(`
+      SELECT * FROM invoice_items
+    `);
 
-    res.json(result.rows[0]);
+    const map = {};
+
+    items.rows.forEach(item => {
+      if (!map[item.invoice_id]) {
+        map[item.invoice_id] = [];
+      }
+
+      map[item.invoice_id].push({
+        productId: item.product_id,
+        name: item.name,
+        qty: item.qty,
+        price: Number(item.price)
+      });
+    });
+
+    const final = invoices.rows.map(inv => ({
+      ...inv,
+      total: Number(inv.total),
+      items: map[inv.id] || []
+    }));
+
+    res.json(final);
 
   } catch (err) {
-    console.error("❌ FULL ERROR:", err); // IMPORTANT
-    res.status(500).send(err.message);
+    console.error(err);
+    res.status(500).send("Error fetching invoices");
   }
 });
 
