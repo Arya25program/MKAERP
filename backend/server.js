@@ -124,27 +124,50 @@ app.post('/reject/:id', async (req, res) => {
   }
 });
 
-app.put('/invoices/:id/approve', async (req, res) => {
-  const { id } = req.params;
-  const { approved_by } = req.body;
-
+app.post('/invoices', async (req, res) => {
   try {
-    const result = await pool.query(
-      `UPDATE invoices
-       SET 
-         status = 'approved',
-         approved_by = $1,
-         approved_at = NOW()
-       WHERE id = $2
-       RETURNING *`,
-      [approved_by, id]
+    const {
+      id,
+      employee_id,
+      customer_name,
+      customer_phone,
+      customer_address,
+      status,
+      total,
+      created,
+      comment,
+      items
+    } = req.body;
+
+    await pool.query(
+      `INSERT INTO invoices 
+      (id, employee_id, customer_name, customer_phone, customer_address, status, total, created, comment)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [id, employee_id, customer_name, customer_phone, customer_address, status, total, created, comment]
     );
 
-    res.json(result.rows[0]);
+    // ❗ CRITICAL PART (YOU ARE MISSING THIS)
+    // ✅ 2. Insert items
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO invoice_items 
+        (invoice_id, product_id, name, qty, price)
+        VALUES ($1,$2,$3,$4,$5)`,
+        [
+          id,
+          item.productId,
+          item.name,
+          item.qty,
+          item.price
+        ]
+      );
+    }
+
+    res.json({ success: true });
 
   } catch (err) {
-    console.error("Approve error:", err);
-    res.status(500).send("Failed to approve invoice");
+    console.error(err);
+    res.status(500).send("Error saving invoice");
   }
 });
 
