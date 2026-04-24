@@ -151,51 +151,43 @@ app.get('/leads', async (req, res) => {
   }
 });
 
-app.get('/invoices', async (req, res) => {
+app.post('/invoices', async (req, res) => {
+  const {
+    id,
+    employee_id,
+    customer_name,
+    customer_phone,
+    customer_address,
+    total,
+    items
+  } = req.body;
+
   try {
-    // 🔹 1. Get invoices + employee name
-    const invoices = await pool.query(`
-      SELECT 
-        i.*,
-        u.name AS employee_name
-      FROM invoices i
-      LEFT JOIN users u ON u.id = i.employee_id
-      ORDER BY i.created DESC
-    `);
+    // 🔹 insert invoice
+    await pool.query(`
+      INSERT INTO invoices (
+        id, employee_id, customer_name,
+        customer_phone, customer_address,
+        status, total, created
+      )
+      VALUES ($1,$2,$3,$4,$5,'pending',$6,NOW())
+    `, [id, employee_id, customer_name, customer_phone, customer_address, total]);
 
-    // 🔹 2. Get invoice items
-    const items = await pool.query(`
-      SELECT * FROM invoice_items
-    `);
+    // 🔹 insert items
+    for (let item of items) {
+      await pool.query(`
+        INSERT INTO invoice_items (
+          invoice_id, product_id, name, qty, price
+        )
+        VALUES ($1,$2,$3,$4,$5)
+      `, [id, item.productId, item.name, item.qty, item.price]);
+    }
 
-    // 🔹 3. Group items by invoice_id
-    const map = {};
-
-    items.rows.forEach(item => {
-      if (!map[item.invoice_id]) {
-        map[item.invoice_id] = [];
-      }
-
-      map[item.invoice_id].push({
-        productId: item.product_id,
-        name: item.name,
-        qty: item.qty,
-        price: Number(item.price)
-      });
-    });
-
-    // 🔹 4. Attach items to invoices
-    const final = invoices.rows.map(inv => ({
-      ...inv,
-      total: Number(inv.total || 0),
-      items: map[inv.id] || []
-    }));
-
-    res.json(final);
+    res.send("Invoice created");
 
   } catch (err) {
-    console.error("INVOICE ERROR:", err);
-    res.status(500).send("Error fetching invoices");
+    console.error(err);
+    res.status(500).send("Invoice creation failed");
   }
 });
 
