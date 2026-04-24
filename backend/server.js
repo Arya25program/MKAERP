@@ -91,6 +91,30 @@ app.get('/users', async (req, res) => {
   }
 });
 
+app.get('/quotations', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        q.id,
+        q.customer_name,
+        q.product_id,
+        p.name AS product_name,
+        q.date,
+        q.phone,
+        q.address,
+        q.converted
+      FROM quotations q
+      LEFT JOIN products p ON q.product_id = p.id
+      ORDER BY q.id DESC
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching quotations");
+  }
+});
+
 app.get('/invoices', async (req, res) => {
   try {
     const invoices = await pool.query(`SELECT * FROM invoices ORDER BY created DESC`);
