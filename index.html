@@ -352,18 +352,8 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 const {useState,useEffect,useRef}=React;
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
-const LEADS_INIT=[
-  {id:1,name:'Fatima Al-Zahra',phone:'99123456',source:'Instagram',product:'Bosch Dishwasher Pro',status:'new',employeeId:5,notes:'',created:'2024-01-15',address:''},
-  {id:2,name:'Khalid Hamdan',phone:'98765432',source:'WhatsApp',product:'Samsung French Door Fridge',status:'converted',employeeId:5,notes:'',created:'2024-01-14',address:''},
-  {id:3,name:'Nour Al-Sabah',phone:'91234567',source:'Instagram',product:'Miele Oven Series 6',status:'new',employeeId:6,notes:'',created:'2024-01-13',address:''},
-  {id:4,name:'Ali Hassan',phone:'97654321',source:'WhatsApp',product:'KitchenAid Stand Mixer',status:'lost',employeeId:7,notes:'',created:'2024-01-10',address:''},
-];
-const INVOICES_INIT=[
-  {id:'INV-001',employeeId:5,employeeName:'Saleh',customerName:'Khalid Hamdan',customerPhone:'98765432',customerAddress:'Block 5, Al Khuwair, Muscat',status:'approved',total:890,created:'2024-01-14',comment:'Regular customer.',approvedBy:'Ramachandran',approvedAt:'2024-01-14 14:30',rejectionNote:'',items:[{productId:2,name:'Samsung French Door Fridge',qty:1,price:890}],accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:''},
-  {id:'INV-002',employeeId:5,employeeName:'Saleh',customerName:'Fatima Al-Zahra',customerPhone:'99123456',customerAddress:'Way 3012, Ruwi',status:'pending',total:320,created:'2024-01-15',comment:'Needs installation.',approvedBy:null,approvedAt:null,rejectionNote:'',items:[{productId:1,name:'Bosch Dishwasher Pro',qty:1,price:320}],accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:''},
-  {id:'INV-003',employeeId:6,employeeName:'Atif',customerName:'Mona Al-Rashid',customerPhone:'96543210',customerAddress:'Villa 12, Qurum',status:'rejected',total:1070,created:'2024-01-12',comment:'',approvedBy:null,approvedAt:null,rejectionNote:'Price needs revision. Come meet me — Ramachandran',items:[{productId:3,name:'Miele Oven Series 6',qty:1,price:650},{productId:7,name:'Philips Air Fryer XXL',qty:1,price:420}],accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:''},
-  {id:'INV-004',employeeId:7,employeeName:'Awais',customerName:'Tariq Al-Balushi',customerPhone:'95432109',customerAddress:'Flat 8, Azaiba',status:'approved',total:540,created:'2024-01-11',comment:'First-time buyer.',approvedBy:'Asha',approvedAt:'2024-01-11 10:15',rejectionNote:'',items:[{productId:6,name:'Dyson Air Purifier',qty:1,price:540}],accountantSent:true,deliveryDate:'2024-01-20',deliveryDone:true,deliveryDoneDate:'2024-01-20'},
-];
+const LEADS_INIT = [];
+const INVOICES_INIT = [];
 const QUOTATIONS_INIT=[
   {id:1,customerName:'Fatima Al-Zahra',product:'Bosch Dishwasher Pro',date:'2024-01-15',phone:'',address:'',converted:false},
   {id:2,customerName:'Nour Al-Sabah',product:'Miele Oven Series 6',date:'2024-01-13',phone:'',address:'',converted:false},
@@ -1541,14 +1531,92 @@ function CreateInvoice({user,data,setData,notify}){
   const [comment,setComment]=useState('');
   const [items,setItems]=useState([{productId:'',qty:1}]);
   const total=items.reduce((s,item)=>{const p=products.find(p=>p.id===parseInt(item.productId));return s+(p?p.price*parseInt(item.qty||0):0)},0);
-  const submit=()=>{
-    if(!customer.trim()){notify('Customer name required','error');return}
-    const valid=items.filter(i=>i.productId&&i.qty>0);
-    if(!valid.length){notify('Add at least one product','error');return}
-    const builtItems=valid.map(i=>{const p=products.find(p=>p.id===parseInt(i.productId));return{productId:p.id,name:p.name,qty:parseInt(i.qty),price:p.price}});
-    setData(d=>({...d,invoices:[{id:genId('INV'),employeeId:user.id,employeeName:user.name,customerName:customer,customerPhone:phone,customerAddress:address,status:'pending',total,created:new Date().toISOString().split('T')[0],comment,approvedBy:null,approvedAt:null,rejectionNote:'',items:builtItems,accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:''},...d.invoices]}));
-    notify('Invoice submitted for approval','success');
-    setCustomer('');setPhone('');setAddress('');setComment('');setItems([{productId:'',qty:1}]);
+  const submit = () => {
+    if(!customer.trim()){
+      notify('Customer name required','error');
+      return;
+    }
+
+    const valid = items.filter(i => i.productId && i.qty > 0);
+
+    if(!valid.length){
+      notify('Add at least one product','error');
+      return;
+    }
+
+    const builtItems = valid.map(i => {
+      const p = products.find(p => p.id === parseInt(i.productId));
+      return {
+        productId: p.id,
+        name: p.name,
+        qty: parseInt(i.qty),
+        price: p.price
+      };
+    });
+
+    const newInvoice = {
+      id: genId('INV'),
+      employee_id: user.id,
+      customer_name: customer,
+      customer_phone: phone,
+      customer_address: address,
+      status: "pending",
+      total: total,
+      created: new Date().toISOString(),
+      comment: comment || ""
+    };
+
+    // 🔥 SAVE TO DB
+    fetch("https://mkaerp-production.up.railway.app/invoices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newInvoice)
+    })
+    .then(res => res.json())
+    .then(saved => {
+
+      notify('Invoice submitted for approval','success');
+
+      // ✅ KEEP UI FORMAT SAME AS BEFORE
+      setData(d => ({
+        ...d,
+        invoices: [
+          {
+            id: saved.id,
+            employeeId: saved.employee_id,
+            employeeName: user.name,
+            customerName: saved.customer_name,
+            customerPhone: saved.customer_phone,
+            customerAddress: saved.customer_address,
+            status: saved.status,
+            total: Number(saved.total),
+            created: saved.created.split('T')[0],
+            comment: saved.comment,
+            approvedBy: saved.approved_by || null,
+            approvedAt: saved.approved_at || null,
+            rejectionNote: '',
+            items: builtItems, // keep for UI
+            accountantSent:false,
+            deliveryDate:'',
+            deliveryDone:false,
+            deliveryDoneDate:''
+          },
+          ...d.invoices
+        ]
+      }));
+
+      // reset form
+      setCustomer('');
+      setPhone('');
+      setAddress('');
+      setComment('');
+      setItems([{productId:'',qty:1}]);
+
+    })
+    .catch(err => {
+      console.error(err);
+      notify('Failed to save invoice','error');
+    });
   };
   return React.createElement('div',{className:'grid-2'},
     React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:16}},
@@ -2042,6 +2110,89 @@ function App(){
         }));
       })
       .catch(err => console.error("Products fetch error:", err));
+  }, []);
+
+  // FETCH INVOICES
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/invoices")
+      .then(res => res.json())
+      .then(invoicesFromDB => {
+
+        const formatted = invoicesFromDB.map(inv => ({
+          ...inv,
+
+          // ✅ mappings
+          customerName: inv.customer_name,
+          employeeName: inv.employee_name || "Unknown",
+          approvedBy: inv.approved_by || "-",
+
+          // ✅ formatting
+          total: Number(inv.total || 0),
+          created: inv.created ? inv.created.split('T')[0] : null,
+          approved_at: inv.approved_at ? inv.approved_at.split('T')[0] : null
+        }));
+
+        setData(prev => ({
+          ...prev,
+          invoices: formatted
+        }));
+      })
+      .catch(err => console.error("Invoices fetch error:", err));
+  }, []);
+
+  //FETCH APPROVALS
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/approvals")
+      .then(res => res.json())
+      .then(data => setApprovals(data))
+      .catch(err => console.error(err));
+  }, []);
+
+  const approve = (id) => {
+    fetch(`https://mkaerp-production.up.railway.app/approve/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approver: user.name })
+    })
+    .then(() => {
+      setApprovals(prev => prev.filter(a => a.id !== id));
+    });
+  };
+
+  const reject = (id) => {
+    const note = prompt("Enter rejection reason");
+
+    fetch(`https://mkaerp-production.up.railway.app/reject/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        approver: user.name,
+        note 
+      })
+    })
+    .then(() => {
+      setApprovals(prev => prev.filter(a => a.id !== id));
+    });
+  };
+
+  // FETCH LEADS
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/leads")
+      .then(res => res.json())
+      .then(leadsFromDB => {
+        console.log("Leads:", leadsFromDB);
+
+        const formatted = leadsFromDB.map(l => ({
+          ...l,
+          created: l.created ? l.created.split('T')[0] : null // fix date
+        }));
+
+        setData(prev => ({
+          ...prev,
+          leads: formatted
+        }));
+      })
+      .catch(err => console.error("Leads fetch error:", err));
   }, []);
 
   // 🔐 LOGIN
