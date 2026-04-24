@@ -93,8 +93,12 @@ app.get('/invoices', async (req, res) => {
       SELECT * FROM invoices ORDER BY created DESC
     `);
 
-    const items = await pool.query(`
-      SELECT * FROM invoice_items
+    const result = await pool.query(`
+      SELECT 
+        invoices.*,
+        users.name AS employee_name
+      FROM invoices
+      LEFT JOIN users ON users.id = invoices.employee_id
     `);
 
     const map = {};
