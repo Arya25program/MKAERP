@@ -2146,30 +2146,45 @@ function App(){
 
   // FETCH INVOICES
   useEffect(() => {
-    fetch("https://mkaerp-production.up.railway.app/invoices")
-      .then(res => res.json())
-      .then(invoicesFromDB => {
+    Promise.all([
+      fetch("https://mkaerp-production.up.railway.app/invoices").then(res => res.json()),
+      fetch("https://mkaerp-production.up.railway.app/users").then(res => res.json())
+    ])
+    .then(([invoicesFromDB, usersFromDB]) => {
 
-        const formatted = invoicesFromDB.map(inv => ({
-          ...inv,
+      // 🔥 create lookup map (fast)
+      const userMap = {};
+      usersFromDB.forEach(u => {
+        userMap[u.id] = u.name;
+      });
 
-          // ✅ mappings
-          customerName: inv.customer_name,
-          employeeName: inv.employee_name || "Unknown",
-          approvedBy: inv.approved_by || "-",
+      const formatted = invoicesFromDB.map(inv => ({
+        ...inv,
 
-          // ✅ formatting
-          total: Number(inv.total || 0),
-          created: inv.created ? inv.created.split('T')[0] : null,
-          approved_at: inv.approved_at ? inv.approved_at.split('T')[0] : null
-        }));
+        // mapping
+        employeeId: Number(inv.employee_id),
 
-        setData(prev => ({
-          ...prev,
-          invoices: formatted
-        }));
-      })
-      .catch(err => console.error("Invoices fetch error:", err));
+        // 🔥 FIX: match name from users table
+        employeeName: userMap[inv.employee_id] || "Unknown",
+
+        customerName: inv.customer_name,
+        approvedBy: inv.approved_by || "-",
+
+        // formatting
+        total: Number(inv.total || 0),
+        created: inv.created ? inv.created.split('T')[0] : null,
+        approved_at: inv.approved_at
+          ? inv.approved_at.split('T')[0]
+          : null
+      }));
+
+      setData(prev => ({
+        ...prev,
+        invoices: formatted
+      }));
+
+    })
+    .catch(err => console.error("Invoices fetch error:", err));
   }, []);
 
   //FETCH APPROVALS
