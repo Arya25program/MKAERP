@@ -162,6 +162,8 @@ app.post('/invoices', async (req, res) => {
     items
   } = req.body;
 
+  console.log("Incoming invoice:", req.body);
+
   try {
     // 🔹 insert invoice
     await pool.query(`
