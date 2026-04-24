@@ -91,6 +91,33 @@ app.get('/users', async (req, res) => {
   }
 });
 
+app.get('/invoices', async (req, res) => {
+  try {
+    const invoices = await pool.query(`SELECT * FROM invoices ORDER BY created DESC`);
+
+    const items = await pool.query(`SELECT * FROM invoice_items`);
+
+    const itemsMap = {};
+
+    items.rows.forEach(item => {
+      if (!itemsMap[item.invoice_id]) {
+        itemsMap[item.invoice_id] = [];
+      }
+      itemsMap[item.invoice_id].push(item);
+    });
+
+    const final = invoices.rows.map(inv => ({
+      ...inv,
+      items: itemsMap[inv.id] || []
+    }));
+
+    res.json(final);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching invoices");
+  }
+});
+
 
 // 🔐 LOGIN (SAFE)
 app.post('/login', async (req, res) => {
