@@ -562,6 +562,38 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   padding-right: 12px;
   padding-left: 0;
 }
+.signature-section {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+  margin-bottom: 10px;
+}
+
+.sign-box {
+  width: 40%;
+  text-align: center;
+}
+
+.sign-line {
+  margin-top: 35px;
+  border-top: 1px solid #333;
+  height: 1px;
+}
+
+.sign-label {
+  font-size: 10px;
+  color: #444;
+  margin-bottom: 5px;
+}
+
+/* optional alignment tweak */
+.sign-box.left {
+  text-align: left;
+}
+
+.sign-box.right {
+  text-align: right;
+}
 </style>
 </head>
 <body class="dark">
@@ -681,6 +713,22 @@ function generateDocumentHTML(data, type="quotation") {
       <div>Total <span>OMR ${subtotal.toFixed(2)}</span></div>
       <div>VAT 5% <span>OMR ${vat.toFixed(2)}</span></div>
       <div class="grand">Gross <span>OMR ${total.toFixed(2)}</span></div>
+    </div>
+
+    <div class="signature-section">
+
+      <!-- LEFT (STAMP AREA) -->
+      <div class="sign-box left">
+        <div class="sign-label">Company Stamp</div>
+        <div class="sign-line"></div>
+      </div>
+
+      <!-- RIGHT (SIGNATURE) -->
+      <div class="sign-box right">
+        <div class="sign-label">Authorized Signature</div>
+        <div class="sign-line"></div>
+      </div>
+
     </div>
 
     <!-- TERMS -->
