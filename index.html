@@ -500,51 +500,67 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   height: auto;
 }
 .footer-box {
-  margin-top: 25px;
+  margin-top: auto;              /* 🔥 pushes to bottom naturally */
   border: 2px solid #1B5886;
   background: #eef5fb;
-  padding: 12px;
-  font-size: 10px;
-  color: #222;
+  padding: 10px 14px;
+  font-size: 8.5px;              /* 🔻 tighter like real invoices */
 }
 
-/* Company header */
+/* Company */
 .footer-company {
   text-align: center;
   font-weight: 700;
-  margin-bottom: 6px;
-  font-size: 11px;
+  font-size: 10px;
+  margin-bottom: 4px;
 }
 
 /* Details */
 .footer-details {
   text-align: center;
-  font-size: 9px;
-  margin-bottom: 10px;
-  color: #444;
+  font-size: 8px;
+  margin-bottom: 6px;
+  line-height: 1.3;
 }
 
-/* TERMS ROW */
+/* Layout */
 .footer-terms-row {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: 15px;
 }
 
-/* LEFT SIDE */
-.footer-terms.en {
+/* Terms */
+.footer-terms {
   width: 50%;
-  text-align: left;
-  line-height: 1.4;
 }
 
-/* RIGHT SIDE (Arabic) */
+.footer-terms .terms-title {
+  font-size: 9px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.footer-terms ul {
+  margin: 0;
+  padding-left: 12px;
+}
+
+.footer-terms li {
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+
+/* Arabic */
 .footer-terms.ar {
-  width: 50%;
   direction: rtl;
   text-align: right;
-  font-family: "Tahoma", "Arial", sans-serif;
-  line-height: 1.6;
+  font-family: "Tahoma", sans-serif;
+}
+
+.footer-terms.ar ul {
+  padding-right: 12px;
+  padding-left: 0;
 }
 </style>
 </head>
@@ -636,6 +652,7 @@ function generateDocumentHTML(data, type="quotation") {
         <b>${data.name || data.customerName}</b>
         <div>${data.companyName || ''}</div>
         <div>Ref: ${data.customerRef || '-'}</div>
+        <div>${data.address || ''}</div>
       </div>
 
       <div class="right-box">
@@ -669,45 +686,53 @@ function generateDocumentHTML(data, type="quotation") {
     <!-- TERMS -->
     <div class="terms">
       <div class="terms-title">TERMS & CONDITIONS</div>
-      <div>${data.terms?.payment || '-'}</div>
-      <div>${data.terms?.delivery || '-'}</div>
-      <div>${data.terms?.warranty || '-'}</div>
-      <div>${data.terms?.validity || '-'}</div>
+      <div class="terms-content">
+        <div><b>Payment:</b> ${data.terms?.payment || '-'} - <b>Delivery:</b> ${data.terms?.delivery || '-'} - <b>Warranty:</b> ${data.terms?.warranty || '-'} - <b>Validity:</b> ${data.terms?.validity || '-'}</div>
+      </div>
     </div>
 
     <div class="footer-box">
 
+      <!-- COMPANY -->
       <div class="footer-company">
         MUSCAT KITCHEN APPLIANCES & EQUIPMENT TRADING LLC
       </div>
 
+      <!-- DETAILS -->
       <div class="footer-details">
         P.O.Box: 1, PC 112, Muscat, Sultanate Of Oman, CR NO: 1380163<br>
-        Phone: +968 9598 0180 | Email: services@muscatkitchenappliances.com<br>
-        www.muscatkitchenappliances.com<br>
+        Phone: +968 9598 0180 | Email: services@muscatkitchenappliances.com | www.muscatkitchenappliances.com<br>
         Bank Muscat — Account No: 0442 05953211 0018
       </div>
 
-      <!-- TERMS ROW -->
+      <!-- TERMS -->
       <div class="footer-terms-row">
 
-        <!-- LEFT (ENGLISH) -->
+        <!-- ENGLISH -->
         <div class="footer-terms en">
-          • 15 Days exchange if goods packaged in original conditions<br>
-          • 1 Year warranty against manufacturing defects only<br>
-          • Warranty void if misuse / third-party repair<br>
-          • Company not responsible for manual document errors
+          <div class="terms-title">Terms & Conditions</div>
+          <ul>
+            <li>15 days exchange if goods are in original condition</li>
+            <li>1 year warranty against manufacturing defects only</li>
+            <li>Warranty void in case of misuse or third-party repair</li>
+            <li>Company not responsible for manual document errors</li>
+          </ul>
         </div>
 
-        <!-- RIGHT (ARABIC) -->
+        <!-- ARABIC -->
         <div class="footer-terms ar">
-          • ١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية<br>
-          • ضمان سنة ضد عيوب التصنيع فقط<br>
-          • يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث<br>
-          • الشركة غير مسؤولة عن الأخطاء اليدوية في المستند
+          <div class="terms-title">الشروط والأحكام</div>
+          <ul>
+            <li>١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية</li>
+            <li>ضمان سنة ضد عيوب التصنيع فقط</li>
+            <li>يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث</li>
+            <li>الشركة غير مسؤولة عن الأخطاء اليدوية في المستند</li>
+          </ul>
         </div>
 
       </div>
+
+    </div>
 
     </div>
 
