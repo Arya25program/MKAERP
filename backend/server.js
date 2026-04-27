@@ -125,6 +125,8 @@ app.post('/reject/:id', async (req, res) => {
 });
 
 app.post('/invoices', async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const {
       id,
@@ -139,17 +141,27 @@ app.post('/invoices', async (req, res) => {
       items
     } = req.body;
 
-    await pool.query(
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: "No items provided" });
+    }
+
+    await client.query('BEGIN');
+
+    // Insert invoice
+    await client.query(
       `INSERT INTO invoices 
       (id, employee_id, customer_name, customer_phone, customer_address, status, total, created, comment)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [id, employee_id, customer_name, customer_phone, customer_address, status, total, created, comment]
     );
 
-    // ❗ CRITICAL PART (YOU ARE MISSING THIS)
-    // ✅ 2. Insert items
+    // Insert items
     for (const item of items) {
-      await pool.query(
+      if (!item.productId) {
+        throw new Error("Missing productId in item");
+      }
+
+      await client.query(
         `INSERT INTO invoice_items 
         (invoice_id, product_id, name, qty, price)
         VALUES ($1,$2,$3,$4,$5)`,
@@ -163,11 +175,16 @@ app.post('/invoices', async (req, res) => {
       );
     }
 
+    await client.query('COMMIT');
+
     res.json({ success: true });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error saving invoice");
+    await client.query('ROLLBACK');
+    console.error("SAVE ERROR:", err.message);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
