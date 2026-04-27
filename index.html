@@ -117,7 +117,7 @@ tr:hover td{background:var(--bg3)}
 .back-btn:hover{color:var(--text)}
 .tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
 .print-page{display:none}
-@media print{body>*{display:none}.print-page{display:block!important;position:fixed;inset:0;background:#fff;color:#111;padding:40px;font-family:'Sora',sans-serif;z-index:9999;overflow:auto}}
+@media print{body>*{display:none}.print-page{display:block!important;background:#fff;color:#111;font-family:'Sora',sans-serif;z-index:9999}.print-page .print-doc{padding:30px 40px;box-sizing:border-box}.print-doc-break{page-break-before:always!important;break-before:page!important;display:block}}
 .divider{border:none;border-top:1px solid var(--border);margin:14px 0}
 /* circular progress */
 .circ-wrap{position:relative;width:48px;height:48px;flex-shrink:0}
@@ -604,18 +604,15 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const {useState,useEffect,useRef}=React;
+// ── COMPANY CONSTANTS (VATIN & VAT are fixed for all documents) ──
+const COMPANY_VATIN = 'OM1100144996';   // ← VATIN
+const COMPANY_VAT_NO = 'OM1100037509';  // ← VAT No
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
 const LEADS_INIT = [];
 const INVOICES_INIT = [];
-const QUOTATIONS_INIT=[
-  {id:1,customerName:'Fatima Al-Zahra',product:'Bosch Dishwasher Pro',date:'2024-01-15',phone:'',address:'',converted:false},
-  {id:2,customerName:'Nour Al-Sabah',product:'Miele Oven Series 6',date:'2024-01-13',phone:'',address:'',converted:false},
-  {id:3,customerName:'Ali Hassan',product:'Bosch Dishwasher Pro',date:'2024-01-10',phone:'',address:'',converted:false},
-];
-const FORMAL_QUOT_INIT=[
-  {id:'QUO-001',name:'Ahmed Al-Balushi',customerRef:'CR-2024-001',promoCode:'DISC10',companyName:'Al-Balushi Trading',date:'2024-01-10',products:[{name:'Bosch Dishwasher Pro',price:320,qty:1},{name:'Miele Oven Series 6',price:650,qty:1}],terms:{payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'},saved:true},
-];
+const QUOTATIONS_INIT=[];
+const FORMAL_QUOT_INIT=[];
 
 function genId(p){return p+'-'+Date.now().toString(36).toUpperCase()}
 function fmtCurrency(n){return 'OMR '+parseFloat(n||0).toFixed(2)}
@@ -654,6 +651,11 @@ function generateDocumentHTML(data, type="quotation") {
   const vat = subtotal*0.05;
   const total = subtotal+vat;
 
+  const vatinLine = `<div><b>VATIN:</b> ${COMPANY_VATIN}</div>`;
+  const vatNoLine = `<div><b>VAT No:</b> ${COMPANY_VAT_NO}</div>`;
+  const lpoLine = data.lpoNo ? `<div><b>LPO No:</b> ${data.lpoNo}</div>` : '';
+  const lpoDateLine = data.lpoDate ? `<div><b>LPO Date:</b> ${data.lpoDate}</div>` : '';
+
   return `
   <div class="doc">
 
@@ -670,7 +672,7 @@ function generateDocumentHTML(data, type="quotation") {
           <div>MKA ERP</div>
         </div>
 
-        <div class="doc-title">${type.toUpperCase()}</div>
+        <div class="doc-title">${type==='invoice'?'TAX INVOICE':type.toUpperCase()}</div>
       </div>
 
     </div>
@@ -684,12 +686,15 @@ function generateDocumentHTML(data, type="quotation") {
         <b>${data.name || data.customerName}</b>
         <div>${data.companyName || ''}</div>
         <div>Ref: ${data.customerRef || '-'}</div>
-        <div>${data.address || ''}</div>
+        <div>${data.address || data.customerAddress || ''}</div>
+        ${data.customerPhone ? `<div>Phone: ${data.customerPhone}</div>` : ''}
+        ${vatinLine}${vatNoLine}
       </div>
 
       <div class="right-box">
         <div><b>Date:</b> ${data.date || data.created}</div>
-        <div><b>${type==="invoice"?"Invoice":"Quotation"} Ref:</b> ${data.id}</div>
+        <div><b>${type==='invoice'?'Invoice':'Quotation'} Ref:</b> ${data.id}</div>
+        ${lpoLine}${lpoDateLine}
       </div>
     </div>
 
@@ -700,9 +705,9 @@ function generateDocumentHTML(data, type="quotation") {
           <th>S.NO</th>
           <th>MODEL</th>
           <th>DESCRIPTION</th>
-          <th>UNIT PRICE</th>
-          <th>QTY</th>
-          <th>TOTAL</th>
+          <th class="r">UNIT PRICE</th>
+          <th class="c">QTY</th>
+          <th class="r">TOTAL</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -710,9 +715,9 @@ function generateDocumentHTML(data, type="quotation") {
 
     <!-- TOTAL -->
     <div class="totals">
-      <div>Total <span>OMR ${subtotal.toFixed(2)}</span></div>
+      <div>Subtotal <span>OMR ${subtotal.toFixed(2)}</span></div>
       <div>VAT 5% <span>OMR ${vat.toFixed(2)}</span></div>
-      <div class="grand">Gross <span>OMR ${total.toFixed(2)}</span></div>
+      <div class="grand">Gross Total <span>OMR ${total.toFixed(2)}</span></div>
     </div>
 
     <div class="signature-section">
@@ -771,6 +776,7 @@ function generateDocumentHTML(data, type="quotation") {
         <div class="footer-terms ar">
           <div class="terms-title">الشروط والأحكام</div>
           <ul>
+            <li>١٥٠ أيام الصرف إذا البضائع وتعبئتها في ظروف الأصلية</li>
             <li>١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية</li>
             <li>ضمان سنة ضد عيوب التصنيع فقط</li>
             <li>يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث</li>
@@ -788,12 +794,143 @@ function generateDocumentHTML(data, type="quotation") {
   `;
 }
 
+function generateDeliveryOrderHTML(data) {
+  const products = data.products || data.items || [];
+
+  const rows = products.map((p,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${p.name}</td>
+      <td>${p.name}</td>
+      <td class="c">${p.qty}</td>
+      <td></td>
+    </tr>
+  `).join('');
+
+  const vatinLine = `<div><b>VATIN:</b> ${COMPANY_VATIN}</div>`;
+  const vatNoLine = `<div><b>VAT No:</b> ${COMPANY_VAT_NO}</div>`;
+  const lpoLine = data.lpoNo ? `<div><b>LPO No:</b> ${data.lpoNo}</div>` : '';
+  const lpoDateLine = data.lpoDate ? `<div><b>LPO Date:</b> ${data.lpoDate}</div>` : '';
+
+  return `
+  <div class="doc">
+
+    <!-- HEADER -->
+    <div class="doc-header">
+
+      <div class="logo-box">
+        <img src="https://raw.githubusercontent.com/Arya25program/MKAERP/main/companylogo.png" style="width:200px;height:auto;">
+      </div>
+
+      <div class="title-box">
+        <div class="doc-top">
+          <div>${new Date().toLocaleString()}</div>
+          <div>MKA ERP</div>
+        </div>
+
+        <div class="doc-title" style="color:#1a7a4a;">DELIVERY ORDER</div>
+      </div>
+
+    </div>
+
+    <div class="line" style="background:#1a7a4a;"></div>
+
+    <!-- CUSTOMER -->
+    <div class="box">
+      <div>
+        <div class="label">DELIVER TO</div>
+        <b>${data.name || data.customerName}</b>
+        <div>${data.companyName || ''}</div>
+        <div>Ref: ${data.customerRef || data.id}</div>
+        <div>${data.address || data.customerAddress || ''}</div>
+        ${data.customerPhone ? `<div>Phone: ${data.customerPhone}</div>` : ''}
+        ${vatinLine}${vatNoLine}
+      </div>
+
+      <div class="right-box">
+        <div><b>Date:</b> ${data.date || data.created}</div>
+        <div><b>Invoice Ref:</b> ${data.id}</div>
+        ${lpoLine}${lpoDateLine}
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <table class="doc-table">
+      <thead>
+        <tr>
+          <th>S.NO</th>
+          <th>MODEL</th>
+          <th>DESCRIPTION</th>
+          <th class="c">QTY</th>
+          <th>RECEIVED (✓)</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div style="margin-top:10px;font-size:11px;color:#555;font-style:italic;">* This delivery order does not include pricing. It is for goods receipt confirmation only.</div>
+
+    <div class="signature-section">
+
+      <div class="sign-box left">
+        <div class="sign-label">Delivered By</div>
+        <div class="sign-line"></div>
+      </div>
+
+      <div class="sign-box right">
+        <div class="sign-label">Received By (Customer Signature)</div>
+        <div class="sign-line"></div>
+      </div>
+
+    </div>
+
+    <div class="footer-box">
+
+      <div class="footer-company">
+        MUSCAT KITCHEN APPLIANCES & EQUIPMENT TRADING LLC
+      </div>
+
+      <div class="footer-details">
+        P.O.Box: 1, PC 112, Muscat, Sultanate Of Oman, CR NO: 1380163<br>
+        Phone: +968 9598 0180 | Email: services@muscatkitchenappliances.com | www.muscatkitchenappliances.com<br>
+        Bank Muscat — Account No: 0442 05953211 0018
+      </div>
+
+      <div class="footer-terms-row">
+        <div class="footer-terms en">
+          <div class="terms-title">Terms & Conditions</div>
+          <ul>
+            <li>15 days exchange if goods are in original condition</li>
+            <li>1 year warranty against manufacturing defects only</li>
+            <li>Warranty void in case of misuse or third-party repair</li>
+            <li>Company not responsible for manual document errors</li>
+          </ul>
+        </div>
+        <div class="footer-terms ar">
+          <div class="terms-title">الشروط والأحكام</div>
+          <ul>
+            <li>١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية</li>
+            <li>ضمان سنة ضد عيوب التصنيع فقط</li>
+            <li>يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث</li>
+            <li>الشركة غير مسؤولة عن الأخطاء اليدوية في المستند</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    </div>
+
+  </div>
+  `;
+}
+
+
 function printWithImages(html) {
   const container = document.getElementById("print-area");
   container.innerHTML = html;
 
   const images = container.querySelectorAll("img");
-
   let loaded = 0;
 
   if (images.length === 0) {
@@ -819,8 +956,11 @@ function printWithImages(html) {
 }
 
 function printInvoice(inv){
-  const html = generateDocumentHTML(inv, "invoice");
-  printWithImages(html);
+  const taxHtml = generateDocumentHTML(inv, "invoice");
+  const doHtml = generateDeliveryOrderHTML(inv);
+  // Wrap each in .print-doc, separated by .print-doc-break for reliable page break
+  const combined = `<div class="print-doc">${taxHtml}</div><div class="print-doc-break"></div><div class="print-doc">${doHtml}</div>`;
+  printWithImages(combined);
 }
 
 function printQuotation(q){
@@ -1911,6 +2051,8 @@ function CreateInvoice({user,data,setData,notify}){
   const [phone,setPhone]=useState('');
   const [address,setAddress]=useState('');
   const [comment,setComment]=useState('');
+  const [lpoNo,setLpoNo]=useState('');
+  const [lpoDate,setLpoDate]=useState('');
   const [items,setItems]=useState([{productId:'',qty:1}]);
   const total=items.reduce((s,item)=>{const p=products.find(p=>p.id===parseInt(item.productId));return s+(p?p.price*parseInt(item.qty||0):0)},0);
   const submit = () => {
@@ -1945,7 +2087,9 @@ function CreateInvoice({user,data,setData,notify}){
       status: "pending",
       total: total,
       created: new Date().toISOString(),
-      comment: comment || ""
+      comment: comment || "",
+      lpo_no: lpoNo || "",
+      lpo_date: lpoDate || ""
     };
 
     // 🔥 SAVE TO DB
@@ -1981,7 +2125,9 @@ function CreateInvoice({user,data,setData,notify}){
             accountantSent:false,
             deliveryDate:'',
             deliveryDone:false,
-            deliveryDoneDate:''
+            deliveryDoneDate:'',
+            lpoNo: saved.lpo_no || lpoNo || '',
+            lpoDate: saved.lpo_date || lpoDate || ''
           },
           ...d.invoices
         ]
@@ -1992,6 +2138,8 @@ function CreateInvoice({user,data,setData,notify}){
       setPhone('');
       setAddress('');
       setComment('');
+      setLpoNo('');
+      setLpoDate('');
       setItems([{productId:'',qty:1}]);
 
     })
@@ -2008,6 +2156,15 @@ function CreateInvoice({user,data,setData,notify}){
           React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Name'),React.createElement('input',{value:customer,onChange:e=>setCustomer(e.target.value),placeholder:'Full name'})),
           React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone Number'),React.createElement('input',{value:phone,onChange:e=>setPhone(e.target.value),placeholder:'9XXXXXXX'})),
           React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery Address'),React.createElement('input',{value:address,onChange:e=>setAddress(e.target.value),placeholder:'Street, area, city'}))
+        )
+      ),
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{className:'card-title'},'Invoice Reference Details'),
+        React.createElement('div',{className:'form-grid'},
+          React.createElement('div',{className:'form-row'},
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO No'),React.createElement('input',{value:lpoNo,onChange:e=>setLpoNo(e.target.value),placeholder:'Local Purchase Order No'})),
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO Date'),React.createElement('input',{type:'date',value:lpoDate,onChange:e=>setLpoDate(e.target.value)}))
+          )
         )
       ),
       React.createElement('div',{className:'card'},
@@ -2151,6 +2308,8 @@ function FormalQuotations({user,data,setData,notify}){
   const [showForm,setShowForm]=useState(false);
   const [editQ,setEditQ]=useState(null);
   const [viewQ,setViewQ]=useState(null);
+  const [search, setSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(null);
   const empty={name:'',customerRef:'',promoCode:'',companyName:'',date:new Date().toISOString().split('T')[0],products:[{name:'',price:'',qty:1}],terms:{payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'}};
   const [form,setForm]=useState(empty);
   const updateProd=(idx,field,val)=>setForm(f=>({...f,products:f.products.map((p,i)=>i===idx?{...p,[field]:val}:p)}));
@@ -2168,6 +2327,23 @@ function FormalQuotations({user,data,setData,notify}){
     else{setData(d=>({...d,formalQuotations:[...(d.formalQuotations||[]),q]}));notify('Quotation saved','success')}
     setShowForm(false);setEditQ(null);
   };
+
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/products")
+      .then(res => res.json())
+      .then(products => {
+        setData(prev => ({
+          ...prev,
+          products: products
+        }));
+      })
+      .catch(err => console.error("Products fetch error:", err));
+  }, []);
+
+  const filteredProducts = data.products?.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   const allQ=data.formalQuotations||[];
   if(viewQ)return React.createElement('div',null,
     React.createElement('div',{className:'back-btn',onClick:()=>setViewQ(null)},'← Back to Quotations'),
@@ -2249,10 +2425,75 @@ function FormalQuotations({user,data,setData,notify}){
           React.createElement('div',{className:'card-title',style:{margin:0}},'Products'),
           React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:addProdRow},'+ Add Product')
         ),
-        React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,overflow:'hidden',marginBottom:14}},
-          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10,padding:'8px 14px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},React.createElement('span',null,'Product Name'),React.createElement('span',null,'Price (OMR)'),React.createElement('span',null,'Qty'),React.createElement('span',null,'')),
+        React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,overflow:'visible',marginBottom:14}},
+          React.createElement('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10,padding:'8px 14px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',borderRadius:'10px 10px 0 0'}},React.createElement('span',null,'Product Name'),React.createElement('span',null,'Price (OMR)'),React.createElement('span',null,'Qty'),React.createElement('span',null,'')),
           form.products.map((p,idx)=>React.createElement('div',{key:idx,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:10,padding:'10px 14px',borderTop:'1px solid var(--border)',alignItems:'center'}},
-            React.createElement('input',{value:p.name,onChange:e=>updateProd(idx,'name',e.target.value),placeholder:'Product name',style:{fontSize:12}}),
+            React.createElement('div',{style:{position:'relative'}},
+              React.createElement('input',{
+                value:p.name || '',
+                readOnly:true,
+                onClick:()=>setShowDropdown(showDropdown===idx?null:idx),
+                placeholder:'Select product...',
+                style:{fontSize:12, cursor:'pointer', background:'var(--bg2)', border:'1px solid var(--border2)', borderRadius:8, padding:'8px 12px', width:'100%', color:'var(--text)'}
+              }),
+              showDropdown===idx &&
+              React.createElement('div',{
+                style:{
+                  position:'fixed',
+                  background:'var(--bg2)',
+                  border:'1px solid var(--border2)',
+                  zIndex:99999,
+                  maxHeight:220,
+                  overflowY:'auto',
+                  borderRadius:8,
+                  boxShadow:'0 8px 32px rgba(0,0,0,.4)',
+                  minWidth:260,
+                  marginTop:2
+                },
+                ref:el=>{
+                  if(el){
+                    const inputEl=el.previousSibling;
+                    if(inputEl){
+                      const rect=inputEl.getBoundingClientRect();
+                      el.style.top=(rect.bottom+4)+'px';
+                      el.style.left=rect.left+'px';
+                      el.style.width=rect.width+'px';
+                    }
+                  }
+                }
+              },
+                React.createElement('div',{style:{padding:'6px 8px',borderBottom:'1px solid var(--border)'}},
+                  React.createElement('input',{
+                    autoFocus:true,
+                    value:search,
+                    onChange:e=>setSearch(e.target.value),
+                    placeholder:'Search products...',
+                    style:{fontSize:12,padding:'6px 10px',width:'100%',background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:6,color:'var(--text)'},
+                    onClick:e=>e.stopPropagation()
+                  })
+                ),
+                (filteredProducts||[]).length===0
+                  ?React.createElement('div',{style:{padding:'12px',fontSize:12,color:'var(--text3)',textAlign:'center'}},'No products found')
+                  :(filteredProducts||[]).map(prod=>
+                    React.createElement('div',{
+                      key:prod.id,
+                      onMouseDown:e=>{
+                        e.preventDefault();
+                        updateProd(idx,'name',prod.name);
+                        updateProd(idx,'price',prod.price);
+                        setShowDropdown(null);
+                        setSearch('');
+                      },
+                      style:{padding:'9px 12px',cursor:'pointer',borderBottom:'1px solid var(--border)',fontSize:12,color:'var(--text)',transition:'background .1s'},
+                      onMouseEnter:e=>e.currentTarget.style.background='var(--bg3)',
+                      onMouseLeave:e=>e.currentTarget.style.background='transparent'
+                    },
+                      React.createElement('div',{style:{fontWeight:500}},prod.name),
+                      React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:1}},'OMR '+Number(prod.price).toFixed(2))
+                    )
+                  )
+              )
+            ),
             React.createElement('input',{type:'number',value:p.price,onChange:e=>updateProd(idx,'price',e.target.value),placeholder:'0.00',style:{fontSize:12}}),
             React.createElement('input',{type:'number',min:1,value:p.qty,onChange:e=>updateProd(idx,'qty',e.target.value),style:{fontSize:12,width:60,textAlign:'center'}}),
             form.products.length>1&&React.createElement('button',{onClick:()=>removeProdRow(idx),style:{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:15}},'×')
