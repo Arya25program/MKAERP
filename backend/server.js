@@ -59,6 +59,53 @@ app.post('/products', async (req, res) => {
   }
 });
 
+//Documents (Merging Invoice and Quotations)
+app.post("/documents", async (req, res) => {
+  try {
+    const data = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO documents (
+        id, type, status, employee_id,
+        customer_name, customer_phone, customer_address,
+        customer_ref, mka_ref, company_name, promo_code,
+        total, created, terms, items
+      ) VALUES (
+        $1,$2,$3,$4,
+        $5,$6,$7,
+        $8,$9,$10,$11,
+        $12,$13,$14,$15
+      ) RETURNING *`,
+      [
+        data.id,
+        data.type,
+        data.status,
+        data.employee_id,
+
+        data.customer_name,
+        data.customer_phone,
+        data.customer_address,
+
+        data.customer_ref,
+        data.mka_ref,
+        data.company_name,
+        data.promo_code,
+
+        data.total,
+        data.created,
+
+        JSON.stringify(data.terms || {}),
+        JSON.stringify(data.items || [])
+      ]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Insert failed" });
+  }
+});
+
 //Get pending APPROVALS
 app.get('/approvals', async (req, res) => {
   try {
