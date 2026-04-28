@@ -226,27 +226,71 @@ app.get('/users', async (req, res) => {
   }
 });
 
-app.get('/quotations', async (req, res) => {
+app.get("/quotations", async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        q.id,
-        q.customer_name,
-        q.product_id,
-        p.name AS product_name,
-        q.date,
-        q.phone,
-        q.address,
-        q.converted
-      FROM quotations q
-      LEFT JOIN products p ON q.product_id = p.id
-      ORDER BY q.id DESC
-    `);
+    const q = await pool.query(`SELECT * FROM formal_quotations`);
 
-    res.json(result.rows);
+    const result = [];
+
+    for (let row of q.rows) {
+      const items = await pool.query(
+        `SELECT * FROM formal_quotation_products WHERE quotation_id = $1`,
+        [row.id]
+      );
+
+      result.push({
+        ...row,
+        products: items.rows
+      });
+    }
+
+    res.json(result);
+
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching quotations");
+    res.status(500).send("Fetch error");
+  }
+});
+
+app.post("/quotations", async (req, res) => {
+  const {
+    id,
+    customer_name,
+    company_name,
+    customer_ref,
+    promo_code,
+    date,
+    sub_total,
+    vat,
+    gross,
+    terms,
+    products
+  } = req.body;
+
+  try {
+    // 1. Insert main quotation
+    await pool.query(
+      `INSERT INTO formal_quotations 
+      (id, customer_name, company_name, customer_ref, promo_code, date, sub_total, vat, gross, terms)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [id, customer_name, company_name, customer_ref, promo_code, date, sub_total, vat, gross, JSON.stringify(terms)]
+    );
+
+    // 2. Insert items
+    for (let p of products) {
+      await pool.query(
+        `INSERT INTO formal_quotation_products 
+        (quotation_id, name, qty, price)
+        VALUES ($1,$2,$3,$4)`,
+        [id, p.name, p.qty, p.price]
+      );
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Failed to save quotation");
   }
 });
 
