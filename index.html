@@ -2412,6 +2412,7 @@ function FormalQuotations({user,data,setData,notify}){
   const [editQ,setEditQ]=useState(null);
   const [viewQ,setViewQ]=useState(null);
   const [search, setSearch] = useState("");
+  const [mkaRef, setMkaRef] = useState('');
   const [showDropdown, setShowDropdown] = useState(null);
   const empty={name:'',customerRef:'',promoCode:'',companyName:'',date:new Date().toISOString().split('T')[0],products:[{name:'',price:'',qty:1}],terms:{payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'}};
   const [form,setForm]=useState(empty);
@@ -2421,55 +2422,44 @@ function FormalQuotations({user,data,setData,notify}){
   const subTotal=form.products.reduce((s,p)=>s+(parseFloat(p.price||0)*parseInt(p.qty||0)),0);
   const vat=subTotal*0.05;
   const gross=subTotal+vat;
-  const save = () => {
-    if(!form.name.trim()){
-      notify('Customer name required','error');
+  const save = (mode = "quotation") => {
+    if (!form.name.trim()) {
+      notify("Customer name required", "error");
       return;
     }
-
-    const valid = form.products.filter(p => p.name.trim() && p.price);
-
-    if(!valid.length){
-      notify('Add at least one product','error');
+    const valid = form.products.filter(p => p.name && p.price); 
+    if (!valid.length) {
+      notify("Add at least one product", "error");
       return;
     }
+    const builtItems = valid.map(p => ({
+      productId: p.id || null,
+      name: p.name,
+      qty: parseInt(p.qty || 1),
+      price: parseFloat(p.price)
+    }));
 
-    const quotation = {
-      id: editQ ? editQ.id : genId('QUO'),
+    const payload = {
+      id: genId("INV"),
+      employee_id: user.id,
       customer_name: form.name,
-      customer_ref: form.customerRef,
-      company_name: form.companyName,
-      promo_code: form.promoCode,
-      date: form.date,
-      products: valid.map(p => ({
-        name: p.name,
-        price: parseFloat(p.price),
-        qty: parseInt(p.qty || 1)
-      })),
-      sub_total: subTotal,
-      vat: vat,
-      gross: gross,
-      terms: form.terms
+      customer_phone: form.phone || "",
+      customer_address: form.address || "",
+      status: mode === "quotation" ? "quotation" : "pending",
+      total: gross,
+      comment: form.comment || "",
+      lpo_no: form.customerRef || "",
+      lpo_date: form.date || "",
+      mka_ref: mkaRef || "",
+      items: builtItems
     };
 
-    fetch("https://mkaerp-production.up.railway.app/quotations", {
+    fetch("https://mkaerp-production.up.railway.app/invoices", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        id: quotation.id,
-        customer_name: quotation.customer_name,
-        company_name: quotation.company_name,
-        customer_ref: quotation.customer_ref,
-        promo_code: quotation.promo_code,
-        date: quotation.date,
-        sub_total: quotation.sub_total,
-        vat: quotation.vat,
-        gross: quotation.gross,
-        terms: quotation.terms,
-        products: quotation.products
-      })
+      body: JSON.stringify(payload)
     })
     .then(async res => {
       const text = await res.text();
@@ -2477,20 +2467,18 @@ function FormalQuotations({user,data,setData,notify}){
       return text;
     })
     .then(() => {
-      notify('Quotation saved to database','success');
-
-      // optional: update UI
-      setData(d => ({
-        ...d,
-        formalQuotations: [quotation, ...(d.formalQuotations || [])]
-      }));
+      notify(
+        mode === "quotation"
+          ? "Quotation saved"
+          : "Invoice sent for approval",
+        "success"
+      );
 
       setShowForm(false);
-      setEditQ(null);
     })
     .catch(err => {
       console.error(err);
-      notify('Failed to save quotation','error');
+      notify("Failed to save", "error");
     });
   };
 
@@ -2575,7 +2563,8 @@ function FormalQuotations({user,data,setData,notify}){
         React.createElement('div',{className:'form-grid'},
           React.createElement('div',{className:'form-row'},
             React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Name'),React.createElement('input',{value:form.name,onChange:e=>setForm(f=>({...f,name:e.target.value})),placeholder:'Full name'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Ref'),React.createElement('input',{value:form.customerRef,onChange:e=>setForm(f=>({...f,customerRef:e.target.value})),placeholder:'e.g. CR-2024-001'}))
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Ref'),React.createElement('input',{value:form.customerRef,onChange:e=>setForm(f=>({...f,customerRef:e.target.value})),placeholder:'e.g. CR-2024-001'})),
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'MKA Ref'),React.createElement('input',{value:mkaRef,onChange:e=>setMkaRef(e.target.value),placeholder:'e.g. MKA-2026-001'}))
           ),
           React.createElement('div',{className:'form-row'},
             React.createElement('div',{className:'form-group'},React.createElement('label',null,'Company Name'),React.createElement('input',{value:form.companyName,onChange:e=>setForm(f=>({...f,companyName:e.target.value})),placeholder:'Optional'})),
@@ -2713,7 +2702,7 @@ function FormalQuotations({user,data,setData,notify}){
           React.createElement('td',null,
             React.createElement('div',{style:{display:'flex',gap:5}},
               React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setViewQ(q)},'View'),
-              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({...q});setEditQ(q);setShowForm(true)}},'Edit'),
+              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({...q});setMkaRef(q.mka_ref || '');setEditQ(q);setShowForm(true)}},'Edit'),
               React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{setData(d=>({...d,formalQuotations:(d.formalQuotations||[]).filter(x=>x.id!==q.id)}));notify('Quotation deleted','success')}},'Delete')
             )
           )
