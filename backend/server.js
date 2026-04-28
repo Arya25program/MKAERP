@@ -85,6 +85,14 @@ app.post("/documents", async (req, res) => {
       terms,
       items
     } = req.body;
+    
+    if (!id || !type || !status || !customer_name) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: "Items required" });
+    }
 
     const result = await pool.query(
       `INSERT INTO documents (
