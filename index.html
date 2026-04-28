@@ -610,9 +610,7 @@ const COMPANY_VAT_NO = 'OM1100037509';  // ← VAT No
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
 const LEADS_INIT = [];
-const INVOICES_INIT = [];
-const QUOTATIONS_INIT=[];
-const FORMAL_QUOT_INIT=[];
+const DOCUMENTS_INIT = [];
 
 function genId(p){return p+'-'+Date.now().toString(36).toUpperCase()}
 function fmtCurrency(n){return 'OMR '+parseFloat(n||0).toFixed(2)}
@@ -1314,7 +1312,8 @@ function MobProfileBtn({user,onOpen}){
 }
 
 function OwnerDashboard({data}){
-  const {leads,invoices,products}=data;
+  const {leads,documents,products}=data;
+  const invoices=documents.filter(d=>d.type==='invoice');
   const totalRev=invoices.filter(i=>i.status==='approved').reduce((s,i)=>s+i.total,0);
   const pending=invoices.filter(i=>i.status==='pending').length;
   const months=['Jan','Feb','Mar','Apr','May','Jun'];
@@ -1382,7 +1381,8 @@ function OwnerDashboard({data}){
 }
 
 function EmployeeDashboard({user,data}){
-  const {leads,invoices,products}=data;
+  const {leads,documents,products}=data;
+  const invoices=documents.filter(d=>d.type==='invoice');
   const myInvs=invoices.filter(i=>i.employeeId===user.id);
   const myLeads=leads.filter(l=>l.employeeId===user.id);
   const myApproved=myInvs.filter(i=>i.status==='approved');
@@ -1432,7 +1432,7 @@ function EmployeeDashboard({user,data}){
 }
 
 function AccountantDashboard({data}){
-  const {invoices}=data;
+  const invoices=(data.documents||[]).filter(d=>d.type==='invoice');
   const approved=invoices.filter(i=>i.status==='approved');
   return React.createElement('div',null,
     React.createElement('div',{className:'grid-3',style:{marginBottom:18}},
@@ -1506,7 +1506,7 @@ function InvoiceDetail({inv,onBack}){
 }
 
 function InvoicesPage({user,data}){
-  const {invoices}=data;
+  const invoices=(data.documents||[]).filter(d=>d.type==='invoice');
   const [filter,setFilter]=useState('all');
   const [detail,setDetail]=useState(null);
   const myInvs=user.role==='employee'?invoices.filter(i=>i.employeeId===user.id):invoices;
@@ -1535,16 +1535,14 @@ function InvoicesPage({user,data}){
 }
 
 function ApprovalsPage({user,data,setData,notify}){
-  const pending=data.invoices.filter(i=>i.status==='pending');
+  const pending=(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending');
   const [rejModal,setRejModal]=useState(null);
   const [rejNote,setRejNote]=useState('');
   const approve = (id) => {
     fetch(`https://mkaerp-production.up.railway.app/approve/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        approver: user.name
-      })
+      body: JSON.stringify({ approver: user.name })
     })
     .then(async res => {
       const text = await res.text();
@@ -1552,44 +1550,25 @@ function ApprovalsPage({user,data,setData,notify}){
       return text;
     })
     .then(() => {
-
       notify('Invoice approved','success');
-
-      // ✅ update UI
       setData(d => ({
         ...d,
-        invoices: d.invoices.map(i =>
-          i.id === id
-            ? {
-                ...i,
-                status: 'approved',
-                approvedBy: user.name,
-                approvedAt: new Date().toISOString()
-              }
-            : i
+        documents: d.documents.map(doc =>
+          doc.id === id
+            ? { ...doc, status: 'approved', approvedBy: user.name, approvedAt: new Date().toISOString() }
+            : doc
         )
       }));
-
     })
-    .catch(err => {
-      console.error(err);
-      notify('Approval failed','error');
-    });
+    .catch(err => { console.error(err); notify('Approval failed','error'); });
   };
   
   const confirmReject = () => {
-    if (!rejNote.trim()) {
-      notify('Rejection reason required','error');
-      return;
-    }
-
+    if (!rejNote.trim()) { notify('Rejection reason required','error'); return; }
     fetch(`https://mkaerp-production.up.railway.app/reject/${rejModal.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        approver: user.name,
-        note: rejNote
-      })
+      body: JSON.stringify({ approver: user.name, note: rejNote })
     })
     .then(async res => {
       const text = await res.text();
@@ -1597,33 +1576,18 @@ function ApprovalsPage({user,data,setData,notify}){
       return text;
     })
     .then(() => {
-
       notify('Invoice rejected','success');
-
-      // ✅ update UI
       setData(d => ({
         ...d,
-        invoices: d.invoices.map(i =>
-          i.id === rejModal.id
-            ? {
-                ...i,
-                status: 'rejected',
-                rejectionNote: rejNote,
-                approvedBy: user.name,
-                approvedAt: new Date().toISOString()
-              }
-            : i
+        documents: d.documents.map(doc =>
+          doc.id === rejModal.id
+            ? { ...doc, status: 'rejected', rejectionNote: rejNote, approvedBy: user.name, approvedAt: new Date().toISOString() }
+            : doc
         )
       }));
-
-      setRejModal(null);
-      setRejNote('');
-
+      setRejModal(null); setRejNote('');
     })
-    .catch(err => {
-      console.error(err);
-      notify('Rejection failed','error');
-    });
+    .catch(err => { console.error(err); notify('Rejection failed','error'); });
   };
   return React.createElement('div',null,
     React.createElement('div',{style:{marginBottom:14}},React.createElement('span',{className:'badge pending'},pending.length+' pending')),
@@ -1676,14 +1640,14 @@ function ApprovalsPage({user,data,setData,notify}){
 }
 
 function ApprovedInvoicesPage({user,data,setData,notify}){
-  const approved=data.invoices.filter(i=>i.status==='approved');
+  const approved=(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='approved');
   const canGen=user.role==='accountant';
   const [lpoModal,setLpoModal]=useState(null);
   const [lpoNo,setLpoNo]=useState('');
   const [lpoDate,setLpoDate]=useState('');
 
   const openLpoModal=id=>{
-    const inv=data.invoices.find(i=>i.id===id);
+    const inv=(data.documents||[]).find(d=>d.id===id);
     if(!inv)return;
     setLpoNo(inv.lpoNo||'');
     setLpoDate(inv.lpoDate||'');
@@ -1695,7 +1659,7 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
     if(!inv)return;
     const updatedInv={...inv,lpoNo:lpoNo||'',lpoDate:lpoDate||''};
     setData(d=>{
-      const invoices=d.invoices.map(i=>i.id===inv.id?{...i,accountantSent:true,lpoNo:lpoNo||'',lpoDate:lpoDate||''}:i);
+      const documents=d.documents.map(doc=>doc.id===inv.id?{...doc,accountantSent:true,lpoNo:lpoNo||'',lpoDate:lpoDate||''}:doc);
       let products=[...d.products];
       inv.items.forEach(it=>{
         const qty=parseInt(it.qty)||1;
@@ -1706,7 +1670,7 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
           return p;
         });
       });
-      return{...d,invoices,products};
+      return{...d,documents,products};
     });
     const lowAfter=[];
     inv.items.forEach(it=>{
@@ -1783,19 +1747,19 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
 }
 
 function DeliveryPage({user,data,setData,notify}){
-  const approved=data.invoices.filter(i=>i.status==='approved'&&i.accountantSent);
+  const approved=(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='approved'&&d.accountantSent);
   const [editId,setEditId]=useState(null);
   const [dDate,setDDate]=useState('');
   const [doneId,setDoneId]=useState(null);
   const [doneDate,setDoneDate]=useState('');
   const saveDate=id=>{
     if(!dDate){notify('Pick a delivery date','error');return}
-    setData(d=>({...d,invoices:d.invoices.map(i=>i.id===id?{...i,deliveryDate:dDate}:i)}));
+    setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDate:dDate}:doc)}));
     notify('Delivery date set','success');setEditId(null);setDDate('');
   };
   const markDone=id=>{
     if(!doneDate){notify('Enter completion date','error');return}
-    setData(d=>({...d,invoices:d.invoices.map(i=>i.id===id?{...i,deliveryDone:true,deliveryDoneDate:doneDate}:i)}));
+    setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDone:true,deliveryDoneDate:doneDate}:doc)}));
     notify('Delivery marked as completed','success');setDoneId(null);setDoneDate('');
   };
   return React.createElement('div',null,
@@ -2159,32 +2123,33 @@ function CreateInvoice({user,data,setData,notify}){
       };
     });
 
-    const newInvoice = {
-      id: genId('INV'),
+    const id = genId('INV');
+    const newDoc = {
+      id,
+      type: "invoice",
+      status: "pending",
       employee_id: user.id,
       customer_name: customer,
       customer_phone: phone,
       customer_address: address,
-      status: "pending",
-      total: total,
-      created: new Date().toISOString(),
-      comment: comment || "",
+      customer_ref: "",
+      mka_ref: "",
+      company_name: "",
+      promo_code: "",
       lpo_no: "",
       lpo_date: "",
-      terms_payment: terms.payment || "",
-      terms_delivery: terms.delivery || "",
-      terms_warranty: terms.warranty || "",
-      terms_validity: terms.validity || ""
+      total,
+      created: new Date().toISOString(),
+      terms,
+      items: builtItems,
+      comment: comment || ""
     };
 
     // 🔥 SAVE TO DB
-    fetch("https://mkaerp-production.up.railway.app/invoices", {
+    fetch("https://mkaerp-production.up.railway.app/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...newInvoice,
-        items: builtItems
-      })
+      body: JSON.stringify(newDoc)
     })
     .then(async res => {
       const data = await res.json();
@@ -2194,42 +2159,40 @@ function CreateInvoice({user,data,setData,notify}){
       return data;
     })
     .then(saved => {
-
       notify('Invoice submitted for approval','success');
 
-      // ✅ KEEP UI FORMAT SAME AS BEFORE
       setData(d => ({
         ...d,
-        invoices: [
+        documents: [
           {
-            id: saved.id,
-            employeeId: saved.employee_id,
+            id: saved.id || id,
+            type: 'invoice',
+            employeeId: user.id,
             employeeName: user.name,
-            customerName: saved.customer_name,
-            customerPhone: saved.customer_phone,
-            customerAddress: saved.customer_address,
-            status: saved.status,
-            total: Number(saved.total),
-            created: saved.created.split('T')[0],
-            comment: saved.comment,
-            approvedBy: saved.approved_by || null,
-            approvedAt: saved.approved_at || null,
-            rejectionNote: '',
-            items: builtItems, // keep for UI
-            accountantSent:false,
-            deliveryDate:'',
-            deliveryDone:false,
-            deliveryDoneDate:'',
+            customerName: customer,
+            customerPhone: phone,
+            customerAddress: address,
+            customerRef: '',
+            mkaRef: '',
+            companyName: '',
+            promoCode: '',
             lpoNo: '',
             lpoDate: '',
-            terms: {
-              payment: saved.terms_payment || terms.payment || '',
-              delivery: saved.terms_delivery || terms.delivery || '',
-              warranty: saved.terms_warranty || terms.warranty || '',
-              validity: saved.terms_validity || terms.validity || ''
-            }
+            status: 'pending',
+            total,
+            created: new Date().toISOString().split('T')[0],
+            comment,
+            approvedBy: null,
+            approvedAt: null,
+            rejectionNote: '',
+            items: builtItems,
+            terms,
+            accountantSent: false,
+            deliveryDate: '',
+            deliveryDone: false,
+            deliveryDoneDate: '',
           },
-          ...d.invoices
+          ...d.documents
         ]
       }));
 
@@ -2325,13 +2288,16 @@ function QuotationUphold({user,data,setData,notify}){
 }
 
 function DemandTracker({user,data,setData,notify}){
-  const {quotations,products,users}=data;
+  const {products,users}=data;
+  // demand entries are quotation-type docs with a product field (legacy demand tracker format)
   const [showModal,setShowModal]=useState(false);
   const [form,setForm]=useState({customerName:'',product:''});
   const [customerModal,setCustomerModal]=useState(null);
   const [cf,setCf]=useState({phone:'',address:''});
   const [sortBy,setSortBy]=useState('count');
-  const allQ=(quotations||[]).filter(q=>!q.converted);
+  // Demand tracker uses its own local state since these are lightweight entries, not full documents
+  const [demandList,setDemandList]=useState([]);
+  const allQ=demandList.filter(q=>!q.converted);
   const maxCount=Math.max(1,...Object.values(allQ.reduce((acc,q)=>{acc[q.product]=(acc[q.product]||0)+1;return acc},{})));
   const productGroups={};
   allQ.forEach(q=>{if(!productGroups[q.product])productGroups[q.product]=[];productGroups[q.product].push(q)});
@@ -2339,10 +2305,33 @@ function DemandTracker({user,data,setData,notify}){
   const convertToInvoice=()=>{
     if(!customerModal)return;
     const ownerUser=users.find(u=>u.role==='owner'&&u.active);
-    const inv={id:genId('INV'),employeeId:user.id,employeeName:user.name,customerName:customerModal.customerName,customerPhone:cf.phone||customerModal.phone||'',customerAddress:cf.address||customerModal.address||'',status:'approved',total:0,created:new Date().toISOString().split('T')[0],comment:'Converted from quotation demand list.',approvedBy:ownerUser?ownerUser.name:'Auto-approved',approvedAt:tsNow(),rejectionNote:'',items:[{productId:0,name:customerModal.product,qty:1,price:0}],accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:'',fromQuotation:true};
     const pFound=data.products.find(p=>p.name===customerModal.product);
-    if(pFound){inv.items=[{productId:pFound.id,name:pFound.name,qty:1,price:pFound.price}];inv.total=pFound.price;}
-    setData(d=>({...d,invoices:[inv,...d.invoices],quotations:(d.quotations||[]).map(q=>q.id===customerModal.id?{...q,converted:true}:q)}));
+    const items=[pFound
+      ?{productId:pFound.id,name:pFound.name,qty:1,price:pFound.price}
+      :{productId:0,name:customerModal.product,qty:1,price:0}];
+    const total=pFound?pFound.price:0;
+    const newDoc={
+      id:genId('INV'),
+      type:'invoice',
+      status:'approved',
+      employeeId:user.id,
+      employeeName:user.name,
+      customerName:customerModal.customerName,
+      customerPhone:cf.phone||customerModal.phone||'',
+      customerAddress:cf.address||customerModal.address||'',
+      customerRef:'',mkaRef:'',companyName:'',promoCode:'',lpoNo:'',lpoDate:'',
+      total,
+      created:new Date().toISOString().split('T')[0],
+      comment:'Converted from demand tracker.',
+      approvedBy:ownerUser?ownerUser.name:'Auto-approved',
+      approvedAt:tsNow(),
+      rejectionNote:'',
+      items,
+      terms:{payment:'',delivery:'',warranty:'',validity:''},
+      accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:'',fromQuotation:true
+    };
+    setData(d=>({...d,documents:[newDoc,...d.documents]}));
+    setDemandList(prev=>prev.map(q=>q.id===customerModal.id?{...q,converted:true}:q));
     notify('Invoice created, approved & sent to accountant!','success');
     setCustomerModal(null);
   };
@@ -2384,7 +2373,7 @@ function DemandTracker({user,data,setData,notify}){
           React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowModal(false)},'Cancel'),
           React.createElement('button',{className:'btn btn-primary',onClick:()=>{
             if(!form.customerName.trim()||!form.product){notify('Name and product required','error');return}
-            setData(d=>({...d,quotations:[...(d.quotations||[]),{id:Date.now(),customerName:form.customerName,product:form.product,date:new Date().toISOString().split('T')[0],phone:'',address:'',converted:false}]}));
+            setDemandList(prev=>[...prev,{id:Date.now(),customerName:form.customerName,product:form.product,date:new Date().toISOString().split('T')[0],phone:'',address:'',converted:false}]);
             notify('Added to demand list','success');setForm({customerName:'',product:''});setShowModal(false);
           }},'Add')
         )
@@ -2439,26 +2428,30 @@ function FormalQuotations({user,data,setData,notify}){
       price: parseFloat(p.price)
     }));
 
+    const qId = editQ ? editQ.id : genId("QUO");
     const payload = {
-      id: genId("INV"),
+      id: qId,
+      type: "quotation",
       employee_id: user.id,
       customer_name: form.name,
       customer_phone: form.phone || "",
       customer_address: form.address || "",
-      status: mode === "quotation" ? "quotation" : "pending",
-      total: gross,
-      comment: form.comment || "",
-      lpo_no: form.customerRef || "",
-      lpo_date: form.date || "",
+      customer_ref: form.customerRef || "",
       mka_ref: mkaRef || "",
+      company_name: form.companyName || "",
+      promo_code: form.promoCode || "",
+      lpo_no: "",
+      lpo_date: form.date || "",
+      status: "draft",
+      total: gross,
+      created: new Date().toISOString(),
+      terms: form.terms,
       items: builtItems
     };
 
-    fetch("https://mkaerp-production.up.railway.app/invoices", {
+    fetch("https://mkaerp-production.up.railway.app/documents", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
     .then(async res => {
@@ -2467,14 +2460,44 @@ function FormalQuotations({user,data,setData,notify}){
       return text;
     })
     .then(() => {
-      notify(
-        mode === "quotation"
-          ? "Quotation saved"
-          : "Invoice sent for approval",
-        "success"
-      );
+      notify("Quotation saved", "success");
+
+      const localQ = {
+        id: qId,
+        type: 'quotation',
+        status: 'draft',
+        employeeId: user.id,
+        employeeName: user.name,
+        customerName: form.name,
+        customerPhone: form.phone || '',
+        customerAddress: form.address || '',
+        companyName: form.companyName || '',
+        customerRef: form.customerRef || '',
+        mkaRef: mkaRef || '',
+        promoCode: form.promoCode || '',
+        lpoNo: '',
+        lpoDate: form.date || '',
+        total: gross,
+        created: new Date().toISOString().split('T')[0],
+        terms: form.terms,
+        items: builtItems,
+        // legacy view fields
+        name: form.name,
+        date: form.date,
+        products: builtItems,
+        subTotal,
+        vat,
+        gross,
+      };
+      setData(d => {
+        const docs = editQ
+          ? d.documents.map(doc => doc.id === editQ.id ? localQ : doc)
+          : [localQ, ...d.documents];
+        return { ...d, documents: docs };
+      });
 
       setShowForm(false);
+      setEditQ(null);
     })
     .catch(err => {
       console.error(err);
@@ -2482,23 +2505,12 @@ function FormalQuotations({user,data,setData,notify}){
     });
   };
 
-  useEffect(() => {
-    fetch("https://mkaerp-production.up.railway.app/products")
-      .then(res => res.json())
-      .then(products => {
-        setData(prev => ({
-          ...prev,
-          products: products
-        }));
-      })
-      .catch(err => console.error("Products fetch error:", err));
-  }, []);
 
   const filteredProducts = data.products?.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const allQ=data.formalQuotations||[];
+  const allQ=(data.documents||[]).filter(d=>d.type==='quotation');
   if(viewQ)return React.createElement('div',null,
     React.createElement('div',{className:'back-btn',onClick:()=>setViewQ(null)},'← Back to Quotations'),
     React.createElement('div',{className:'card'},
@@ -2520,7 +2532,7 @@ function FormalQuotations({user,data,setData,notify}){
       React.createElement('table',{className:'quot-table'},
         React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Product'),React.createElement('th',null,'Qty'),React.createElement('th',{style:{textAlign:'right'}},'Unit Price'),React.createElement('th',{style:{textAlign:'right'}},'Subtotal'))),
         React.createElement('tbody',null,
-          viewQ.products.map((p,i)=>React.createElement('tr',{key:i},
+          (viewQ.items||viewQ.products||[]).map((p,i)=>React.createElement('tr',{key:i},
             React.createElement('td',null,p.name),
             React.createElement('td',null,p.qty),
             React.createElement('td',{className:'num'},fmtCurrency(p.price)),
@@ -2528,15 +2540,15 @@ function FormalQuotations({user,data,setData,notify}){
           )),
           React.createElement('tr',null,
             React.createElement('td',{colSpan:3,style:{textAlign:'right',padding:'9px 12px',fontSize:12,color:'var(--text3)'}},'Subtotal'),
-            React.createElement('td',{className:'num'},fmtCurrency(viewQ.subTotal))
+            React.createElement('td',{className:'num'},fmtCurrency(viewQ.subTotal||(viewQ.items||[]).reduce((s,p)=>s+(p.price*p.qty),0)))
           ),
           React.createElement('tr',null,
             React.createElement('td',{colSpan:3,style:{textAlign:'right',padding:'9px 12px',fontSize:12,color:'var(--text3)'}},'VAT 5%'),
-            React.createElement('td',{className:'num'},fmtCurrency(viewQ.vat))
+            React.createElement('td',{className:'num'},fmtCurrency(viewQ.vat||((viewQ.items||[]).reduce((s,p)=>s+(p.price*p.qty),0)*0.05)))
           ),
           React.createElement('tr',{className:'quot-total-row'},
             React.createElement('td',{colSpan:3,style:{textAlign:'right',padding:'10px 12px',fontSize:13}},'Gross Total'),
-            React.createElement('td',{className:'num',style:{fontSize:15,fontWeight:700}},fmtCurrency(viewQ.gross))
+            React.createElement('td',{className:'num',style:{fontSize:15,fontWeight:700}},fmtCurrency(viewQ.gross||viewQ.total))
           )
         )
       ),
@@ -2695,15 +2707,15 @@ function FormalQuotations({user,data,setData,notify}){
         React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'ID'),React.createElement('th',null,'Customer'),React.createElement('th',null,'Company'),React.createElement('th',null,'Date'),React.createElement('th',null,'Gross'),React.createElement('th',null,''))),
         React.createElement('tbody',null,allQ.map(q=>React.createElement('tr',{key:q.id},
           React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10}},q.id),
-          React.createElement('td',{className:'primary'},q.name),
+          React.createElement('td',{className:'primary'},q.customerName||q.name),
           React.createElement('td',null,q.companyName||'—'),
-          React.createElement('td',null,q.date),
-          React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}},fmtCurrency(q.gross)),
+          React.createElement('td',null,q.lpoDate||q.date||'—'),
+          React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}},fmtCurrency(q.gross||q.total)),
           React.createElement('td',null,
             React.createElement('div',{style:{display:'flex',gap:5}},
               React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setViewQ(q)},'View'),
-              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({...q});setMkaRef(q.mka_ref || '');setEditQ(q);setShowForm(true)}},'Edit'),
-              React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{setData(d=>({...d,formalQuotations:(d.formalQuotations||[]).filter(x=>x.id!==q.id)}));notify('Quotation deleted','success')}},'Delete')
+              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:q.customerName||q.name||'',phone:q.customerPhone||'',address:q.customerAddress||'',customerRef:q.customerRef||'',companyName:q.companyName||'',promoCode:q.promoCode||'',date:q.lpoDate||q.date||new Date().toISOString().split('T')[0],products:(q.items||q.products||[]),terms:q.terms||{payment:'',delivery:'',warranty:'',validity:''},comment:q.comment||''});setMkaRef(q.mkaRef||q.mka_ref||'');setEditQ(q);setShowForm(true)}},'Edit'),
+              React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{setData(d=>({...d,documents:(d.documents||[]).filter(x=>x.id!==q.id)}));notify('Quotation deleted','success')}},'Delete')
             )
           )
         )))
@@ -2819,16 +2831,13 @@ function ActionButton(label) {
 function App(){
   const [user,setUser]=useState(null);
   const [active,setActive]=useState('dashboard');
-  const [approvals, setApprovals] = useState([]);
 
   // 🔥 MAIN DATA STATE
   const [data,setData]=useState({
     leads:LEADS_INIT,
-    invoices:INVOICES_INIT,
-    products:[], // ✅ REMOVED DEMO DATA
+    documents:DOCUMENTS_INIT,
+    products:[],
     users:[],
-    quotations:QUOTATIONS_INIT,
-    formalQuotations:FORMAL_QUOT_INIT
   });
 
   const [notif,setNotif]=useState(null);
@@ -2891,114 +2900,54 @@ function App(){
       .catch(err => console.error("Products fetch error:", err));
   }, []);
 
-  // FETCH INVOICES
+  // FETCH DOCUMENTS (unified)
   useEffect(() => {
     Promise.all([
-      fetch("https://mkaerp-production.up.railway.app/invoices").then(res => res.json()),
+      fetch("https://mkaerp-production.up.railway.app/documents").then(res => res.json()),
       fetch("https://mkaerp-production.up.railway.app/users").then(res => res.json())
     ])
-    .then(([invoicesFromDB, usersFromDB]) => {
-
-      // 🔥 create lookup map (fast)
+    .then(([docsFromDB, usersFromDB]) => {
       const userMap = {};
-      usersFromDB.forEach(u => {
-        userMap[u.id] = u.name;
-      });
+      usersFromDB.forEach(u => { userMap[u.id] = u.name; });
 
-      const formatted = invoicesFromDB.map(inv => ({
-        ...inv,
-        items: (inv.items || []).map(item => ({
-          productId: item.productId,
-          name: item.name,
-          qty: item.qty,
-          price: Number(item.price)
-        })),
-
-        // mapping
-        employeeId: Number(inv.employee_id),
-
-        // 🔥 FIX: match name from users table
-        employeeName: userMap[inv.employee_id] || "Unknown",
-
-        customerName: inv.customer_name,
-        approvedBy: inv.approved_by || "-",
-
-        // formatting
-        total: Number(inv.total || 0),
-        created: inv.created ? inv.created.split('T')[0] : null,
-        approved_at: inv.approved_at
-          ? inv.approved_at.split('T')[0]
-          : null
+      const formatted = docsFromDB.map(doc => ({
+        ...doc,
+        items: Array.isArray(doc.items)
+          ? doc.items.map(item => ({
+              productId: item.productId,
+              name: item.name,
+              qty: item.qty,
+              price: Number(item.price)
+            }))
+          : (typeof doc.items === 'string' ? JSON.parse(doc.items) : []),
+        terms: doc.terms
+          ? (typeof doc.terms === 'string' ? JSON.parse(doc.terms) : doc.terms)
+          : { payment: '', delivery: '', warranty: '', validity: '' },
+        employeeId: Number(doc.employee_id),
+        employeeName: userMap[doc.employee_id] || 'Unknown',
+        customerName: doc.customer_name,
+        customerPhone: doc.customer_phone || '',
+        customerAddress: doc.customer_address || '',
+        companyName: doc.company_name || '',
+        customerRef: doc.customer_ref || '',
+        mkaRef: doc.mka_ref || '',
+        promoCode: doc.promo_code || '',
+        lpoNo: doc.lpo_no || '',
+        lpoDate: doc.lpo_date || '',
+        approvedBy: doc.approved_by || null,
+        approvedAt: doc.approved_at ? doc.approved_at.split('T')[0] : null,
+        total: Number(doc.total || 0),
+        created: doc.created ? doc.created.split('T')[0] : null,
+        accountantSent: doc.accountant_sent || false,
+        deliveryDate: doc.delivery_date || '',
+        deliveryDone: doc.delivery_done || false,
+        deliveryDoneDate: doc.delivery_done_date || '',
       }));
 
-      setData(prev => ({
-        ...prev,
-        invoices: formatted
-      }));
-
+      setData(prev => ({ ...prev, documents: formatted }));
     })
-    .catch(err => console.error("Invoices fetch error:", err));
+    .catch(err => console.error("Documents fetch error:", err));
   }, []);
-
-  //FETCH APPROVALS
-  useEffect(() => {
-    fetch("https://mkaerp-production.up.railway.app/approvals")
-      .then(res => res.json())
-      .then(data => setApprovals(data))
-      .catch(err => console.error(err));
-  }, []);
-
-  const approveInvoice = (id) => {
-    fetch(`https://mkaerp-production.up.railway.app/approve/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        approver: user.name
-      })
-    })
-    .then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
-      return text;
-    })
-    .then(() => {
-      // ✅ remove from UI immediately
-      setApprovals(prev => prev.filter(a => a.id !== id));
-
-      notify("Invoice approved", "success");
-    })
-    .catch(err => {
-      console.error(err);
-      notify("Approval failed", "error");
-    });
-  };
-
-  const reject = (id) => {
-    const note = prompt("Enter rejection reason");
-    if (!note) return; // prevent empty rejection
-    fetch(`https://mkaerp-production.up.railway.app/reject/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        approver: user.name,
-        note 
-      })
-    })
-    .then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
-      return text;
-    })
-    .then(() => {
-      setApprovals(prev => prev.filter(a => a.id !== id));
-
-      notify("Invoice rejected", "success");
-    })
-    .catch(err => {
-      console.error(err);
-      notify("Rejection failed", "error");
-    });
-  };
 
   // FETCH LEADS
   useEffect(() => {
@@ -3042,7 +2991,7 @@ function App(){
     'approved-invoices':['Approved Invoices','Generate and print'],
     products:['Product Catalog','All products'],
     users:['Users','User management'],
-    quotation:['Quotation Uphold','Demand & formal quotations'],
+    quotation:['Quotations','Formal & demand quotations'],
     delivery:['Delivery','Schedule and track deliveries'],
     devtools:['Dev Tools','Developer utilities']
   };
