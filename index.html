@@ -2421,14 +2421,77 @@ function FormalQuotations({user,data,setData,notify}){
   const subTotal=form.products.reduce((s,p)=>s+(parseFloat(p.price||0)*parseInt(p.qty||0)),0);
   const vat=subTotal*0.05;
   const gross=subTotal+vat;
-  const save=()=>{
-    if(!form.name.trim()){notify('Customer name required','error');return}
-    const valid=form.products.filter(p=>p.name.trim()&&p.price);
-    if(!valid.length){notify('Add at least one product','error');return}
-    const q={...form,id:editQ?editQ.id:genId('QUO'),products:valid.map(p=>({...p,price:parseFloat(p.price),qty:parseInt(p.qty||1)})),saved:true,subTotal,vat,gross};
-    if(editQ){setData(d=>({...d,formalQuotations:(d.formalQuotations||[]).map(x=>x.id===editQ.id?q:x)}));notify('Quotation updated','success')}
-    else{setData(d=>({...d,formalQuotations:[...(d.formalQuotations||[]),q]}));notify('Quotation saved','success')}
-    setShowForm(false);setEditQ(null);
+  const save = () => {
+    if(!form.name.trim()){
+      notify('Customer name required','error');
+      return;
+    }
+
+    const valid = form.products.filter(p => p.name.trim() && p.price);
+
+    if(!valid.length){
+      notify('Add at least one product','error');
+      return;
+    }
+
+    const quotation = {
+      id: editQ ? editQ.id : genId('QUO'),
+      customer_name: form.name,
+      customer_ref: form.customerRef,
+      company_name: form.companyName,
+      promo_code: form.promoCode,
+      date: form.date,
+      products: valid.map(p => ({
+        name: p.name,
+        price: parseFloat(p.price),
+        qty: parseInt(p.qty || 1)
+      })),
+      sub_total: subTotal,
+      vat: vat,
+      gross: gross,
+      terms: form.terms
+    };
+
+    fetch("https://mkaerp-production.up.railway.app/quotations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        id: quotation.id,
+        customer_name: quotation.customer_name,
+        company_name: quotation.company_name,
+        customer_ref: quotation.customer_ref,
+        promo_code: quotation.promo_code,
+        date: quotation.date,
+        sub_total: quotation.sub_total,
+        vat: quotation.vat,
+        gross: quotation.gross,
+        terms: quotation.terms,
+        products: quotation.products
+      })
+    })
+    .then(async res => {
+      const text = await res.text();
+      if (!res.ok) throw new Error(text);
+      return text;
+    })
+    .then(() => {
+      notify('Quotation saved to database','success');
+
+      // optional: update UI
+      setData(d => ({
+        ...d,
+        formalQuotations: [quotation, ...(d.formalQuotations || [])]
+      }));
+
+      setShowForm(false);
+      setEditQ(null);
+    })
+    .catch(err => {
+      console.error(err);
+      notify('Failed to save quotation','error');
+    });
   };
 
   useEffect(() => {
@@ -2767,6 +2830,7 @@ function ActionButton(label) {
 function App(){
   const [user,setUser]=useState(null);
   const [active,setActive]=useState('dashboard');
+  const [approvals, setApprovals] = useState([]);
 
   // 🔥 MAIN DATA STATE
   const [data,setData]=useState({
