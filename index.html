@@ -1678,13 +1678,24 @@ function ApprovalsPage({user,data,setData,notify}){
 function ApprovedInvoicesPage({user,data,setData,notify}){
   const approved=data.invoices.filter(i=>i.status==='approved');
   const canGen=user.role==='accountant';
-  const generate=id=>{
+  const [lpoModal,setLpoModal]=useState(null);
+  const [lpoNo,setLpoNo]=useState('');
+  const [lpoDate,setLpoDate]=useState('');
+
+  const openLpoModal=id=>{
     const inv=data.invoices.find(i=>i.id===id);
     if(!inv)return;
+    setLpoNo(inv.lpoNo||'');
+    setLpoDate(inv.lpoDate||'');
+    setLpoModal(inv);
+  };
+
+  const generate=()=>{
+    const inv=lpoModal;
+    if(!inv)return;
+    const updatedInv={...inv,lpoNo:lpoNo||'',lpoDate:lpoDate||''};
     setData(d=>{
-      // Mark invoice as sent
-      const invoices=d.invoices.map(i=>i.id===id?{...i,accountantSent:true}:i);
-      // Deduct stock for each item in the invoice
+      const invoices=d.invoices.map(i=>i.id===inv.id?{...i,accountantSent:true,lpoNo:lpoNo||'',lpoDate:lpoDate||''}:i);
       let products=[...d.products];
       inv.items.forEach(it=>{
         const qty=parseInt(it.qty)||1;
@@ -1697,7 +1708,6 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
       });
       return{...d,invoices,products};
     });
-    // Warn if any item goes low/out after deduction
     const lowAfter=[];
     inv.items.forEach(it=>{
       const p=data.products.find(p=>p.id===it.productId||normalize(p.name)===normalize(it.name));
@@ -1711,7 +1721,8 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
       setTimeout(()=>notify('⚠ Stock alert: '+lowAfter.join(' | '),'error'),600);
     }
     notify('Invoice generated — printing…','success');
-    setTimeout(()=>printInvoice(inv),400);
+    setLpoModal(null);
+    setTimeout(()=>printInvoice(updatedInv),400);
   };
   return React.createElement('div',null,
     approved.length===0?React.createElement('div',{className:'card'},React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12}}))):
@@ -1742,10 +1753,32 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
                 React.createElement('span',{className:'badge approved'},'✓ Generated'),
                 React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>printInvoice(inv)},'Print Again')
               )
-            :canGen&&React.createElement('button',{className:'btn btn-amber',onClick:()=>generate(inv.id)},'Generate & Print')
+            :canGen&&React.createElement('button',{className:'btn btn-amber',onClick:()=>openLpoModal(inv.id)},'Generate & Print')
         )
       ))
+    ),
+  lpoModal&&React.createElement('div',{className:'modal-overlay'},
+    React.createElement('div',{className:'modal',style:{maxWidth:460}},
+      React.createElement('div',{className:'modal-title'},'Enter LPO Details — '+lpoModal.id),
+      React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16}},'Enter the LPO number and date from the customer purchase order before generating the invoice.'),
+      React.createElement('div',{className:'form-grid'},
+        React.createElement('div',{className:'form-row'},
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'LPO No'),
+            React.createElement('input',{value:lpoNo,onChange:e=>setLpoNo(e.target.value),placeholder:'Local Purchase Order No',autoFocus:true})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'LPO Date'),
+            React.createElement('input',{type:'date',value:lpoDate,onChange:e=>setLpoDate(e.target.value)})
+          )
+        )
+      ),
+      React.createElement('div',{className:'modal-actions'},
+        React.createElement('button',{className:'btn btn-ghost',onClick:()=>setLpoModal(null)},'Cancel'),
+        React.createElement('button',{className:'btn btn-amber',onClick:generate},'Generate & Print →')
+      )
     )
+  )
   );
 }
 
@@ -2100,8 +2133,7 @@ function CreateInvoice({user,data,setData,notify}){
   const [phone,setPhone]=useState('');
   const [address,setAddress]=useState('');
   const [comment,setComment]=useState('');
-  const [lpoNo,setLpoNo]=useState('');
-  const [lpoDate,setLpoDate]=useState('');
+  const [terms,setTerms]=useState({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
   const [items,setItems]=useState([{productId:'',qty:1}]);
   const total=items.reduce((s,item)=>{const p=products.find(p=>p.id===parseInt(item.productId));return s+(p?p.price*parseInt(item.qty||0):0)},0);
   const submit = () => {
@@ -2137,8 +2169,12 @@ function CreateInvoice({user,data,setData,notify}){
       total: total,
       created: new Date().toISOString(),
       comment: comment || "",
-      lpo_no: lpoNo || "",
-      lpo_date: lpoDate || ""
+      lpo_no: "",
+      lpo_date: "",
+      terms_payment: terms.payment || "",
+      terms_delivery: terms.delivery || "",
+      terms_warranty: terms.warranty || "",
+      terms_validity: terms.validity || ""
     };
 
     // 🔥 SAVE TO DB
@@ -2184,8 +2220,14 @@ function CreateInvoice({user,data,setData,notify}){
             deliveryDate:'',
             deliveryDone:false,
             deliveryDoneDate:'',
-            lpoNo: saved.lpo_no || lpoNo || '',
-            lpoDate: saved.lpo_date || lpoDate || ''
+            lpoNo: '',
+            lpoDate: '',
+            terms: {
+              payment: saved.terms_payment || terms.payment || '',
+              delivery: saved.terms_delivery || terms.delivery || '',
+              warranty: saved.terms_warranty || terms.warranty || '',
+              validity: saved.terms_validity || terms.validity || ''
+            }
           },
           ...d.invoices
         ]
@@ -2196,8 +2238,7 @@ function CreateInvoice({user,data,setData,notify}){
       setPhone('');
       setAddress('');
       setComment('');
-      setLpoNo('');
-      setLpoDate('');
+      setTerms({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
       setItems([{productId:'',qty:1}]);
 
     })
@@ -2217,11 +2258,15 @@ function CreateInvoice({user,data,setData,notify}){
         )
       ),
       React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},'Invoice Reference Details'),
+        React.createElement('div',{className:'card-title'},'Terms & Conditions'),
         React.createElement('div',{className:'form-grid'},
           React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO No'),React.createElement('input',{value:lpoNo,onChange:e=>setLpoNo(e.target.value),placeholder:'Local Purchase Order No'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO Date'),React.createElement('input',{type:'date',value:lpoDate,onChange:e=>setLpoDate(e.target.value)}))
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Payment Terms'),React.createElement('input',{value:terms.payment,onChange:e=>setTerms(t=>({...t,payment:e.target.value})),placeholder:'e.g. 50% advance, 50% on delivery'})),
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery'),React.createElement('input',{value:terms.delivery,onChange:e=>setTerms(t=>({...t,delivery:e.target.value})),placeholder:'e.g. Within 7 working days'}))
+          ),
+          React.createElement('div',{className:'form-row'},
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Warranty'),React.createElement('input',{value:terms.warranty,onChange:e=>setTerms(t=>({...t,warranty:e.target.value})),placeholder:'e.g. 1 year manufacturer warranty'})),
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Quotation Validity'),React.createElement('input',{value:terms.validity,onChange:e=>setTerms(t=>({...t,validity:e.target.value})),placeholder:'e.g. Valid for 30 days'}))
           )
         )
       ),
