@@ -141,7 +141,13 @@ app.get("/documents", async (req, res) => {
       "SELECT * FROM documents ORDER BY created DESC"
     );
 
-    res.json(result.rows);
+    const data = result.rows.map(r => ({
+      ...r,
+      items: r.items || [],
+      terms: r.terms || {}
+    }));
+
+    res.json(data);
   } catch (err) {
     console.error(err);
     res.status(500).send("Fetch error");
