@@ -8,8 +8,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
-body{font-family:'Sora',sans-serif;font-size:14px;line-height:1.6;height:100%;overflow:hidden;transition:background .2s,color .2s}
-#root{height:100%;overflow:hidden}
+body{font-family:'Sora',sans-serif;font-size:14px;line-height:1.6;height:100vh;transition:background .2s,color .2s}
+#root{height:100%;overflow:hidden;display:flex;flex-direction:column}
 body.dark{--bg:#1a1a1a;--bg2:#222;--bg3:#2a2a2a;--bg4:#303030;--border:#333;--border2:#444;--text:#f0f0ee;--text2:#a0a09a;--text3:#666660;--green:#3dba78;--green-bg:#1e2e24;--amber:#d4a030;--amber-bg:#2e2618;--red:#d45c5c;--red-bg:#2e1e1e;--shadow:rgba(0,0,0,.3);--nav-bg:rgba(30,30,30,.88)}
 body.light{--bg:#f4f4f0;--bg2:#ffffff;--bg3:#ededea;--bg4:#e4e4e0;--border:#d8d8d4;--border2:#c8c8c4;--text:#1a1a18;--text2:#5a5a56;--text3:#9a9a96;--green:#1f9a5e;--green-bg:#e8f7ef;--amber:#b07800;--amber-bg:#fef8e0;--red:#c04040;--red-bg:#fdf0f0;--shadow:rgba(0,0,0,.08);--nav-bg:rgba(255,255,255,.88)}
 body.easter{--bg:#0C243D;--bg2:#27496A;--bg3:#1e3a56;--bg4:#2d5276;--border:#3a6080;--border2:#4a7090;--text:#C1D1DB;--text2:#9AB7CD;--text3:#5C8EB4;--green:#5CBBA0;--green-bg:#0e2a30;--amber:#d4a030;--amber-bg:#2e2618;--red:#e07070;--red-bg:#2e1e1e;--shadow:rgba(0,0,0,.5);--nav-bg:rgba(12,36,61,.92)}
@@ -25,7 +25,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--text3)}
 button{cursor:pointer;font-family:inherit;border:none;border-radius:10px;font-size:13px;font-weight:500;transition:all .15s}
 label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
 select option{background:var(--bg3);color:var(--text)}
-.app{display:flex;height:100%;overflow:hidden}
+.app{display:flex;height:100vh;overflow:hidden}
 .sidebar{width:210px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:18px 0;flex-shrink:0;transition:background .2s}
 .sidebar-logo{padding:0 18px 20px;border-bottom:1px solid var(--border)}
 .logo-text{font-size:14px;font-weight:600;color:var(--text)}
@@ -90,7 +90,7 @@ tr:hover td{background:var(--bg3)}
 .form-group{display:flex;flex-direction:column}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.login-wrap{display:flex;align-items:center;justify-content:center;height:100%;overflow-y:auto;background:var(--bg)}
+.login-wrap{display:flex;align-items:center;justify-content:center;height:100vh;overflow-y:auto;background:var(--bg)}
 .login-card{width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:36px}
 .login-form{margin-top:24px;display:flex;flex-direction:column;gap:14px}
 .demo-label{font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
@@ -308,7 +308,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   .mobile-nav{display:flex!important}
   .mob-profile-btn{display:flex!important}
   .mob-theme-btn{display:flex!important}
-  .app{height:100%;overflow:hidden}
+  .app{height:100vh;overflow:hidden}
   .main{flex:1;overflow-y:auto}
   .content{padding:14px 14px 90px!important}
   .topbar{padding:10px 14px!important}
@@ -318,7 +318,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   .grid-3{grid-template-columns:1fr 1fr!important}
   .form-row{grid-template-columns:1fr!important}
   .item-row{grid-template-columns:1.3fr 52px 64px auto!important;gap:6px!important;padding:8px 10px!important}
-  .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:36px!important;overflow-y:auto!important;height:100%!important}
+  .login-wrap{padding:16px!important;align-items:flex-start!important;padding-top:36px!important;overflow-y:auto!important}
   .login-card{width:100%!important;max-width:440px!important;padding:22px!important}
   /* MODALS: always centered on mobile too */
   .modal-overlay{padding:14px!important;align-items:center!important}
@@ -2098,48 +2098,14 @@ function ProductsPage({ user, data, setData, notify }) {
   );
 }
 
-function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
+function CreateInvoice({user,data,setData,notify}){
   const {products}=data;
-  const [prefillApplied,setPrefillApplied]=useState(false);
   const [customer,setCustomer]=useState('');
   const [phone,setPhone]=useState('');
   const [address,setAddress]=useState('');
-  const [companyName,setCompanyName]=useState('');
-  const [customerRef,setCustomerRef]=useState('');
-  const [mkaRef,setMkaRef]=useState('');
-  const [promoCode,setPromoCode]=useState('');
-  const [lpoNo,setLpoNo]=useState('');
-  const [lpoDate,setLpoDate]=useState('');
   const [comment,setComment]=useState('');
-  const [sourceQuotId,setSourceQuotId]=useState(null);
   const [terms,setTerms]=useState({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
   const [items,setItems]=useState([{productId:'',qty:1}]);
-
-  // Apply prefill once when component mounts with prefill data
-  useEffect(()=>{
-    if(prefill&&!prefillApplied){
-      setCustomer(prefill.customerName||'');
-      setPhone(prefill.customerPhone||prefill.phone||'');
-      setAddress(prefill.customerAddress||prefill.address||'');
-      setCompanyName(prefill.companyName||'');
-      setCustomerRef(prefill.customerRef||'');
-      setMkaRef(prefill.mkaRef||'');
-      setPromoCode(prefill.promoCode||'');
-      if(prefill.terms)setTerms(prefill.terms);
-      if(prefill.sourceQuotId)setSourceQuotId(prefill.sourceQuotId);
-      // Map quotation items to invoice item format
-      if(prefill.items&&prefill.items.length){
-        const mapped=prefill.items.map(it=>{
-          const found=products.find(p=>p.name===it.name||p.id===it.productId);
-          return found?{productId:String(found.id),qty:it.qty||1}:{productId:'',qty:it.qty||1,_name:it.name};
-        });
-        setItems(mapped.length?mapped:[{productId:'',qty:1}]);
-      }
-      setPrefillApplied(true);
-      if(onPrefillUsed)onPrefillUsed();
-    }
-  },[prefill]);
-
   const total=items.reduce((s,item)=>{const p=products.find(p=>p.id===parseInt(item.productId));return s+(p?p.price*parseInt(item.qty||0):0)},0);
   const submit = () => {
     if(!customer.trim()){
@@ -2173,18 +2139,17 @@ function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
       customer_name: customer,
       customer_phone: phone,
       customer_address: address,
-      customer_ref: customerRef,
-      mka_ref: mkaRef,
-      company_name: companyName,
-      promo_code: promoCode,
-      lpo_no: lpoNo,
-      lpo_date: lpoDate,
+      customer_ref: "",
+      mka_ref: "",
+      company_name: "",
+      promo_code: "",
+      lpo_no: "",
+      lpo_date: "",
       total,
       created: new Date().toISOString(),
       terms,
       items: builtItems,
-      comment: comment || "",
-      from_quotation: sourceQuotId||null
+      comment: comment || ""
     };
 
     // 🔥 SAVE TO DB
@@ -2214,12 +2179,12 @@ function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
             customerName: customer,
             customerPhone: phone,
             customerAddress: address,
-            customerRef: customerRef,
-            mkaRef: mkaRef,
-            companyName: companyName,
-            promoCode: promoCode,
-            lpoNo: lpoNo,
-            lpoDate: lpoDate,
+            customerRef: '',
+            mkaRef: '',
+            companyName: '',
+            promoCode: '',
+            lpoNo: '',
+            lpoDate: '',
             status: 'pending',
             total,
             created: new Date().toISOString().split('T')[0],
@@ -2242,14 +2207,7 @@ function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
       setCustomer('');
       setPhone('');
       setAddress('');
-      setCompanyName('');
-      setCustomerRef('');
-      setMkaRef('');
-      setPromoCode('');
-      setLpoNo('');
-      setLpoDate('');
       setComment('');
-      setSourceQuotId(null);
       setTerms({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
       setItems([{productId:'',qty:1}]);
 
@@ -2261,38 +2219,12 @@ function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
   };
   return React.createElement('div',{className:'grid-2'},
     React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:16}},
-      sourceQuotId&&React.createElement('div',{style:{background:'var(--green-bg)',border:'1px solid rgba(61,186,120,.25)',borderRadius:10,padding:'10px 14px',fontSize:12,color:'var(--green)',display:'flex',alignItems:'center',gap:8}},
-        React.createElement('span',null,'↩'),
-        React.createElement('span',null,'Converting from Quotation ',React.createElement('strong',null,sourceQuotId),' — review and submit')
-      ),
       React.createElement('div',{className:'card'},
         React.createElement('div',{className:'card-title'},'Customer Details'),
         React.createElement('div',{className:'form-grid'},
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Name *'),React.createElement('input',{value:customer,onChange:e=>setCustomer(e.target.value),placeholder:'Full name'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone Number'),React.createElement('input',{value:phone,onChange:e=>setPhone(e.target.value),placeholder:'9XXXXXXX'}))
-          ),
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery Address'),React.createElement('input',{value:address,onChange:e=>setAddress(e.target.value),placeholder:'Street, area, city'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Company Name'),React.createElement('input',{value:companyName,onChange:e=>setCompanyName(e.target.value),placeholder:'Optional'}))
-          )
-        )
-      ),
-      React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},'Reference Details'),
-        React.createElement('div',{className:'form-grid'},
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Ref'),React.createElement('input',{value:customerRef,onChange:e=>setCustomerRef(e.target.value),placeholder:'e.g. CR-2024-001'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'MKA Ref'),React.createElement('input',{value:mkaRef,onChange:e=>setMkaRef(e.target.value),placeholder:'e.g. MKA-2026-001'}))
-          ),
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Promo Code'),React.createElement('input',{value:promoCode,onChange:e=>setPromoCode(e.target.value),placeholder:'Optional'})),
-            React.createElement('div',{className:'form-group'})
-          ),
-          React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO No.'),React.createElement('input',{value:lpoNo,onChange:e=>setLpoNo(e.target.value),placeholder:'Local Purchase Order No'})),
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'LPO Date'),React.createElement('input',{type:'date',value:lpoDate,onChange:e=>setLpoDate(e.target.value)}))
-          )
+          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Name'),React.createElement('input',{value:customer,onChange:e=>setCustomer(e.target.value),placeholder:'Full name'})),
+          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone Number'),React.createElement('input',{value:phone,onChange:e=>setPhone(e.target.value),placeholder:'9XXXXXXX'})),
+          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery Address'),React.createElement('input',{value:address,onChange:e=>setAddress(e.target.value),placeholder:'Street, area, city'}))
         )
       ),
       React.createElement('div',{className:'card'},
@@ -2350,7 +2282,7 @@ function CreateInvoice({user,data,setData,notify,prefill,onPrefillUsed}){
   );
 }
 
-function QuotationUphold({user,data,setData,notify,goCreateInvoice}){
+function QuotationUphold({user,data,setData,notify}){
   const [tab,setTab]=useState('demand');
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',gap:6,marginBottom:20}},
@@ -2358,11 +2290,11 @@ function QuotationUphold({user,data,setData,notify,goCreateInvoice}){
         React.createElement('button',{key:t.id,className:'btn btn-ghost',style:{borderColor:tab===t.id?'var(--text3)':'var(--border)',color:tab===t.id?'var(--text)':'var(--text2)'},onClick:()=>setTab(t.id)},t.label)
       )
     ),
-    tab==='demand'?React.createElement(DemandTracker,{user,data,setData,notify,goCreateInvoice}):React.createElement(FormalQuotations,{user,data,setData,notify,goCreateInvoice})
+    tab==='demand'?React.createElement(DemandTracker,{user,data,setData,notify}):React.createElement(FormalQuotations,{user,data,setData,notify})
   );
 }
 
-function DemandTracker({user,data,setData,notify,goCreateInvoice}){
+function DemandTracker({user,data,setData,notify}){
   const {products,users}=data;
   // demand entries are quotation-type docs with a product field (legacy demand tracker format)
   const [showModal,setShowModal]=useState(false);
@@ -2379,18 +2311,36 @@ function DemandTracker({user,data,setData,notify,goCreateInvoice}){
   const sorted=Object.entries(productGroups).sort((a,b)=>sortBy==='count'?b[1].length-a[1].length:a[0].localeCompare(b[0]));
   const convertToInvoice=()=>{
     if(!customerModal)return;
+    const ownerUser=users.find(u=>u.role==='owner'&&u.active);
     const pFound=data.products.find(p=>p.name===customerModal.product);
-    const prefill={
+    const items=[pFound
+      ?{productId:pFound.id,name:pFound.name,qty:1,price:pFound.price}
+      :{productId:0,name:customerModal.product,qty:1,price:0}];
+    const total=pFound?pFound.price:0;
+    const newDoc={
+      id:genId('INV'),
+      type:'invoice',
+      status:'approved',
+      employeeId:user.id,
+      employeeName:user.name,
       customerName:customerModal.customerName,
-      phone:cf.phone||customerModal.phone||'',
-      address:cf.address||customerModal.address||'',
-      items:pFound?[{productId:pFound.id,name:pFound.name,qty:1,price:pFound.price}]:[],
-      sourceQuotId:null
+      customerPhone:cf.phone||customerModal.phone||'',
+      customerAddress:cf.address||customerModal.address||'',
+      customerRef:'',mkaRef:'',companyName:'',promoCode:'',lpoNo:'',lpoDate:'',
+      total,
+      created:new Date().toISOString().split('T')[0],
+      comment:'Converted from demand tracker.',
+      approvedBy:ownerUser?ownerUser.name:'Auto-approved',
+      approvedAt:tsNow(),
+      rejectionNote:'',
+      items,
+      terms:{payment:'',delivery:'',warranty:'',validity:''},
+      accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:'',fromQuotation:true
     };
-    // Mark as converted in local list
+    setData(d=>({...d,documents:[newDoc,...d.documents]}));
     setDemandList(prev=>prev.map(q=>q.id===customerModal.id?{...q,converted:true}:q));
+    notify('Invoice created, approved & sent to accountant!','success');
     setCustomerModal(null);
-    goCreateInvoice(prefill);
   };
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}},
@@ -2439,8 +2389,7 @@ function DemandTracker({user,data,setData,notify,goCreateInvoice}){
     customerModal&&React.createElement('div',{className:'modal-overlay'},
       React.createElement('div',{className:'modal',style:{width:420}},
         React.createElement('div',{className:'modal-title'},customerModal.customerName),
-        React.createElement('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--text2)'}},
-          'Product: ',React.createElement('strong',{style:{color:'var(--text)'}},String(customerModal.product||''))),
+        React.createElement('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--text2)'}},'Product: '+React.createElement('strong',{style:{color:'var(--text)'}},customerModal.product)),
         React.createElement('div',{className:'form-grid'},
           React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone (optional)'),React.createElement('input',{value:cf.phone,onChange:e=>setCf(f=>({...f,phone:e.target.value})),placeholder:'9XXXXXXX'})),
           React.createElement('div',{className:'form-group'},React.createElement('label',null,'Address (optional)'),React.createElement('input',{value:cf.address,onChange:e=>setCf(f=>({...f,address:e.target.value})),placeholder:'Delivery address'}))
@@ -2454,7 +2403,7 @@ function DemandTracker({user,data,setData,notify,goCreateInvoice}){
   );
 }
 
-function FormalQuotations({user,data,setData,notify,goCreateInvoice}){
+function FormalQuotations({user,data,setData,notify}){
   const [showForm,setShowForm]=useState(false);
   const [editQ,setEditQ]=useState(null);
   const [viewQ,setViewQ]=useState(null);
@@ -2465,24 +2414,6 @@ function FormalQuotations({user,data,setData,notify,goCreateInvoice}){
   const [form,setForm]=useState(empty);
   const [discountPct,setDiscountPct]=useState('');
   const [discountTitle,setDiscountTitle]=useState('');
-
-  // Convert a formal quotation to an invoice by navigating to CreateInvoice with prefill
-  const convertQuotToInvoice=(q)=>{
-    const prefill={
-      customerName:q.customerName||q.name||'',
-      phone:q.customerPhone||'',
-      address:q.customerAddress||'',
-      companyName:q.companyName||'',
-      customerRef:q.customerRef||'',
-      mkaRef:q.mkaRef||q.mka_ref||'',
-      promoCode:q.promoCode||'',
-      terms:q.terms||{},
-      items:(q.items||q.products||[]).map(it=>({productId:it.productId,name:it.name,qty:it.qty||1,price:it.price})),
-      sourceQuotId:q.id
-    };
-    if(viewQ)setViewQ(null);
-    goCreateInvoice(prefill);
-  };
   const updateProd=(idx,field,val)=>setForm(f=>({...f,products:f.products.map((p,i)=>i===idx?{...p,[field]:val}:p)}));
   const addProdRow=()=>setForm(f=>({...f,products:[...f.products,{name:'',price:'',qty:1}]}));
   const removeProdRow=idx=>setForm(f=>({...f,products:f.products.filter((_,i)=>i!==idx)}));
@@ -2654,7 +2585,6 @@ function FormalQuotations({user,data,setData,notify,goCreateInvoice}){
       ),
       React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',gap:8,marginTop:16}},
         React.createElement('button',{className:'btn btn-ghost',onClick:()=>{setForm({...viewQ,products:viewQ.items||viewQ.products||[]});setMkaRef(viewQ.mkaRef||'');setDiscountPct(viewQ.discountPct||'');setDiscountTitle(viewQ.discountTitle||'');setEditQ(viewQ);setViewQ(null);setShowForm(true)}},'Edit'),
-        React.createElement('button',{className:'btn btn-success',onClick:()=>convertQuotToInvoice(viewQ)},'Convert to Invoice →'),
         React.createElement('button',{className:'btn btn-primary',onClick:()=>printQuotation(viewQ)},'Print / Export')
       )
     )
@@ -2826,7 +2756,6 @@ function FormalQuotations({user,data,setData,notify,goCreateInvoice}){
           React.createElement('td',null,
             React.createElement('div',{style:{display:'flex',gap:5}},
               React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setViewQ(q)},'View'),
-              React.createElement('button',{className:'btn btn-success btn-sm',onClick:()=>convertQuotToInvoice(q)},'→ Invoice'),
               React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:q.customerName||q.name||'',phone:q.customerPhone||'',address:q.customerAddress||'',customerRef:q.customerRef||'',companyName:q.companyName||'',promoCode:q.promoCode||'',date:q.lpoDate||q.date||new Date().toISOString().split('T')[0],products:(q.items||q.products||[]),terms:q.terms||{payment:'',delivery:'',warranty:'',validity:''},comment:q.comment||''});setMkaRef(q.mkaRef||q.mka_ref||'');setDiscountPct(q.discountPct||'');setDiscountTitle(q.discountTitle||'');setEditQ(q);setShowForm(true)}},'Edit'),
               React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>{setData(d=>({...d,documents:(d.documents||[]).filter(x=>x.id!==q.id)}));notify('Quotation deleted','success')}},'Delete')
             )
@@ -3118,10 +3047,8 @@ function App(){
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
-  const [invoicePrefill,setInvoicePrefill]=useState(null);
-  const goCreateInvoice=(prefill)=>{setInvoicePrefill(prefill);setActive('create-invoice');};
 
-  const props={user,data,setData,notify,setActive,goCreateInvoice};
+  const props={user,data,setData,notify};
 
   // 🔐 LOGOUT
   const logout=()=>{
@@ -3137,7 +3064,7 @@ function App(){
     }
     if(active==='customers')return React.createElement(CustomersPage,props);
     if(active==='products')return React.createElement(ProductsPage,props);
-    if(active==='create-invoice')return React.createElement(CreateInvoice,{...props,prefill:invoicePrefill,onPrefillUsed:()=>setInvoicePrefill(null)});
+    if(active==='create-invoice')return React.createElement(CreateInvoice,props);
     if(active==='invoices')return React.createElement(InvoicesPage,props);
     if(active==='approvals')return React.createElement(ApprovalsPage,props);
     if(active==='approved-invoices')return React.createElement(ApprovedInvoicesPage,props);
