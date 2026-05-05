@@ -28,7 +28,7 @@ app.get('/test', async (req, res) => {
 });
 
 
-// 🔥 PRODUCTS (READ ONLY FOR NOW)
+// 🔥 PRODUCTS
 app.get('/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -39,11 +39,8 @@ app.get('/products', async (req, res) => {
   }
 });
 
-
-// (OPTIONAL) KEEP — NOT USED BY FRONTEND
 app.post('/products', async (req, res) => {
   const { name, price, stock, category } = req.body;
-
   try {
     const result = await pool.query(
       `INSERT INTO products (name, price, stock, category)
@@ -51,7 +48,6 @@ app.post('/products', async (req, res) => {
        RETURNING *`,
       [name, price, stock, category]
     );
-
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -59,37 +55,22 @@ app.post('/products', async (req, res) => {
   }
 });
 
-//Documents (Merging Invoice and Quotations)
+
+// 📄 DOCUMENTS
 app.post("/documents", async (req, res) => {
   try {
     const {
-      id,
-      type,
-      status,
-      employee_id,
-
-      customer_name,
-      customer_phone,
-      customer_address,
-
-      customer_ref,
-      mka_ref,
-      company_name,
-      promo_code,
-      lpo_no,
-      lpo_date,
-
-      total,
-      created,
-
-      terms,
-      items
+      id, type, status, employee_id,
+      customer_name, customer_phone, customer_address,
+      customer_ref, mka_ref, company_name, promo_code,
+      lpo_no, lpo_date,
+      total, created,
+      terms, items
     } = req.body;
-    
+
     if (!id || !type || !status || !customer_name) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "Items required" });
     }
@@ -111,31 +92,15 @@ app.post("/documents", async (req, res) => {
         $16,$17
       ) RETURNING *`,
       [
-        id,
-        type,
-        status,
-        employee_id,
-
-        customer_name,
-        customer_phone,
-        customer_address,
-
-        customer_ref,
-        mka_ref,
-        company_name,
-        promo_code,
-
-        lpo_no || null,
-        lpo_date || null,
-
-        total,
-        created,
-
+        id, type, status, employee_id,
+        customer_name, customer_phone, customer_address,
+        customer_ref, mka_ref, company_name, promo_code,
+        lpo_no || null, lpo_date || null,
+        total, created,
         JSON.stringify(terms || {}),
         JSON.stringify(items || [])
       ]
     );
-
     res.json(result.rows[0]);
   } catch (err) {
     console.error("DOCUMENT INSERT ERROR:", err);
@@ -145,16 +110,12 @@ app.post("/documents", async (req, res) => {
 
 app.get("/documents", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM documents ORDER BY created DESC"
-    );
-
+    const result = await pool.query("SELECT * FROM documents ORDER BY created DESC");
     const data = result.rows.map(r => ({
       ...r,
       items: r.items || [],
       terms: r.terms || {}
     }));
-
     res.json(data);
   } catch (err) {
     console.error(err);
@@ -162,7 +123,6 @@ app.get("/documents", async (req, res) => {
   }
 });
 
-//Get pending APPROVALS
 app.get('/approvals', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -170,7 +130,6 @@ app.get('/approvals', async (req, res) => {
       WHERE status = 'pending' AND type = 'invoice'
       ORDER BY created DESC
     `);
-
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -182,16 +141,12 @@ app.post("/approve/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { approver } = req.body;
-
     await pool.query(
       `UPDATE documents
-       SET status = 'approved',
-           approved_by = $1,
-           approved_at = NOW()
+       SET status = 'approved', approved_by = $1, approved_at = NOW()
        WHERE id = $2`,
       [approver, id]
     );
-
     res.send("Approved");
   } catch (err) {
     console.error(err);
@@ -199,21 +154,16 @@ app.post("/approve/:id", async (req, res) => {
   }
 });
 
-//reject invoices
 app.post("/reject/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { approver, note } = req.body;
-
     await pool.query(
       `UPDATE documents
-       SET status = 'rejected',
-           approved_by = $1,
-           rejection_note = $2
+       SET status = 'rejected', approved_by = $1, rejection_note = $2
        WHERE id = $3`,
       [approver, note, id]
     );
-
     res.send("Rejected");
   } catch (err) {
     console.error(err);
@@ -221,34 +171,8 @@ app.post("/reject/:id", async (req, res) => {
   }
 });
 
-// 🔹 OTHER READ ROUTES
-app.get('/leads', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT 
-        l.id,
-        l.name,
-        l.phone,
-        l.source,
-        p.name AS product,   -- 🔥 THIS FIX
-        l.status,
-        l.employee_id,
-        l.notes,
-        l.created,
-        l.address
-      FROM leads l
-      LEFT JOIN products p ON l.product_id = p.id
-      ORDER BY l.id DESC
-    `);
 
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error fetching leads");
-  }
-});
-
-
+// 👥 USERS
 app.get('/users', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM users');
@@ -259,16 +183,68 @@ app.get('/users', async (req, res) => {
   }
 });
 
-// 🔐 LOGIN (SAFE)
+// ── ADD USER ──
+app.post('/users', async (req, res) => {
+  const { name, email, password, role, active } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password, role, active)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [name, email, password, role, active !== false]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'User insert failed' });
+  }
+});
+
+// ── UPDATE USER ──
+app.put('/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, password, role, active } = req.body;
+  try {
+    const result = await pool.query(
+      `UPDATE users SET name=$1, email=$2, password=$3, role=$4, active=$5
+       WHERE id=$6 RETURNING *`,
+      [name, email, password, role, active, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'User update failed' });
+  }
+});
+
+
+// 📋 LEADS
+app.get('/leads', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        l.id, l.name, l.phone, l.source,
+        p.name AS product,
+        l.status, l.employee_id, l.notes, l.created, l.address
+      FROM leads l
+      LEFT JOIN products p ON l.product_id = p.id
+      ORDER BY l.id DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching leads");
+  }
+});
+
+
+// 🔐 LOGIN
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
-
   try {
     const result = await pool.query(
       'SELECT * FROM users WHERE email=$1 AND password=$2',
       [email, password]
     );
-
     if (result.rows.length > 0) {
       res.json(result.rows[0]);
     } else {
@@ -281,8 +257,230 @@ app.post('/login', async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
+// ══════════════════════════════════════════════
+// 💸 EXPENDITURE ROUTES
+// ══════════════════════════════════════════════
 
+// GET all expenditures
+app.get('/expenditure', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM expenditure ORDER BY created_at DESC'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Expenditure fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch expenditures" });
+  }
+});
+
+// GET single expenditure
+app.get('/expenditure/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM expenditure WHERE id = $1',
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+// POST — create new expenditure
+app.post('/expenditure', async (req, res) => {
+  try {
+    const {
+      user_id,
+      amount,
+      expense_type,
+      description,
+      used_for,
+      proof_url,
+      car_plate,
+      is_petty_cash
+    } = req.body;
+
+    if (!user_id || !amount || !expense_type) {
+      return res.status(400).json({ error: "user_id, amount, and expense_type are required" });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO expenditure
+         (user_id, amount, expense_type, description, used_for, proof_url, car_plate, is_petty_cash, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+       RETURNING *`,
+      [
+        user_id,
+        amount,
+        expense_type,
+        description || null,
+        used_for   || null,
+        proof_url  || null,
+        car_plate  || null,
+        is_petty_cash || false
+      ]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Expenditure insert error:", err);
+    res.status(500).json({ error: "Insert failed" });
+  }
+});
+
+// PUT — edit an expenditure (accountant / Arya only enforced on frontend)
+app.put('/expenditure/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      user_id,
+      amount,
+      expense_type,
+      description,
+      used_for,
+      proof_url,
+      car_plate,
+      is_petty_cash
+    } = req.body;
+
+    const result = await pool.query(
+      `UPDATE expenditure
+       SET user_id=$1, amount=$2, expense_type=$3, description=$4,
+           used_for=$5, proof_url=$6, car_plate=$7, is_petty_cash=$8,
+           updated_at=NOW()
+       WHERE id=$9
+       RETURNING *`,
+      [
+        user_id,
+        amount,
+        expense_type,
+        description || null,
+        used_for   || null,
+        proof_url  || null,
+        car_plate  || null,
+        is_petty_cash || false,
+        id
+      ]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Expenditure update error:", err);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
+// DELETE — remove an expenditure
+app.delete('/expenditure/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'DELETE FROM expenditure WHERE id=$1 RETURNING id',
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json({ deleted: result.rows[0].id });
+  } catch (err) {
+    console.error("Expenditure delete error:", err);
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+
+// PATCH — approve an expenditure (Ramachandran / Arya)
+app.patch('/expenditure/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved_by } = req.body;
+
+    const result = await pool.query(
+      `UPDATE expenditure
+       SET status='approved', approved_by=$1, approved_at=NOW(), updated_at=NOW()
+       WHERE id=$2
+       RETURNING *`,
+      [approved_by || null, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Expenditure approve error:", err);
+    res.status(500).json({ error: "Approval failed" });
+  }
+});
+
+// PATCH — reject an expenditure (Ramachandran / Arya)
+app.patch('/expenditure/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, approved_by } = req.body;
+
+    const result = await pool.query(
+      `UPDATE expenditure
+       SET status='rejected', approved_by=$1, approved_at=NOW(), updated_at=NOW(),
+           description = CASE WHEN $2::text IS NOT NULL
+                              THEN COALESCE(description || ' | Rejection: ', 'Rejection: ') || $2
+                              ELSE description END
+       WHERE id=$3
+       RETURNING *`,
+      [approved_by || null, reason || null, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "Not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Expenditure reject error:", err);
+    res.status(500).json({ error: "Rejection failed" });
+  }
+});
+
+// GET — expenditures filtered by employee
+app.get('/expenditure/by-user/:user_id', async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM expenditure WHERE user_id=$1 ORDER BY created_at DESC',
+      [user_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+// GET — expenditures filtered by car plate
+app.get('/expenditure/by-plate/:plate', async (req, res) => {
+  try {
+    const { plate } = req.params;
+    const result = await pool.query(
+      'SELECT * FROM expenditure WHERE LOWER(car_plate)=LOWER($1) ORDER BY created_at DESC',
+      [plate]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+// GET — petty cash only
+app.get('/expenditure/petty-cash', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM expenditure
+       WHERE is_petty_cash=true OR expense_type='Petty Cash'
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
