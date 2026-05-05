@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Muscat Kitchen Appliances</title>
+<title>MKA ERP</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -119,7 +119,13 @@ tr:hover td{background:var(--bg3)}
 .back-btn:hover{color:var(--text)}
 .tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
 .print-page{display:none}
-@media print{body>*{display:none}.print-page{display:block!important;background:#fff;color:#111;font-family:'Sora',sans-serif;z-index:9999}.print-page .print-doc{padding:30px 40px;box-sizing:border-box}.print-doc-break{page-break-before:always!important;break-before:page!important;display:block}}
+@media print{
+  body>*{display:none}
+  .print-page{display:block!important;background:#fff;color:#111;font-family:'Sora',sans-serif;z-index:9999}
+  .print-page .print-doc{box-sizing:border-box;padding:0;margin:0}
+  .print-doc-break{page-break-before:always!important;break-before:page!important;display:block}
+  @page{margin:0;size:A4}
+}
 .divider{border:none;border-top:1px solid var(--border);margin:14px 0}
 /* circular progress */
 .circ-wrap{position:relative;width:48px;height:48px;flex-shrink:0}
@@ -595,6 +601,27 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 
 .sign-box.right {
   text-align: right;
+}
+
+/* ── EXPENDITURE PAGES ── */
+.exp-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.exp-filter-bar input,.exp-filter-bar select{width:auto;flex:1;min-width:120px;max-width:200px}
+.exp-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.exp-stat{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.exp-stat-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.exp-stat-value{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+.exp-category-tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:var(--bg4);color:var(--text2);border:1px solid var(--border2)}
+.exp-action-row{display:flex;gap:6px;align-items:center}
+.approve-btn{background:var(--green-bg);color:var(--green);border:1px solid rgba(61,186,120,.2);padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.approve-btn:hover{opacity:.8}
+.reject-btn{background:var(--red-bg);color:var(--red);border:1px solid rgba(212,92,92,.2);padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.reject-btn:hover{opacity:.8}
+.exp-tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.exp-tab{padding:7px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.exp-tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+@media(max-width:768px){
+  .exp-stat-grid{grid-template-columns:1fr 1fr!important}
+  .exp-filter-bar input,.exp-filter-bar select{min-width:100px;max-width:none;flex:1 1 calc(50% - 5px)}
 }
 </style>
 </head>
@@ -1118,6 +1145,13 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'users',icon:'◍',label:'Users'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
+
+  // Role/identity checks
+  const isRamachandran = user.name==='Ramachandran'||user.id===1;
+  const isArya = user.name==='Arya'||user.id===10;
+  const canApproveExp = isRamachandran||isArya;
+  const canTrackExp = user.role==='accountant'||isArya;
+
   const employeeNav=[
     {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'customers',icon:'◎',label:'My Customers'},
@@ -1129,6 +1163,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
+    ...(canTrackExp?[{id:'exp-tracker',icon:'◆',label:'Expenditure Tracker'}]:[]),
   ];
   let nav;
   if(user.role==='employee') nav=employeeNav;
@@ -1142,6 +1177,8 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
       {id:'approvals',icon:'✦',label:'Approvals'},
       {id:'products',icon:'▣',label:'Products'},
       {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+      ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp. Approvals'}]:[]),
+      ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Exp. Tracker'}]:[]),
     ];
   }
   // Dev Admin AI Chat state
@@ -1265,6 +1302,10 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
 
 /* ── MOBILE NAV + PROFILE ── */
 function MobileNav({user,active,setActive,onLogout}){
+  const isRamachandran = user.name==='Ramachandran'||user.id===1;
+  const isArya = user.name==='Arya'||user.id===10;
+  const canApproveExp = isRamachandran||isArya;
+  const canTrackExp = user.role==='accountant'||isArya;
   const empNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'customers',icon:'◎',label:'Leads'},
@@ -1276,14 +1317,16 @@ function MobileNav({user,active,setActive,onLogout}){
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approved-invoices',icon:'◻',label:'Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
+    ...(canTrackExp?[{id:'exp-tracker',icon:'◆',label:'Expenses'}]:[]),
   ];
   const ownerNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approvals',icon:'✦',label:'Approve'},
     {id:'invoices',icon:'◻',label:'Invoices'},
-    {id:'customers',icon:'◎',label:'Leads'},
-    {id:'quotation',icon:'❖',label:'Quotes'},
-  ];
+    ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp.Appr'}]:[]),
+    ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Expenses'}]:[]),
+    ...(!canApproveExp&&!canTrackExp?[{id:'customers',icon:'◎',label:'Leads'},{id:'quotation',icon:'❖',label:'Quotes'}]:[]),
+  ].slice(0,5);
   const adminNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approvals',icon:'✦',label:'Approve'},
@@ -3043,7 +3086,9 @@ function App(){
     users:['Users','User management'],
     quotation:['Quotations','Formal & demand quotations'],
     delivery:['Delivery','Schedule and track deliveries'],
-    devtools:['Dev Tools','Developer utilities']
+    devtools:['Dev Tools','Developer utilities'],
+    'exp-approvals':['Expenditure Approvals','Review & approve expense requests'],
+    'exp-tracker':['Expenditure Tracker','Manage & track all expenditures'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -3072,6 +3117,8 @@ function App(){
     if(active==='users')return React.createElement(UsersPage,props);
     if(active==='quotation')return React.createElement(QuotationUphold,props);
     if(active==='devtools')return React.createElement(DevToolsPage, props);
+    if(active==='exp-approvals')return React.createElement(ExpenditureApprovalsPage,props);
+    if(active==='exp-tracker')return React.createElement(ExpenditureTrackerPage,props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
@@ -3126,6 +3173,359 @@ function App(){
           style:{width:'100%',padding:'14px',fontSize:14},
           onClick:()=>{setMobProfile(false);logout();}
         },'Sign Out')
+      )
+    )
+  );
+}
+
+/* ─────────────────────────────────────────────
+   EXPENDITURE APPROVALS PAGE
+   For: Ramachandran (id:1) and Arya (id:10)
+   ───────────────────────────────────────────── */
+function ExpenditureApprovalsPage({user,data,setData,notify}){
+  const BASE='https://mkaerp-production.up.railway.app';
+  const [exps,setExps]=React.useState([]);
+  const [loading,setLoading]=React.useState(true);
+  const [tab,setTab]=React.useState('pending');
+  const [rejectModal,setRejectModal]=React.useState(null);
+  const [rejectNote,setRejectNote]=React.useState('');
+  const [search,setSearch]=React.useState('');
+
+  const fetchExps=()=>{
+    setLoading(true);
+    fetch(`${BASE}/expenditure`)
+      .then(r=>r.json())
+      .then(rows=>{
+        const users=data.users||[];
+        const umap={};
+        users.forEach(u=>{umap[u.id]=u.name});
+        setExps((rows||[]).map(e=>({...e,amount:Number(e.amount),employeeName:umap[e.user_id]||'User #'+e.user_id})));
+        setLoading(false);
+      })
+      .catch(()=>{setLoading(false);notify('Failed to load expenditures','error')});
+  };
+
+  useEffect(()=>{fetchExps();},[]);
+
+  const filtered=exps.filter(e=>{
+    if(tab==='pending'&&e.status!=='pending')return false;
+    if(tab==='approved'&&e.status!=='approved')return false;
+    if(tab==='rejected'&&e.status!=='rejected')return false;
+    if(search){
+      const q=search.toLowerCase();
+      if(!((e.employeeName||'').toLowerCase().includes(q)||(e.expense_type||'').toLowerCase().includes(q)||(e.used_for||'').toLowerCase().includes(q)||(e.description||'').toLowerCase().includes(q)))return false;
+    }
+    return true;
+  });
+
+  const doApprove=(id)=>{
+    fetch(`${BASE}/expenditure/${id}/approve`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved_by:user.id})})
+      .then(r=>{if(!r.ok)throw new Error();return r.json();})
+      .then(()=>{notify('Expenditure approved','success');fetchExps();})
+      .catch(()=>notify('Approval failed','error'));
+  };
+
+  const doReject=()=>{
+    if(!rejectNote.trim()){notify('Please enter a reason','error');return;}
+    fetch(`${BASE}/expenditure/${rejectModal}/reject`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:rejectNote,approved_by:user.id})})
+      .then(r=>{if(!r.ok)throw new Error();return r.json();})
+      .then(()=>{notify('Expenditure rejected','success');setRejectModal(null);setRejectNote('');fetchExps();})
+      .catch(()=>notify('Rejection failed','error'));
+  };
+
+  const totals={
+    pending:exps.filter(e=>e.status==='pending').reduce((s,e)=>s+e.amount,0),
+    approved:exps.filter(e=>e.status==='approved').reduce((s,e)=>s+e.amount,0),
+    all:exps.reduce((s,e)=>s+e.amount,0),
+    count:exps.filter(e=>e.status==='pending').length,
+  };
+
+  return React.createElement('div',null,
+    // Stats
+    React.createElement('div',{className:'exp-stat-grid'},
+      [{label:'Pending Requests',val:totals.count,color:'var(--amber)'},
+       {label:'Pending Amount',val:'OMR '+totals.pending.toFixed(2),color:'var(--amber)'},
+       {label:'Approved Total',val:'OMR '+totals.approved.toFixed(2),color:'var(--green)'},
+       {label:'All Expenditures',val:'OMR '+totals.all.toFixed(2),color:'var(--text)'},
+      ].map((s,i)=>React.createElement('div',{key:i,className:'exp-stat'},
+        React.createElement('div',{className:'exp-stat-label'},s.label),
+        React.createElement('div',{className:'exp-stat-value',style:{color:s.color}},s.val)
+      ))
+    ),
+
+    // Tabs + Search
+    React.createElement('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:16}},
+      React.createElement('div',{className:'exp-tabs',style:{marginBottom:0}},
+        ['pending','approved','rejected','all'].map(t=>React.createElement('button',{
+          key:t,className:`exp-tab${tab===t?' active':''}`,onClick:()=>setTab(t)
+        },t.charAt(0).toUpperCase()+t.slice(1),t==='pending'&&totals.count>0?React.createElement('span',{style:{marginLeft:6,background:'var(--amber)',color:'#fff',borderRadius:20,padding:'1px 6px',fontSize:10}},totals.count):null))
+      ),
+      React.createElement('input',{
+        style:{flex:1,minWidth:160,maxWidth:280},
+        placeholder:'Search employee, type, purpose…',
+        value:search,onChange:e=>setSearch(e.target.value)
+      })
+    ),
+
+    // Table
+    React.createElement('div',{className:'card'},
+      loading?React.createElement('div',{className:'empty'},'Loading…'):
+      filtered.length===0?React.createElement('div',{className:'empty'},'No expenditures found'):
+      React.createElement('div',{className:'tbl-scroll'},
+        React.createElement('table',{style:{minWidth:640}},
+          React.createElement('thead',null,React.createElement('tr',null,
+            ['Date','Employee','Type','Purpose','Amount','Proof','Status','Actions'].map(h=>React.createElement('th',{key:h},h))
+          )),
+          React.createElement('tbody',null,filtered.map(e=>React.createElement('tr',{key:e.id},
+            React.createElement('td',null,(e.created_at||'').split('T')[0]),
+            React.createElement('td',{className:'primary'},e.employeeName),
+            React.createElement('td',null,React.createElement('span',{className:'exp-category-tag'},e.expense_type)),
+            React.createElement('td',null,e.used_for||e.description||'—'),
+            React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}},'OMR '+Number(e.amount).toFixed(2)),
+            React.createElement('td',null,e.proof_url?React.createElement('a',{href:e.proof_url,target:'_blank',style:{color:'var(--green)',fontSize:11}},'View ↗'):'—'),
+            React.createElement('td',null,React.createElement('span',{className:`badge ${e.status}`},e.status)),
+            React.createElement('td',null,
+              e.status==='pending'?React.createElement('div',{className:'exp-action-row'},
+                React.createElement('button',{className:'approve-btn',onClick:()=>doApprove(e.id)},'✓ Approve'),
+                React.createElement('button',{className:'reject-btn',onClick:()=>{setRejectModal(e.id);setRejectNote('')}},'✕ Reject')
+              ):React.createElement('span',{style:{fontSize:10,color:'var(--text3)'}},e.approved_by?'By #'+e.approved_by:'—')
+            )
+          )))
+        )
+      )
+    ),
+
+    // Reject Modal
+    rejectModal&&React.createElement('div',{className:'modal-overlay'},
+      React.createElement('div',{className:'modal'},
+        React.createElement('div',{className:'modal-title'},'Reject Expenditure'),
+        React.createElement('div',{className:'form-group',style:{marginBottom:14}},
+          React.createElement('label',null,'Reason for rejection'),
+          React.createElement('textarea',{rows:3,value:rejectNote,onChange:e=>setRejectNote(e.target.value),placeholder:'Enter reason…',style:{resize:'vertical'}})
+        ),
+        React.createElement('div',{className:'modal-actions'},
+          React.createElement('button',{className:'btn btn-ghost',onClick:()=>setRejectModal(null)},'Cancel'),
+          React.createElement('button',{className:'btn btn-danger',onClick:doReject},'Reject')
+        )
+      )
+    )
+  );
+}
+
+/* ─────────────────────────────────────────────
+   EXPENDITURE TRACKER PAGE
+   For: accountant + Arya (id:10)
+   ───────────────────────────────────────────── */
+function ExpenditureTrackerPage({user,data,setData,notify}){
+  const BASE='https://mkaerp-production.up.railway.app';
+  const [exps,setExps]=React.useState([]);
+  const [loading,setLoading]=React.useState(true);
+  const [showForm,setShowForm]=React.useState(false);
+  const [editExp,setEditExp]=React.useState(null);
+  const [filterEmployee,setFilterEmployee]=React.useState('');
+  const [filterType,setFilterType]=React.useState('');
+  const [filterStatus,setFilterStatus]=React.useState('');
+  const [filterPlate,setFilterPlate]=React.useState('');
+  const [search,setSearch]=React.useState('');
+
+  const EXPENSE_TYPES=['Petty Cash','Fuel','Maintenance','Office Supplies','Vehicle Repair','Toll/Parking','Utilities','Other'];
+
+  const emptyForm={user_id:'',amount:'',expense_type:'',description:'',used_for:'',proof_url:'',car_plate:'',category:'',is_petty_cash:false};
+  const [form,setForm]=React.useState(emptyForm);
+
+  const fetchExps=()=>{
+    setLoading(true);
+    fetch(`${BASE}/expenditure`)
+      .then(r=>r.json())
+      .then(rows=>{
+        const users=data.users||[];
+        const umap={};
+        users.forEach(u=>{umap[u.id]=u.name});
+        setExps((rows||[]).map(e=>({...e,amount:Number(e.amount),employeeName:umap[e.user_id]||'User #'+e.user_id})));
+        setLoading(false);
+      })
+      .catch(()=>{setLoading(false);notify('Failed to load expenditures','error')});
+  };
+
+  useEffect(()=>{fetchExps();},[]);
+
+  const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
+
+  const openAdd=()=>{setForm(emptyForm);setEditExp(null);setShowForm(true)};
+  const openEdit=(e)=>{
+    setForm({user_id:e.user_id,amount:e.amount,expense_type:e.expense_type,description:e.description||'',used_for:e.used_for||'',proof_url:e.proof_url||'',car_plate:e.car_plate||'',category:e.category||'',is_petty_cash:!!e.is_petty_cash});
+    setEditExp(e);setShowForm(true);
+  };
+
+  const handleSave=()=>{
+    if(!form.user_id||!form.amount||!form.expense_type){notify('Fill required fields','error');return;}
+    const body={...form,amount:Number(form.amount),user_id:Number(form.user_id)};
+    const url=editExp?`${BASE}/expenditure/${editExp.id}`:`${BASE}/expenditure`;
+    const method=editExp?'PUT':'POST';
+    fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(r=>{if(!r.ok)throw new Error();return r.json();})
+      .then(()=>{notify(editExp?'Expenditure updated':'Expenditure added','success');setShowForm(false);fetchExps();})
+      .catch(()=>notify('Save failed','error'));
+  };
+
+  const handleDelete=(id)=>{
+    if(!window.confirm('Delete this expenditure?'))return;
+    fetch(`${BASE}/expenditure/${id}`,{method:'DELETE'})
+      .then(r=>{if(!r.ok)throw new Error();return r.json();})
+      .then(()=>{notify('Deleted','success');fetchExps();})
+      .catch(()=>notify('Delete failed','error'));
+  };
+
+  // Unique car plates from existing records
+  const allPlates=[...new Set(exps.map(e=>e.car_plate).filter(Boolean))];
+  const allEmployees=data.users||[];
+
+  const filtered=exps.filter(e=>{
+    if(filterEmployee&&String(e.user_id)!==filterEmployee)return false;
+    if(filterType&&e.expense_type!==filterType)return false;
+    if(filterStatus&&e.status!==filterStatus)return false;
+    if(filterPlate&&(e.car_plate||'').toLowerCase()!==filterPlate.toLowerCase())return false;
+    if(search){
+      const q=search.toLowerCase();
+      if(!((e.employeeName||'').toLowerCase().includes(q)||(e.expense_type||'').toLowerCase().includes(q)||(e.used_for||'').toLowerCase().includes(q)||(e.car_plate||'').toLowerCase().includes(q)||(e.description||'').toLowerCase().includes(q)))return false;
+    }
+    return true;
+  });
+
+  const totals={
+    total:filtered.reduce((s,e)=>s+e.amount,0),
+    petty:filtered.filter(e=>e.is_petty_cash||e.expense_type==='Petty Cash').reduce((s,e)=>s+e.amount,0),
+    pending:filtered.filter(e=>e.status==='pending').length,
+    approved:filtered.filter(e=>e.status==='approved').reduce((s,e)=>s+e.amount,0),
+  };
+
+  const hasFilters=filterEmployee||filterType||filterStatus||filterPlate||search;
+
+  return React.createElement('div',null,
+
+    // Header row
+    React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexWrap:'wrap',gap:10}},
+      React.createElement('div',{style:{fontSize:13,color:'var(--text2)'}},`Showing ${filtered.length} of ${exps.length} records`),
+      React.createElement('button',{className:'btn btn-primary',onClick:openAdd},'+ Add Expenditure')
+    ),
+
+    // Stats
+    React.createElement('div',{className:'exp-stat-grid',style:{marginBottom:18}},
+      [{label:'Total (Filtered)',val:'OMR '+totals.total.toFixed(2),color:'var(--text)'},
+       {label:'Petty Cash',val:'OMR '+totals.petty.toFixed(2),color:'var(--amber)'},
+       {label:'Approved Value',val:'OMR '+totals.approved.toFixed(2),color:'var(--green)'},
+       {label:'Pending Approvals',val:totals.pending,color:'var(--amber)'},
+      ].map((s,i)=>React.createElement('div',{key:i,className:'exp-stat'},
+        React.createElement('div',{className:'exp-stat-label'},s.label),
+        React.createElement('div',{className:'exp-stat-value',style:{color:s.color}},s.val)
+      ))
+    ),
+
+    // Filters
+    React.createElement('div',{className:'card',style:{marginBottom:16,padding:'14px 16px'}},
+      React.createElement('div',{style:{fontSize:11,fontWeight:600,color:'var(--text3)',marginBottom:10,textTransform:'uppercase',letterSpacing:'.06em'}},'Filters'),
+      React.createElement('div',{className:'exp-filter-bar'},
+        React.createElement('input',{placeholder:'Search…',value:search,onChange:e=>setSearch(e.target.value),style:{flex:'1 1 140px',maxWidth:220}}),
+        React.createElement('select',{value:filterEmployee,onChange:e=>setFilterEmployee(e.target.value),style:{flex:'1 1 130px',maxWidth:180}},
+          React.createElement('option',{value:''},'All Employees'),
+          allEmployees.map(u=>React.createElement('option',{key:u.id,value:String(u.id)},u.name))
+        ),
+        React.createElement('select',{value:filterType,onChange:e=>setFilterType(e.target.value),style:{flex:'1 1 130px',maxWidth:180}},
+          React.createElement('option',{value:''},'All Types'),
+          EXPENSE_TYPES.map(t=>React.createElement('option',{key:t,value:t},t))
+        ),
+        React.createElement('select',{value:filterPlate,onChange:e=>setFilterPlate(e.target.value),style:{flex:'1 1 130px',maxWidth:180}},
+          React.createElement('option',{value:''},'All Plates'),
+          allPlates.map(p=>React.createElement('option',{key:p,value:p},p))
+        ),
+        React.createElement('select',{value:filterStatus,onChange:e=>setFilterStatus(e.target.value),style:{flex:'1 1 110px',maxWidth:150}},
+          React.createElement('option',{value:''},'All Status'),
+          ['pending','approved','rejected'].map(s=>React.createElement('option',{key:s,value:s},s.charAt(0).toUpperCase()+s.slice(1)))
+        ),
+        hasFilters&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setFilterEmployee('');setFilterType('');setFilterStatus('');setFilterPlate('');setSearch('')}},'✕ Clear')
+      )
+    ),
+
+    // Table
+    React.createElement('div',{className:'card'},
+      loading?React.createElement('div',{className:'empty'},'Loading…'):
+      filtered.length===0?React.createElement('div',{className:'empty'},'No records match filters'):
+      React.createElement('div',{className:'tbl-scroll'},
+        React.createElement('table',{style:{minWidth:760}},
+          React.createElement('thead',null,React.createElement('tr',null,
+            ['Date','Employee','Type','Purpose','Car Plate','Amount','Petty Cash','Proof','Status','Actions'].map(h=>React.createElement('th',{key:h},h))
+          )),
+          React.createElement('tbody',null,filtered.map(e=>React.createElement('tr',{key:e.id},
+            React.createElement('td',null,(e.created_at||'').split('T')[0]),
+            React.createElement('td',{className:'primary'},e.employeeName),
+            React.createElement('td',null,React.createElement('span',{className:'exp-category-tag'},e.expense_type)),
+            React.createElement('td',null,e.used_for||e.description||'—'),
+            React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:11}},e.car_plate||'—'),
+            React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600}},'OMR '+Number(e.amount).toFixed(2)),
+            React.createElement('td',null,(e.is_petty_cash||e.expense_type==='Petty Cash')?React.createElement('span',{className:'badge pending'},'Yes'):React.createElement('span',{style:{color:'var(--text3)',fontSize:11}},'No')),
+            React.createElement('td',null,e.proof_url?React.createElement('a',{href:e.proof_url,target:'_blank',style:{color:'var(--green)',fontSize:11}},'View ↗'):'—'),
+            React.createElement('td',null,React.createElement('span',{className:`badge ${e.status}`},e.status)),
+            React.createElement('td',null,React.createElement('div',{className:'exp-action-row'},
+              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>openEdit(e)},'Edit'),
+              React.createElement('button',{className:'btn btn-danger btn-sm',onClick:()=>handleDelete(e.id)},'Del')
+            ))
+          )))
+        )
+      )
+    ),
+
+    // Add/Edit Modal
+    showForm&&React.createElement('div',{className:'modal-overlay'},
+      React.createElement('div',{className:'modal'},
+        React.createElement('div',{className:'modal-title'},editExp?'Edit Expenditure':'Add Expenditure'),
+        React.createElement('div',{className:'form-grid'},
+          React.createElement('div',{className:'form-row'},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Employee *'),
+              React.createElement('select',{value:form.user_id,onChange:e=>setF('user_id',e.target.value)},
+                React.createElement('option',{value:''},'Select…'),
+                (data.users||[]).map(u=>React.createElement('option',{key:u.id,value:u.id},u.name))
+              )
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Amount (OMR) *'),
+              React.createElement('input',{type:'number',step:'0.01',min:0,value:form.amount,onChange:e=>setF('amount',e.target.value),placeholder:'0.000'})
+            )
+          ),
+          React.createElement('div',{className:'form-row'},
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Expense Type *'),
+              React.createElement('select',{value:form.expense_type,onChange:e=>setF('expense_type',e.target.value)},
+                React.createElement('option',{value:''},'Select type…'),
+                EXPENSE_TYPES.map(t=>React.createElement('option',{key:t,value:t},t))
+              )
+            ),
+            React.createElement('div',{className:'form-group'},
+              React.createElement('label',null,'Car Plate No.'),
+              React.createElement('input',{value:form.car_plate,onChange:e=>setF('car_plate',e.target.value),placeholder:'e.g. 12345 A'})
+            )
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Used For / Purpose'),
+            React.createElement('input',{value:form.used_for,onChange:e=>setF('used_for',e.target.value),placeholder:'e.g. Client delivery, Office run…'})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Description / Notes'),
+            React.createElement('textarea',{rows:2,value:form.description,onChange:e=>setF('description',e.target.value),placeholder:'Additional details…',style:{resize:'vertical'}})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Proof URL (receipt image link)'),
+            React.createElement('input',{value:form.proof_url,onChange:e=>setF('proof_url',e.target.value),placeholder:'https://…'})
+          ),
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'4px 0'}},
+            React.createElement('input',{type:'checkbox',id:'is_petty_cash',checked:!!form.is_petty_cash,onChange:e=>setF('is_petty_cash',e.target.checked),style:{width:'auto',marginRight:4}}),
+            React.createElement('label',{htmlFor:'is_petty_cash',style:{marginBottom:0,cursor:'pointer'}},'Mark as Petty Cash')
+          )
+        ),
+        React.createElement('div',{className:'modal-actions'},
+          React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowForm(false)},'Cancel'),
+          React.createElement('button',{className:'btn btn-primary',onClick:handleSave},editExp?'Save Changes':'Add Expenditure')
+        )
       )
     )
   );
