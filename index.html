@@ -1146,9 +1146,9 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
 
-  // Role/identity checks
+  // Role/identity checks — admin role = Arya, gets all expenditure access
   const isRamachandran = user.name==='Ramachandran'||user.id===1;
-  const isArya = user.name==='Arya'||user.id===10;
+  const isArya = user.name==='Arya'||user.id===10||user.role==='admin';
   const canApproveExp = isRamachandran||isArya;
   const canTrackExp = user.role==='accountant'||isArya;
 
@@ -1163,12 +1163,25 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
-    ...(canTrackExp?[{id:'exp-tracker',icon:'◆',label:'Expenditure Tracker'}]:[]),
+    {id:'exp-tracker',icon:'◆',label:'Expenditure Tracker'},
+  ];
+  const adminNav=[
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
+    {id:'customers',icon:'◎',label:'Customers'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'approvals',icon:'✦',label:'Approvals'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'create-invoice',icon:'✦',label:'New Invoice'},
+    {id:'users',icon:'◍',label:'Users'},
+    {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
+    {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
   let nav;
   if(user.role==='employee') nav=employeeNav;
   else if(user.role==='accountant') nav=accountantNav;
-  else if(user.role==='admin') nav=base;
+  else if(user.role==='admin') nav=adminNav;
   else{
     nav=[
       {id:'dashboard',icon:'◈',label:'Dashboard'},
@@ -1302,8 +1315,9 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
 
 /* ── MOBILE NAV + PROFILE ── */
 function MobileNav({user,active,setActive,onLogout}){
+  // admin role = Arya — gets both expenditure pages
   const isRamachandran = user.name==='Ramachandran'||user.id===1;
-  const isArya = user.name==='Arya'||user.id===10;
+  const isArya = user.name==='Arya'||user.id===10||user.role==='admin';
   const canApproveExp = isRamachandran||isArya;
   const canTrackExp = user.role==='accountant'||isArya;
   const empNav=[
@@ -1317,7 +1331,7 @@ function MobileNav({user,active,setActive,onLogout}){
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approved-invoices',icon:'◻',label:'Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
-    ...(canTrackExp?[{id:'exp-tracker',icon:'◆',label:'Expenses'}]:[]),
+    {id:'exp-tracker',icon:'◆',label:'Expenses'},
   ];
   const ownerNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
@@ -1327,12 +1341,13 @@ function MobileNav({user,active,setActive,onLogout}){
     ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Expenses'}]:[]),
     ...(!canApproveExp&&!canTrackExp?[{id:'customers',icon:'◎',label:'Leads'},{id:'quotation',icon:'❖',label:'Quotes'}]:[]),
   ].slice(0,5);
+  // Admin (Arya) mobile nav — full access including both expenditure pages
   const adminNav=[
     {id:'dashboard',icon:'⊞',label:'Home'},
     {id:'approvals',icon:'✦',label:'Approve'},
-    {id:'products',icon:'▣',label:'Products'},
+    {id:'exp-approvals',icon:'◆',label:'Exp.Appr'},
+    {id:'exp-tracker',icon:'◇',label:'Expenses'},
     {id:'users',icon:'◍',label:'Users'},
-    {id:'quotation',icon:'❖',label:'Quotes'},
   ];
   const nav=user.role==='employee'?empNav:user.role==='accountant'?accNav:user.role==='admin'?adminNav:ownerNav;
   return React.createElement('div',{className:'mobile-nav'},
