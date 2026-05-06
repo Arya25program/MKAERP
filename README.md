@@ -1,4 +1,4 @@
-#🧾 MKA ERP System
+#MKA ERP
 
 A lightweight, role-based ERP system built to manage operations like products, invoices, approvals, and internal expenditure tracking.
 
