@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="./logo.png">
 <title>MKA ERP</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -601,6 +602,80 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 
 .sign-box.right {
   text-align: right;
+}
+
+/* ── HAMBURGER BUTTON ── */
+.mob-hamburger-btn{
+  display:none;align-items:center;justify-content:center;
+  width:34px;height:34px;
+  background:var(--bg3);border:1px solid var(--border2);
+  border-radius:10px;cursor:pointer;font-size:18px;
+  transition:all .15s;flex-shrink:0;color:var(--text2);
+}
+.mob-hamburger-btn:hover{border-color:var(--text3);color:var(--text)}
+@media(max-width:768px){
+  .mob-hamburger-btn{display:flex!important}
+}
+
+/* ── HAMBURGER MENU POPUP ── */
+.mob-menu-overlay{
+  position:fixed;inset:0;z-index:450;
+  background:rgba(0,0,0,.55);
+}
+.mob-menu-panel{
+  position:absolute;top:0;right:0;bottom:0;
+  width:min(300px,85vw);
+  background:var(--bg2);border-left:1px solid var(--border2);
+  display:flex;flex-direction:column;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.mob-menu-profile{
+  display:flex;align-items:center;gap:13px;
+  padding:20px 18px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg3);
+  flex-shrink:0;
+}
+.mob-menu-big-avatar{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--bg4);color:var(--text);
+  border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;flex-shrink:0;
+}
+.mob-menu-profile-name{font-size:14px;font-weight:600;color:var(--text)}
+.mob-menu-profile-role{font-size:11px;color:var(--text3);margin-top:2px}
+.mob-menu-profile-email{font-size:10px;color:var(--text3);margin-top:1px}
+.mob-menu-close{
+  margin-left:auto;width:28px;height:28px;
+  border-radius:8px;background:var(--bg4);
+  border:1px solid var(--border2);color:var(--text2);
+  font-size:16px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.mob-menu-close:hover{color:var(--text);border-color:var(--text3)}
+.mob-menu-section{
+  font-size:9px;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.08em;
+  padding:12px 18px 5px;
+}
+.mob-menu-item{
+  display:flex;align-items:center;gap:11px;
+  padding:11px 18px;cursor:pointer;
+  color:var(--text2);font-size:13px;
+  transition:all .15s;
+  border-left:2px solid transparent;
+  border:none;background:transparent;
+  width:100%;text-align:left;font-family:'Sora',sans-serif;
+}
+.mob-menu-item:hover{background:var(--bg3);color:var(--text)}
+.mob-menu-item.active{background:var(--bg3);color:var(--text);border-left:2px solid var(--text);font-weight:500}
+.mob-menu-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.mob-menu-footer{
+  margin-top:auto;padding:14px 18px 20px;
+  border-top:1px solid var(--border);
+  flex-shrink:0;
 }
 
 /* ── EXPENDITURE PAGES ── */
@@ -1314,42 +1389,118 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
 }
 
 /* ── MOBILE NAV + PROFILE ── */
-function MobileNav({user,active,setActive,onLogout}){
-  // admin role = Arya — gets both expenditure pages
-  const isRamachandran = user.name==='Ramachandran'||user.id===1;
-  const isArya = user.name==='Arya'||user.id===10||user.role==='admin';
-  const canApproveExp = isRamachandran||isArya;
-  const canTrackExp = user.role==='accountant'||isArya;
-  const empNav=[
+function getMobileNavForUser(user){
+  // Identify specific users by email
+  const isRam = (user.email||'').toLowerCase()==='ram@mka.com'||user.name==='Ramachandran'||user.id===1;
+  const isAsha = (user.email||'').toLowerCase()==='asha@mka.com';
+  const isAdmin = user.role==='admin';
+
+  // employee role: home, products, invoice, customers
+  if(user.role==='employee') return [
     {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'customers',icon:'◎',label:'Leads'},
-    {id:'create-invoice',icon:'✦',label:'Invoice'},
-    {id:'invoices',icon:'◻',label:'History'},
     {id:'products',icon:'▣',label:'Products'},
+    {id:'create-invoice',icon:'✦',label:'Invoice'},
+    {id:'customers',icon:'◎',label:'Customers'},
   ];
-  const accNav=[
+  // accountant role: home, products, expense tracking, approved invoices
+  if(user.role==='accountant') return [
     {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'approved-invoices',icon:'◻',label:'Invoices'},
-    {id:'delivery',icon:'◉',label:'Delivery'},
+    {id:'products',icon:'▣',label:'Products'},
     {id:'exp-tracker',icon:'◆',label:'Expenses'},
+    {id:'approved-invoices',icon:'◻',label:'Invoices'},
   ];
-  const ownerNav=[
+  // admin role: home, products, users
+  if(isAdmin) return [
     {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'approvals',icon:'✦',label:'Approve'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-    ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp.Appr'}]:[]),
-    ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Expenses'}]:[]),
-    ...(!canApproveExp&&!canTrackExp?[{id:'customers',icon:'◎',label:'Leads'},{id:'quotation',icon:'❖',label:'Quotes'}]:[]),
-  ].slice(0,5);
-  // Admin (Arya) mobile nav — full access including both expenditure pages
-  const adminNav=[
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'approvals',icon:'✦',label:'Approve'},
-    {id:'exp-approvals',icon:'◆',label:'Exp.Appr'},
-    {id:'exp-tracker',icon:'◇',label:'Expenses'},
+    {id:'products',icon:'▣',label:'Products'},
     {id:'users',icon:'◍',label:'Users'},
   ];
-  const nav=user.role==='employee'?empNav:user.role==='accountant'?accNav:user.role==='admin'?adminNav:ownerNav;
+  // ram@mka.com (owner/Ramachandran): home, products, expense approval, invoices
+  if(isRam) return [
+    {id:'dashboard',icon:'⊞',label:'Home'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'exp-approvals',icon:'◆',label:'Exp.Appr'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+  ];
+  // asha@mka.com: home, products, quotation uphold, invoices
+  if(isAsha) return [
+    {id:'dashboard',icon:'⊞',label:'Home'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'quotation',icon:'❖',label:'Quotes'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+  ];
+  // default owner fallback
+  return [
+    {id:'dashboard',icon:'⊞',label:'Home'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'approvals',icon:'✦',label:'Approve'},
+  ];
+}
+
+function getAllPagesForUser(user){
+  // Returns full list of pages accessible via hamburger menu
+  const isRam = (user.email||'').toLowerCase()==='ram@mka.com'||user.name==='Ramachandran'||user.id===1;
+  const isAsha = (user.email||'').toLowerCase()==='asha@mka.com';
+  const isAdmin = user.role==='admin';
+
+  if(user.role==='employee') return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'create-invoice',icon:'✦',label:'New Invoice'},
+    {id:'invoices',icon:'◻',label:'My Invoices'},
+    {id:'customers',icon:'◎',label:'Customers'},
+  ];
+  if(user.role==='accountant') return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'exp-tracker',icon:'◆',label:'Expense Tracking'},
+    {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
+    {id:'delivery',icon:'◉',label:'Delivery'},
+  ];
+  if(isAdmin) return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'users',icon:'◍',label:'Users'},
+    {id:'customers',icon:'◎',label:'Customers'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'approvals',icon:'✦',label:'Approvals'},
+    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'create-invoice',icon:'✦',label:'New Invoice'},
+    {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
+    {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'devtools',icon:'⫘',label:'DevTools'},
+  ];
+  if(isRam) return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'customers',icon:'◎',label:'Customers'},
+    {id:'approvals',icon:'✦',label:'Approvals'},
+    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+  ];
+  if(isAsha) return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'customers',icon:'◎',label:'Customers'},
+    {id:'approvals',icon:'✦',label:'Approvals'},
+  ];
+  // default owner
+  return [
+    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'products',icon:'▣',label:'Products'},
+    {id:'invoices',icon:'◻',label:'Invoices'},
+    {id:'approvals',icon:'✦',label:'Approvals'},
+    {id:'customers',icon:'◎',label:'Customers'},
+    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+  ];
+}
+
+function MobileNav({user,active,setActive}){
+  const nav=getMobileNavForUser(user);
   return React.createElement('div',{className:'mobile-nav'},
     nav.map(item=>React.createElement('button',{
       key:item.id,
@@ -1362,10 +1513,59 @@ function MobileNav({user,active,setActive,onLogout}){
   );
 }
 
+/* ── HAMBURGER MENU PANEL ── */
+function HamburgerMenu({user,active,setActive,onLogout,onClose,theme,setTheme}){
+  const allPages=getAllPagesForUser(user);
+  return React.createElement('div',{className:'mob-menu-overlay',onClick:onClose},
+    React.createElement('div',{className:'mob-menu-panel',onClick:e=>e.stopPropagation()},
+      // Profile header
+      React.createElement('div',{className:'mob-menu-profile'},
+        React.createElement('div',{className:'mob-menu-big-avatar'},getInitials(user.name)),
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('div',{className:'mob-menu-profile-name'},user.name),
+          React.createElement('div',{className:'mob-menu-profile-role'},user.role.charAt(0).toUpperCase()+user.role.slice(1)),
+          React.createElement('div',{className:'mob-menu-profile-email'},user.email||'')
+        ),
+        React.createElement('button',{className:'mob-menu-close',onClick:onClose},'×')
+      ),
+      // Pages section
+      React.createElement('div',{className:'mob-menu-section'},'Navigation'),
+      allPages.map(item=>React.createElement('button',{
+        key:item.id,
+        className:`mob-menu-item${active===item.id?' active':''}`,
+        onClick:()=>{setActive(item.id);onClose();}
+      },
+        React.createElement('span',{className:'mob-menu-icon'},item.icon),
+        React.createElement('span',null,item.label)
+      )),
+      // Footer: theme toggle + sign out
+      React.createElement('div',{className:'mob-menu-footer'},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,padding:'8px 0'}},
+          React.createElement('span',{style:{fontSize:12,color:'var(--text3)'}},theme==='dark'?'🌙 Dark mode':theme==='easter'?'🌊 Ocean mode':'☀️ Light mode'),
+          React.createElement('div',{className:`toggle-track${theme==='light'?' on':''}`,onClick:()=>setTheme(t=>t==='easter'?'dark':t==='dark'?'light':'dark')},
+            React.createElement('div',{className:'toggle-thumb'})
+          )
+        ),
+        React.createElement('button',{
+          className:'btn btn-danger',
+          style:{width:'100%',padding:'11px',fontSize:13},
+          onClick:()=>{onClose();onLogout();}
+        },'Sign Out')
+      )
+    )
+  );
+}
+
 /* ── MOBILE TOPBAR BUTTONS ── */
 function MobThemeBtn({theme,setTheme}){
   return React.createElement('button',{className:'mob-theme-btn',onClick:()=>setTheme(t=>t==='easter'?'dark':t==='dark'?'light':'dark'),'title':'Toggle theme'},
     theme==='dark'?'☀️':theme==='easter'?'🌊':'🌙'
+  );
+}
+
+function MobHamburgerBtn({onClick}){
+  return React.createElement('button',{className:'mob-hamburger-btn',onClick,title:'Menu','aria-label':'Open menu'},
+    React.createElement('span',{style:{fontSize:16,lineHeight:1}},'☰')
   );
 }
 
@@ -2943,6 +3143,7 @@ function App(){
   const [notif,setNotif]=useState(null);
   const [theme,setTheme]=useState('dark');
   const [mobProfile,setMobProfile]=useState(false);
+  const [mobMenu,setMobMenu]=useState(false);
 
   const notify=(msg,type='success')=>setNotif({msg,type});
 
@@ -3141,7 +3342,7 @@ function App(){
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
 
     React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme}),
-    React.createElement(MobileNav,{user,active,setActive,onLogout:logout}),
+    React.createElement(MobileNav,{user,active,setActive}),
 
     React.createElement('div',{className:'main'},
       React.createElement('div',{className:'topbar'},
@@ -3149,7 +3350,7 @@ function App(){
           React.createElement('div',{className:'page-title'},pt),
           React.createElement('div',{className:'page-sub'},ps)
         ),
-        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10}},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8}},
           React.createElement('span',{
             className:'topbar-date',
             style:{
@@ -3166,12 +3367,15 @@ function App(){
           },new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})),
 
           React.createElement(MobThemeBtn,{theme,setTheme}),
-          React.createElement(MobProfileBtn,{user,onOpen:()=>setMobProfile(true)})
+          React.createElement(MobProfileBtn,{user,onOpen:()=>setMobProfile(true)}),
+          React.createElement(MobHamburgerBtn,{onClick:()=>setMobMenu(true)})
         )
       ),
 
       React.createElement('div',{className:'content'},page())
     ),
+
+    mobMenu&&React.createElement(HamburgerMenu,{user,active,setActive,onLogout:logout,onClose:()=>setMobMenu(false),theme,setTheme}),
 
     mobProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setMobProfile(false)},
       React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
