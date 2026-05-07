@@ -27,6 +27,75 @@ app.get('/test', async (req, res) => {
   }
 });
 
+// ── 2. GET /audit-log  (admin only — frontend enforces role) ───
+app.get('/audit-log', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, user_id, user_name, category, action, meta,
+              time_label, date_label, ts
+         FROM audit_log
+        ORDER BY ts DESC
+        LIMIT 2000`           // cap at 2000 most recent events
+    );
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('Audit log GET error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+ 
+ 
+// ── 3. POST /audit-log  (called silently by frontend) ──────────
+app.post('/audit-log', async (req, res) => {
+  const { user_id, user_name, category, action, meta, time_label, date_label, ts } = req.body;
+ 
+  if (!user_name || !action) {
+    return res.status(400).json({ error: 'user_name and action are required' });
+  }
+ 
+  const validCategories = ['login','logout','invoice','approval','rejection','customer','product','expense','quotation','delivery','user','system'];
+  const safeCat = validCategories.includes(category) ? category : 'system';
+ 
+  try {
+    const result = await pool.query(
+      `INSERT INTO audit_log (user_id, user_name, category, action, meta, time_label, date_label, ts)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id`,
+      [
+        user_id   || null,
+        user_name,
+        safeCat,
+        action,
+        meta ? JSON.stringify(meta) : null,
+        time_label || null,
+        date_label || null,
+        ts || new Date().toISOString()
+      ]
+    );
+    return res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('Audit log POST error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+ 
+ 
+// ── 4. OPTIONAL: DELETE old logs (housekeeping endpoint) ───────
+// Call this manually or via a cron job to keep the table lean.
+// Only allow this for admin users — protect it server-side too.
+app.delete('/audit-log/purge', async (req, res) => {
+  // Optional: require a secret header for safety
+  // if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.status(403).end();
+  try {
+    const result = await pool.query(
+      `DELETE FROM audit_log WHERE ts < NOW() - INTERVAL '90 days'`
+    );
+    return res.json({ deleted: result.rowCount });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 //Onboarding
 app.post('/users/:id/complete-onboarding', async (req, res) => {
   const userId = parseInt(req.params.id, 10);
