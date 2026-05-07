@@ -27,6 +27,34 @@ app.get('/test', async (req, res) => {
   }
 });
 
+//Onboarding
+app.post('/users/:id/complete-onboarding', async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+ 
+  if (!userId || isNaN(userId)) {
+    return res.status(400).json({ error: 'Invalid user ID' });
+  } 
+  try {
+    const result = await pool.query(
+      `UPDATE users
+         SET new_user = false
+       WHERE id = $1
+       RETURNING id, name, email, role, active, new_user`,
+      [userId]
+    );
+ 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+ 
+    return res.json({ success: true, user: result.rows[0] });
+ 
+  } catch (err) {
+    console.error('Onboarding complete error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 // 🔥 PRODUCTS
 app.get('/products', async (req, res) => {
