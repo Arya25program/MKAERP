@@ -756,6 +756,47 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .exp-stat-value{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
 .exp-category-tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:var(--bg4);color:var(--text2);border:1px solid var(--border2)}
 .exp-action-row{display:flex;gap:6px;align-items:center}
+
+/* ── AUDIT LOG PAGE ── */
+.audit-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
+.audit-toolbar input,.audit-toolbar select{width:auto;flex:1;min-width:130px;max-width:210px}
+.audit-count{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;padding:7px 0}
+.audit-row{display:grid;grid-template-columns:160px 120px 1fr auto;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .13s;font-size:12px}
+.audit-row:last-child{border-bottom:none}
+.audit-row:hover{background:var(--bg3)}
+.audit-ts{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);white-space:nowrap}
+.audit-user{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.audit-action{color:var(--text2);line-height:1.45}
+.audit-cat{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:500;white-space:nowrap}
+.audit-cat.login{background:var(--green-bg);color:var(--green)}
+.audit-cat.logout{background:var(--bg4);color:var(--text3)}
+.audit-cat.invoice{background:var(--amber-bg);color:var(--amber)}
+.audit-cat.customer{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.audit-cat.product{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.audit-cat.expense{background:var(--amber-bg);color:var(--amber)}
+.audit-cat.quotation{background:var(--green-bg);color:var(--green)}
+.audit-cat.user{background:var(--red-bg);color:var(--red)}
+.audit-cat.approval{background:var(--green-bg);color:var(--green)}
+.audit-cat.rejection{background:var(--red-bg);color:var(--red)}
+.audit-cat.delivery{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.audit-cat.system{background:var(--bg4);color:var(--text3)}
+.audit-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.audit-detail-card{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:28px 24px;width:100%;max-width:500px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:modal-pop .18s ease both}
+@keyframes modal-pop{from{opacity:0;transform:scale(.96) translateY(6px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.audit-detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.audit-detail-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.audit-detail-close{width:28px;height:28px;border-radius:8px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.audit-detail-close:hover{color:var(--text);border-color:var(--text3)}
+.audit-detail-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.audit-detail-row:last-child{border-bottom:none}
+.audit-detail-label{color:var(--text3)}
+.audit-detail-val{color:var(--text);font-weight:500;text-align:right;max-width:60%;word-break:break-word}
+.audit-detail-action-box{background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin:16px 0;font-size:13px;color:var(--text);line-height:1.6}
+@media(max-width:768px){
+  .audit-row{grid-template-columns:1fr auto;gap:6px}
+  .audit-ts{display:none}
+  .audit-toolbar input,.audit-toolbar select{min-width:100px;flex:1 1 calc(50% - 5px)}
+}
 .approve-btn{background:var(--green-bg);color:var(--green);border:1px solid rgba(61,186,120,.2);padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
 .approve-btn:hover{opacity:.8}
 .reject-btn{background:var(--red-bg);color:var(--red);border:1px solid rgba(212,92,92,.2);padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
@@ -1320,6 +1361,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'users',icon:'◍',label:'Users'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
   let nav;
@@ -1885,6 +1927,8 @@ function ApprovalsPage({user,data,setData,notify}){
     })
     .then(() => {
       notify('Invoice approved','success');
+      const inv = (data.documents||[]).find(d=>d.id===id);
+      logAction(user, 'approval', user.name + ' approved ' + (inv?inv.customerName:'a customer') + "'s Invoice", {invoice_id: id, customer: inv?inv.customerName:''});
       setData(d => ({
         ...d,
         documents: d.documents.map(doc =>
@@ -1911,6 +1955,7 @@ function ApprovalsPage({user,data,setData,notify}){
     })
     .then(() => {
       notify('Invoice rejected','success');
+      logAction(user, 'rejection', user.name + ' rejected ' + (rejModal.customerName||'a customer') + "'s Invoice — Reason: " + rejNote, {invoice_id: rejModal.id, customer: rejModal.customerName, reason: rejNote});
       setData(d => ({
         ...d,
         documents: d.documents.map(doc =>
@@ -2089,12 +2134,18 @@ function DeliveryPage({user,data,setData,notify}){
   const saveDate=id=>{
     if(!dDate){notify('Pick a delivery date','error');return}
     setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDate:dDate}:doc)}));
-    notify('Delivery date set','success');setEditId(null);setDDate('');
+    notify('Delivery date set','success');
+    const inv=(data.documents||[]).find(d=>d.id===id);
+    logAction(user,'delivery',user.name+' scheduled delivery for '+(inv?inv.customerName:'an invoice')+' on '+dDate,{invoice_id:id,customer:inv?inv.customerName:'',date:dDate});
+    setEditId(null);setDDate('');
   };
   const markDone=id=>{
     if(!doneDate){notify('Enter completion date','error');return}
     setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDone:true,deliveryDoneDate:doneDate}:doc)}));
-    notify('Delivery marked as completed','success');setDoneId(null);setDoneDate('');
+    notify('Delivery marked as completed','success');
+    const inv=(data.documents||[]).find(d=>d.id===id);
+    logAction(user,'delivery',user.name+' marked delivery as completed for '+(inv?inv.customerName:'an invoice'),{invoice_id:id,customer:inv?inv.customerName:'',done_date:doneDate});
+    setDoneId(null);setDoneDate('');
   };
   return React.createElement('div',null,
     React.createElement('div',{className:'grid-3',style:{marginBottom:18}},
@@ -2159,8 +2210,8 @@ function CustomersPage({user,data,setData,notify}){
   const filtered=filter==='all'?myLeads:myLeads.filter(l=>l.status===filter);
   const save=()=>{
     if(!form.name.trim()){notify('Name required','error');return}
-    if(editLead){setData(d=>({...d,leads:d.leads.map(l=>l.id===editLead.id?{...l,...form}:l)}));notify('Updated','success')}
-    else{setData(d=>({...d,leads:[{id:Date.now(),employeeId:user.id,...form,created:new Date().toISOString().split('T')[0]},...d.leads]}));notify('Customer added','success')}
+    if(editLead){setData(d=>({...d,leads:d.leads.map(l=>l.id===editLead.id?{...l,...form}:l)}));logAction(user,'customer',user.name+' updated customer details for '+form.name,{customer:form.name});notify('Updated','success')}
+    else{setData(d=>({...d,leads:[{id:Date.now(),employeeId:user.id,...form,created:new Date().toISOString().split('T')[0]},...d.leads]}));logAction(user,'customer',user.name+' created new customer '+form.name,{customer:form.name,source:form.source});notify('Customer added','success')}
     setShowModal(false);
   };
   return React.createElement('div',null,
@@ -2232,6 +2283,7 @@ function ProductsPage({ user, data, setData, notify }) {
       )
     }));
     notify('Product updated', 'success');
+    logAction(user,'product',user.name+' updated product: '+ef.name,{product:ef.name,stock:ef.stock,price:ef.price});
     setShowEdit(null);
   };
 
@@ -2494,6 +2546,7 @@ function CreateInvoice({user,data,setData,notify}){
     })
     .then(saved => {
       notify('Invoice submitted for approval','success');
+      logAction(user,'invoice',user.name+' created invoice for '+customer+' — OMR '+total.toFixed(2),{customer,total:total.toFixed(2),items:builtItems.length});
 
       setData(d => ({
         ...d,
@@ -3680,6 +3733,174 @@ function OnboardingFlow({user, onComplete}) {
   );
 }
 
+/* ── AUDIT LOG HELPER ── */
+const BASE_URL = 'https://mkaerp-production.up.railway.app';
+
+function logAction(user, category, action, meta) {
+  if(!user) return;
+  const now = new Date();
+  const hh = now.getHours();
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const hh12 = String(hh % 12 || 12);
+  const time = hh12 + ':' + mm + ampm;
+  const dd = String(now.getDate()).padStart(2,'0');
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const yyyy = now.getFullYear();
+  const date = dd + '/' + mo + '/' + yyyy;
+  fetch(BASE_URL + '/audit-log', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      user_id: user.id,
+      user_name: user.name,
+      category,
+      action,
+      meta: meta || null,
+      time_label: time,
+      date_label: date,
+      ts: now.toISOString()
+    })
+  }).catch(()=>{});
+}
+
+/* ── AUDIT LOG PAGE ── */
+const AUDIT_CATEGORIES = ['All','login','logout','invoice','approval','rejection','customer','product','expense','quotation','delivery','user','system'];
+
+function AuditLogPage({data}) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterUser, setFilterUser] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(BASE_URL + '/audit-log')
+      .then(r => r.json())
+      .then(rows => { setLogs(rows || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const allUsers = [...new Set(logs.map(l => l.user_name).filter(Boolean))].sort();
+
+  const filtered = logs.filter(l => {
+    if(filterUser && l.user_name !== filterUser) return false;
+    if(filterCat && filterCat !== 'All' && l.category !== filterCat) return false;
+    if(search) {
+      const q = search.toLowerCase();
+      if(!(l.action||'').toLowerCase().includes(q) &&
+         !(l.user_name||'').toLowerCase().includes(q) &&
+         !(l.category||'').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  function downloadCSV() {
+    const header = 'Time,Date,User,Category,Action\n';
+    const rows = filtered.map(l =>
+      [l.time_label, l.date_label, l.user_name, l.category, '"'+(l.action||'').replace(/"/g,"''")+'"'].join(',')
+    ).join('\n');
+    const blob = new Blob([header+rows], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='mka_audit_log.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const hasFilters = filterUser || (filterCat && filterCat !== 'All') || search;
+
+  return React.createElement('div', null,
+
+    // Toolbar
+    React.createElement('div', {className:'audit-toolbar'},
+      React.createElement('input', {
+        placeholder:'Search actions…',
+        value:search,
+        onChange:e=>setSearch(e.target.value),
+        style:{flex:'1 1 180px',maxWidth:260}
+      }),
+      React.createElement('select', {value:filterUser, onChange:e=>setFilterUser(e.target.value), style:{flex:'1 1 140px',maxWidth:190}},
+        React.createElement('option',{value:''},'All Employees'),
+        allUsers.map(u => React.createElement('option',{key:u,value:u},u))
+      ),
+      React.createElement('select', {value:filterCat, onChange:e=>setFilterCat(e.target.value), style:{flex:'1 1 130px',maxWidth:170}},
+        AUDIT_CATEGORIES.map(c => React.createElement('option',{key:c,value:c===''?'':c}, c==='All'?'All Categories': c.charAt(0).toUpperCase()+c.slice(1)))
+      ),
+      hasFilters && React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setFilterUser('');setFilterCat('');setSearch('');}}, '✕ Clear'),
+      React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:downloadCSV,title:'Download CSV'},'↓ Export')
+    ),
+
+    // Count
+    React.createElement('div', {className:'audit-count'},
+      loading ? 'Loading…' : filtered.length + ' event' + (filtered.length!==1?'s':'') + (hasFilters?' (filtered)':'')
+    ),
+
+    // Table
+    React.createElement('div', {className:'card', style:{padding:0,overflow:'hidden',marginTop:10}},
+      loading
+        ? React.createElement('div',{className:'empty'},'Loading audit log…')
+        : filtered.length === 0
+          ? React.createElement('div',{className:'empty'},'No events found')
+          : React.createElement('div', {className:'tbl-scroll'},
+
+              // Header row
+              React.createElement('div', {style:{display:'grid',gridTemplateColumns:'160px 120px 1fr auto',gap:12,padding:'8px 14px',background:'var(--bg3)',borderBottom:'1px solid var(--border)'}},
+                ['Time & Date','Employee','Action','Category'].map(h =>
+                  React.createElement('div',{key:h,style:{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',fontWeight:500}},h)
+                )
+              ),
+
+              filtered.map((log, i) =>
+                React.createElement('div', {
+                  key: log.id || i,
+                  className: 'audit-row',
+                  onClick: () => setSelected(log)
+                },
+                  React.createElement('div', {className:'audit-ts'},
+                    React.createElement('div', null, log.time_label || '—'),
+                    React.createElement('div', {style:{fontSize:10,color:'var(--text3)',marginTop:1}}, log.date_label || '—')
+                  ),
+                  React.createElement('div', {className:'audit-user'}, log.user_name || '—'),
+                  React.createElement('div', {className:'audit-action'}, log.action || '—'),
+                  React.createElement('span', {className:'audit-cat ' + (log.category||'system')}, log.category || 'system')
+                )
+              )
+            )
+    ),
+
+    // Detail popup
+    selected && React.createElement('div', {className:'audit-detail-overlay', onClick:()=>setSelected(null)},
+      React.createElement('div', {className:'audit-detail-card', onClick:e=>e.stopPropagation()},
+        React.createElement('div', {className:'audit-detail-header'},
+          React.createElement('div', null,
+            React.createElement('div', {className:'audit-detail-title'}, 'Event Detail'),
+            React.createElement('span', {className:'audit-cat '+(selected.category||'system'),style:{marginTop:4,display:'inline-flex'}}, selected.category||'system')
+          ),
+          React.createElement('button', {className:'audit-detail-close', onClick:()=>setSelected(null)}, '×')
+        ),
+        React.createElement('div', {className:'audit-detail-action-box'}, selected.action || '—'),
+        [
+          ['Employee', selected.user_name],
+          ['Time',     selected.time_label],
+          ['Date',     selected.date_label],
+          ['Category', (selected.category||'system').charAt(0).toUpperCase()+(selected.category||'system').slice(1)],
+          ...(selected.meta ? Object.entries(
+              typeof selected.meta === 'string'
+                ? (() => { try { return JSON.parse(selected.meta); } catch(e) { return {Note: selected.meta}; } })()
+                : selected.meta
+            ).map(([k,v]) => [k.charAt(0).toUpperCase()+k.slice(1), String(v)]) : [])
+        ].map(([label, val]) =>
+          React.createElement('div', {key:label, className:'audit-detail-row'},
+            React.createElement('span', {className:'audit-detail-label'}, label),
+            React.createElement('span', {className:'audit-detail-val'}, val || '—')
+          )
+        )
+      )
+    )
+  );
+}
+
 function App(){
   const [user,setUser]=useState(null);
   const [showOnboarding,setShowOnboarding]=useState(false);
@@ -3843,6 +4064,7 @@ function App(){
         localStorage.setItem("user", JSON.stringify(u));
         setUser(u);
         setActive('dashboard');
+        logAction(u, 'login', u.name + ' logged in');
         if(u.new_user === true || u.new_user === 'true') {
           setShowOnboarding(true);
         }
@@ -3877,6 +4099,7 @@ function App(){
     devtools:['Dev Tools','Developer utilities'],
     'exp-approvals':['Expenditure Approvals','Review & approve expense requests'],
     'exp-tracker':['Expenditure Tracker','Manage & track all expenditures'],
+    'audit-log':['Audit Log','Full system activity feed'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -3885,6 +4108,7 @@ function App(){
 
   // 🔐 LOGOUT
   const logout=()=>{
+    logAction(user, 'logout', user.name + ' logged out');
     localStorage.removeItem("user");
     setUser(null);
   };
@@ -3907,6 +4131,7 @@ function App(){
     if(active==='devtools')return React.createElement(DevToolsPage, props);
     if(active==='exp-approvals')return React.createElement(ExpenditureApprovalsPage,props);
     if(active==='exp-tracker')return React.createElement(ExpenditureTrackerPage,props);
+    if(active==='audit-log')return React.createElement(AuditLogPage,props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
@@ -4012,7 +4237,11 @@ function ExpenditureApprovalsPage({user,data,setData,notify}){
   const doApprove=(id)=>{
     fetch(`${BASE}/expenditure/${id}/approve`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({approved_by:user.id})})
       .then(r=>{if(!r.ok)throw new Error();return r.json();})
-      .then(()=>{notify('Expenditure approved','success');fetchExps();})
+      .then(()=>{
+        const exp=exps.find(e=>e.id===id);
+        logAction(user,'expense',user.name+' approved expense for '+(exp?exp.employeeName:'an employee')+' — '+(exp?exp.expense_type:''),{expense_id:id,employee:exp?exp.employeeName:'',type:exp?exp.expense_type:'',amount:exp?exp.amount:''});
+        notify('Expenditure approved','success');fetchExps();
+      })
       .catch(()=>notify('Approval failed','error'));
   };
 
@@ -4020,7 +4249,11 @@ function ExpenditureApprovalsPage({user,data,setData,notify}){
     if(!rejectNote.trim()){notify('Please enter a reason','error');return;}
     fetch(`${BASE}/expenditure/${rejectModal}/reject`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:rejectNote,approved_by:user.id})})
       .then(r=>{if(!r.ok)throw new Error();return r.json();})
-      .then(()=>{notify('Expenditure rejected','success');setRejectModal(null);setRejectNote('');fetchExps();})
+      .then(()=>{
+        const exp=exps.find(e=>e.id===rejectModal);
+        logAction(user,'expense',user.name+' rejected expense for '+(exp?exp.employeeName:'an employee')+' — Reason: '+rejectNote,{expense_id:rejectModal,employee:exp?exp.employeeName:'',reason:rejectNote});
+        notify('Expenditure rejected','success');setRejectModal(null);setRejectNote('');fetchExps();
+      })
       .catch(()=>notify('Rejection failed','error'));
   };
 
