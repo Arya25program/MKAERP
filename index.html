@@ -679,6 +679,30 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 }
 
 /* ── EXPENDITURE PAGES ── */
+/* ── ONBOARDING OVERLAY ── */
+.onboard-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:600;padding:20px;backdrop-filter:blur(4px)}
+.onboard-card{width:420px;max-width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:36px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.onboard-logo{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.onboard-subtitle{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:28px}
+.onboard-step-pill{display:inline-flex;gap:5px;margin-bottom:20px}
+.onboard-dot{width:7px;height:7px;border-radius:50%;background:var(--bg4);border:1px solid var(--border2);transition:all .2s}
+.onboard-dot.active{background:var(--text);border-color:var(--text)}
+.onboard-dot.done{background:var(--green);border-color:var(--green)}
+.onboard-icon{font-size:32px;margin-bottom:14px;display:block}
+.onboard-feature-name{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.onboard-feature-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:24px}
+.onboard-screen{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:16px;margin-bottom:24px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.onboard-screen-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px}
+.onboard-screen-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+.onboard-screen-row:last-child{border-bottom:none}
+.onboard-screen-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.onboard-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.onboard-progress{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.onboard-skip{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:none;font-family:inherit;padding:0;transition:color .15s}
+.onboard-skip:hover{color:var(--text)}
+.onboard-next{background:var(--text);color:var(--bg);border:none;padding:10px 28px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.onboard-next:hover{opacity:.85}
+@media(max-width:480px){.onboard-card{padding:24px 18px}}
 .exp-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
 .exp-filter-bar input,.exp-filter-bar select{width:auto;flex:1;min-width:120px;max-width:200px}
 .exp-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
@@ -3128,8 +3152,420 @@ function ActionButton(label) {
   }, label);
 }
 
+/* ── ONBOARDING COMPONENT ── */
+const ONBOARDING_STEPS = {
+  employee: [
+    {
+      icon: '◈',
+      name: 'Home — Your Dashboard',
+      desc: 'Your personal hub. See your revenue stats, active leads, recent invoices, and get a quick overview of your day. Everything you need at a glance.',
+      preview: [
+        {icon:'📊', label:'My Revenue — total from approved invoices'},
+        {icon:'📋', label:'Invoices — all invoices you have created'},
+        {icon:'⏳', label:'Pending — invoices waiting for approval'},
+        {icon:'👥', label:'Customers — your assigned leads'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Inventory',
+      desc: 'Browse the full product catalog with live stock levels. Check prices, availability, and stock status before creating an invoice.',
+      preview: [
+        {icon:'🔍', label:'Search products by name or category'},
+        {icon:'🟢', label:'In Stock / Low Stock / Out of Stock badges'},
+        {icon:'💰', label:'View unit prices in OMR'},
+        {icon:'📦', label:'Stock quantity — always up to date'},
+      ]
+    },
+    {
+      icon: '◻',
+      name: 'Invoices — Send for Approval',
+      desc: 'Create invoices for your customers and submit them for owner approval. Track whether they are approved, pending, or rejected in real time.',
+      preview: [
+        {icon:'✦', label:'New Invoice — pick customer, add products'},
+        {icon:'⏳', label:'Pending — submitted, awaiting owner review'},
+        {icon:'✅', label:'Approved — confirmed and ready to process'},
+        {icon:'❌', label:'Rejected — check the rejection note and revise'},
+      ]
+    },
+    {
+      icon: '◎',
+      name: 'Customers — Leads & Details',
+      desc: 'Manage your customer pipeline. Add new leads, update contact details, track their status from new → converted, and keep notes on each relationship.',
+      preview: [
+        {icon:'➕', label:'Add new lead with name, phone, email'},
+        {icon:'🔄', label:'Status: New → Active → Converted / Lost'},
+        {icon:'📝', label:'Add notes and track conversation history'},
+        {icon:'📌', label:'Assign customers directly to yourself'},
+      ]
+    },
+  ],
+  accountant: [
+    {
+      icon: '◈',
+      name: 'Home — Financial Overview',
+      desc: 'Your accountant dashboard shows approved invoice counts, total value ready for processing, and a list of invoices pending document generation.',
+      preview: [
+        {icon:'✅', label:'Approved invoices count'},
+        {icon:'📄', label:'Generated — documents already issued'},
+        {icon:'💎', label:'Total value across approved invoices'},
+        {icon:'⚡', label:'Quick-access pending generation queue'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Stock Reference',
+      desc: 'View the full product catalog. Use this to cross-reference invoice line items with current stock levels and pricing during financial review.',
+      preview: [
+        {icon:'📦', label:'All products with stock & price'},
+        {icon:'⚠', label:'Low stock alerts — flag for reorder'},
+        {icon:'💵', label:'Unit price in OMR with VAT reference'},
+      ]
+    },
+    {
+      icon: '◆',
+      name: 'Expenses — Expenditure Tracker',
+      desc: 'Full view of all company expenditures submitted by employees. Filter by type, employee, status or date. Export reports for financial records.',
+      preview: [
+        {icon:'🔍', label:'Filter by employee, type, status, car plate'},
+        {icon:'📤', label:'Export to Excel for external reporting'},
+        {icon:'🧾', label:'View proof receipts via linked URLs'},
+        {icon:'💰', label:'Track petty cash and expense categories'},
+      ]
+    },
+    {
+      icon: '◻',
+      name: 'Invoices (Approved) — Generate & Print',
+      desc: 'Access only approved invoices. Generate official tax invoices and delivery orders, mark them as sent, and print or export for client handover.',
+      preview: [
+        {icon:'🖨', label:'Print Tax Invoice + Delivery Order'},
+        {icon:'✔', label:'Mark as accountant-sent once issued'},
+        {icon:'📋', label:'LPO reference and customer details'},
+        {icon:'📅', label:'Track approval date and approving owner'},
+      ]
+    },
+    {
+      icon: '◉',
+      name: 'Delivery Management',
+      desc: 'Schedule and track delivery dates for approved invoices. Mark deliveries as completed and record delivery dates for audit and logistics.',
+      preview: [
+        {icon:'📅', label:'Set delivery date per invoice'},
+        {icon:'✅', label:'Mark delivery as done with timestamp'},
+        {icon:'🚚', label:'View scheduled vs unscheduled deliveries'},
+        {icon:'📊', label:'Filter by status — scheduled / delivered'},
+      ]
+    },
+  ],
+  ram: [
+    {
+      icon: '◈',
+      name: 'Home — Owner Command Center',
+      desc: 'Full business overview — total revenue, pending invoices, customer growth, and low-stock inventory alerts. Your top-level operational view.',
+      preview: [
+        {icon:'💰', label:'Total approved revenue'},
+        {icon:'🚨', label:'Inventory alerts — out of stock warnings'},
+        {icon:'📈', label:'6-month sales vs customers chart'},
+        {icon:'⏳', label:'Pending invoices requiring your approval'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Full Catalog Control',
+      desc: 'Add, edit, and manage the entire product inventory. Update pricing, stock levels, and product details directly.',
+      preview: [
+        {icon:'➕', label:'Add new products with price & stock'},
+        {icon:'✏', label:'Edit existing product details'},
+        {icon:'📦', label:'Manage stock count in real-time'},
+      ]
+    },
+    {
+      icon: '◆',
+      name: 'Expense Approvals — VIP Access',
+      desc: 'As a senior owner, you have exclusive access to approve or reject employee expense requests. Review proof receipts and add comments.',
+      preview: [
+        {icon:'✅', label:'Approve pending expenses with one click'},
+        {icon:'❌', label:'Reject with reason — employee is notified'},
+        {icon:'🧾', label:'View uploaded proof receipts'},
+        {icon:'💬', label:'Add approval or rejection comments'},
+      ]
+    },
+    {
+      icon: '◻',
+      name: 'Invoices — Full Access',
+      desc: 'Review all invoices across all employees. Approve or reject pending invoices with comments. Track the full invoice lifecycle.',
+      preview: [
+        {icon:'✦', label:'Approve invoices with your signature'},
+        {icon:'❌', label:'Reject with note sent back to employee'},
+        {icon:'📋', label:'Full invoice history — all employees'},
+        {icon:'💎', label:'Filter by employee, status, date'},
+      ]
+    },
+    {
+      icon: '⭐',
+      name: 'VIP Owner Services',
+      desc: 'Your account has exclusive owner-level access including expense approval authority, full audit trails, and senior management controls not available to other staff.',
+      preview: [
+        {icon:'🔐', label:'Expense approval — only you and Asha'},
+        {icon:'📊', label:'Full revenue visibility across all employees'},
+        {icon:'🛡', label:'Cannot be locked or restricted by admin'},
+        {icon:'⚙', label:'System-level configuration access'},
+      ]
+    },
+  ],
+  asha: [
+    {
+      icon: '◈',
+      name: 'Home — Owner Dashboard',
+      desc: 'Full business overview with revenue metrics, inventory alerts, and a pipeline of pending approvals waiting for your review.',
+      preview: [
+        {icon:'💰', label:'Total approved revenue across all staff'},
+        {icon:'🚨', label:'Low stock and out-of-stock alerts'},
+        {icon:'📈', label:'Sales trend over 6 months'},
+        {icon:'⏳', label:'Pending invoices needing approval'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Catalog & Inventory',
+      desc: 'Full product management — add new items, update stock, adjust pricing. Keep the catalog accurate for employees and accountants.',
+      preview: [
+        {icon:'➕', label:'Add products with name, price, stock'},
+        {icon:'✏', label:'Edit and update existing items'},
+        {icon:'📦', label:'Real-time stock tracking'},
+      ]
+    },
+    {
+      icon: '❖',
+      name: 'Quotations — Uphold & Manage',
+      desc: 'Exclusive access to manage formal quotations. Review, approve, and uphold customer quotation requests. A feature unique to your owner role.',
+      preview: [
+        {icon:'📄', label:'View all submitted quotations'},
+        {icon:'✅', label:'Approve quotations for print and delivery'},
+        {icon:'🖨', label:'Print formal quotation documents'},
+        {icon:'📋', label:'LPO reference and discount management'},
+      ]
+    },
+    {
+      icon: '◻',
+      name: 'Invoices — Approve & Review',
+      desc: 'Review all employee invoices and approve or reject them. Your approval triggers the accountant workflow for document generation.',
+      preview: [
+        {icon:'✦', label:'Approve invoices — triggers accountant queue'},
+        {icon:'❌', label:'Reject with notes sent to the employee'},
+        {icon:'📊', label:'Full invoice list — all employees'},
+      ]
+    },
+    {
+      icon: '⭐',
+      name: 'VIP Owner Services',
+      desc: 'Your account carries special owner-level privileges including quotation access and the ability to approve high-value transactions not available to employees.',
+      preview: [
+        {icon:'🔐', label:'Quotation management — owner-exclusive'},
+        {icon:'💎', label:'High-value invoice authority'},
+        {icon:'🛡', label:'Protected owner-level account access'},
+        {icon:'📋', label:'Full audit view of all transactions'},
+      ]
+    },
+  ],
+  admin: [
+    {
+      icon: '◈',
+      name: 'Home — System Overview',
+      desc: 'Full-system dashboard. Monitor all activity, revenue, pending approvals, and inventory health across the entire organization.',
+      preview: [
+        {icon:'💰', label:'System-wide revenue and invoice stats'},
+        {icon:'🚨', label:'Inventory and operational alerts'},
+        {icon:'📈', label:'Business performance trends'},
+        {icon:'👁', label:'All employees activity visible to you'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Full Management',
+      desc: 'Add, edit, remove, and import products in bulk. Manage the entire inventory catalog and keep stock levels accurate.',
+      preview: [
+        {icon:'➕', label:'Add products — name, price, stock'},
+        {icon:'📥', label:'Bulk import via Excel or manual entry'},
+        {icon:'🗑', label:'Remove discontinued items'},
+        {icon:'📦', label:'Live stock count management'},
+      ]
+    },
+    {
+      icon: '◍',
+      name: 'Users — Full Control',
+      desc: 'Create, edit, activate or deactivate user accounts. Assign roles, reset passwords, and manage the onboarding status of every team member.',
+      preview: [
+        {icon:'➕', label:'Add new users with role assignment'},
+        {icon:'✏', label:'Edit name, email, role, password'},
+        {icon:'🔒', label:'Activate / deactivate accounts'},
+        {icon:'🆕', label:'Reset new_user flag to trigger re-onboarding'},
+      ]
+    },
+    {
+      icon: '🔍',
+      name: 'Full Audit Access',
+      desc: 'As admin you have complete visibility across every user\'s activity — invoices, expenses, leads, and documents. Nothing is hidden from your view.',
+      preview: [
+        {icon:'📋', label:'Every invoice from every employee'},
+        {icon:'💸', label:'All expenditure records — full history'},
+        {icon:'👥', label:'Customer leads across all staff'},
+        {icon:'⚡', label:'Dev Tools — advanced system utilities'},
+      ]
+    },
+  ],
+  owner: [
+    {
+      icon: '◈',
+      name: 'Home — Owner Dashboard',
+      desc: 'Complete business overview — revenue, invoice pipeline, customer growth, and inventory alerts. Your executive command center.',
+      preview: [
+        {icon:'💰', label:'Total revenue from approved invoices'},
+        {icon:'📈', label:'Sales trend chart — 6 months'},
+        {icon:'⏳', label:'Pending invoices awaiting your approval'},
+        {icon:'🚨', label:'Inventory stock alerts'},
+      ]
+    },
+    {
+      icon: '▣',
+      name: 'Products — Inventory Control',
+      desc: 'View and manage the full product catalog. Monitor stock levels and update details as needed.',
+      preview: [
+        {icon:'📦', label:'Full product list with prices and stock'},
+        {icon:'⚠', label:'Low stock and out-of-stock indicators'},
+        {icon:'✏', label:'Edit product details'},
+      ]
+    },
+    {
+      icon: '◻',
+      name: 'Invoices — Review & Approve',
+      desc: 'All employee invoices come to you for approval. Approve or reject with a note, and the system automatically routes to the accountant.',
+      preview: [
+        {icon:'✦', label:'Approve — sends to accountant for processing'},
+        {icon:'❌', label:'Reject with note — employee gets notified'},
+        {icon:'📊', label:'Full invoice history for all staff'},
+      ]
+    },
+    {
+      icon: '✦',
+      name: 'Approvals — One-Click Workflow',
+      desc: 'Dedicated approvals panel showing all pending invoices across the business. Quick-approve or reject from a single focused view.',
+      preview: [
+        {icon:'⚡', label:'Batch-review pending invoices fast'},
+        {icon:'💬', label:'Add rejection reason for employee clarity'},
+        {icon:'📅', label:'Approval timestamp recorded automatically'},
+      ]
+    },
+  ],
+};
+
+function getOnboardingSteps(user) {
+  const email = (user.email||'').toLowerCase();
+  if(email === 'ram@mka.com') return ONBOARDING_STEPS.ram;
+  if(email === 'asha@mka.com') return ONBOARDING_STEPS.asha;
+  if(user.role === 'employee') return ONBOARDING_STEPS.employee;
+  if(user.role === 'accountant') return ONBOARDING_STEPS.accountant;
+  if(user.role === 'admin') return ONBOARDING_STEPS.admin;
+  return ONBOARDING_STEPS.owner;
+}
+
+function OnboardingFlow({user, onComplete}) {
+  const steps = getOnboardingSteps(user);
+  const [step, setStep] = useState(0);
+  const [completing, setCompleting] = useState(false);
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
+
+  function handleNext() {
+    if(isLast) {
+      finish();
+    } else {
+      setStep(s => s + 1);
+    }
+  }
+
+  function finish() {
+    if(completing) return;
+    setCompleting(true);
+    fetch('https://mkaerp-production.up.railway.app/users/'+user.id+'/complete-onboarding', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'}
+    })
+    .then(() => {
+      const updatedUser = {...user, new_user: false};
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      onComplete(updatedUser);
+    })
+    .catch(() => {
+      // Complete locally even if request fails
+      const updatedUser = {...user, new_user: false};
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      onComplete(updatedUser);
+    });
+  }
+
+  const getRoleLabel = () => {
+    const email = (user.email||'').toLowerCase();
+    if(email==='ram@mka.com') return 'Senior Owner';
+    if(email==='asha@mka.com') return 'Owner';
+    if(user.role==='admin') return 'Administrator';
+    return user.role.charAt(0).toUpperCase()+user.role.slice(1);
+  };
+
+  return React.createElement('div', {className:'onboard-overlay'},
+    React.createElement('div', {className:'onboard-card'},
+      // Header
+      React.createElement('div', null,
+        React.createElement('div', {className:'onboard-logo'}, '⚙ MKA ERP'),
+        React.createElement('div', {className:'onboard-subtitle'}, 'Welcome, '+user.name+' · '+getRoleLabel())
+      ),
+
+      // Progress dots
+      React.createElement('div', {className:'onboard-step-pill'},
+        steps.map((_, i) =>
+          React.createElement('div', {
+            key:i,
+            className:'onboard-dot'+(i===step?' active':i<step?' done':'')
+          })
+        )
+      ),
+
+      // Step content
+      React.createElement('div', null,
+        React.createElement('span', {className:'onboard-icon'}, current.icon),
+        React.createElement('div', {className:'onboard-feature-name'}, current.name),
+        React.createElement('div', {className:'onboard-feature-desc'}, current.desc),
+
+        // Screen preview
+        React.createElement('div', {className:'onboard-screen'},
+          React.createElement('div', {className:'onboard-screen-title'}, 'What you\'ll see'),
+          current.preview.map((row, i) =>
+            React.createElement('div', {key:i, className:'onboard-screen-row'},
+              React.createElement('span', {className:'onboard-screen-icon'}, row.icon),
+              React.createElement('span', null, row.label)
+            )
+          )
+        )
+      ),
+
+      // Actions
+      React.createElement('div', {className:'onboard-actions'},
+        React.createElement('div', null,
+          React.createElement('div', {className:'onboard-progress'}, (step+1)+' / '+steps.length),
+          React.createElement('button', {className:'onboard-skip', onClick:finish}, completing?'Saving…':'Skip tour')
+        ),
+        React.createElement('button', {
+          className:'onboard-next',
+          onClick:handleNext,
+          disabled:completing
+        }, completing ? 'Starting…' : isLast ? 'Get Started →' : 'Next →')
+      )
+    )
+  );
+}
+
 function App(){
   const [user,setUser]=useState(null);
+  const [showOnboarding,setShowOnboarding]=useState(false);
   const [active,setActive]=useState('dashboard');
 
   // 🔥 MAIN DATA STATE
@@ -3158,7 +3594,11 @@ function App(){
     const savedUser = localStorage.getItem("user");
     if(savedUser){
       try{
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        if(parsed.new_user === true || parsed.new_user === 'true') {
+          setShowOnboarding(true);
+        }
       }catch{
         localStorage.removeItem("user");
       }
@@ -3285,10 +3725,23 @@ function App(){
         localStorage.setItem("user", JSON.stringify(u));
         setUser(u);
         setActive('dashboard');
+        if(u.new_user === true || u.new_user === 'true') {
+          setShowOnboarding(true);
+        }
       },
       users:data.users || [],
       theme,
       setTheme
+    });
+
+  // 🎓 ONBOARDING
+  if(showOnboarding)
+    return React.createElement(OnboardingFlow, {
+      user,
+      onComplete: (updatedUser) => {
+        setUser(updatedUser);
+        setShowOnboarding(false);
+      }
     });
 
   const titles={
