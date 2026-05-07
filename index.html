@@ -1580,6 +1580,7 @@ function getAllPagesForUser(user){
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
   if(isRam) return [
@@ -3765,11 +3766,12 @@ function logAction(user, category, action, meta) {
 }
 
 /* ── AUDIT LOG PAGE ── */
-const AUDIT_CATEGORIES = ['All','login','logout','invoice','approval','rejection','customer','product','expense','quotation','delivery','user','system'];
+const AUDIT_CATEGORIES = ['','login','logout','invoice','approval','rejection','customer','product','expense','quotation','delivery','user','system'];
 
 function AuditLogPage({data}) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [filterUser, setFilterUser] = useState('');
   const [filterCat, setFilterCat] = useState('');
   const [search, setSearch] = useState('');
@@ -3777,17 +3779,28 @@ function AuditLogPage({data}) {
 
   useEffect(() => {
     setLoading(true);
+    setFetchError(null);
     fetch(BASE_URL + '/audit-log')
-      .then(r => r.json())
-      .then(rows => { setLogs(rows || []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(r => {
+        if (!r.ok) throw new Error('Server returned ' + r.status);
+        return r.json();
+      })
+      .then(rows => {
+        setLogs(Array.isArray(rows) ? rows : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Audit log fetch error:', err);
+        setFetchError(err.message || 'Failed to load audit log');
+        setLoading(false);
+      });
   }, []);
 
   const allUsers = [...new Set(logs.map(l => l.user_name).filter(Boolean))].sort();
 
   const filtered = logs.filter(l => {
     if(filterUser && l.user_name !== filterUser) return false;
-    if(filterCat && filterCat !== 'All' && l.category !== filterCat) return false;
+    if(filterCat && l.category !== filterCat) return false;
     if(search) {
       const q = search.toLowerCase();
       if(!(l.action||'').toLowerCase().includes(q) &&
@@ -3825,7 +3838,7 @@ function AuditLogPage({data}) {
         allUsers.map(u => React.createElement('option',{key:u,value:u},u))
       ),
       React.createElement('select', {value:filterCat, onChange:e=>setFilterCat(e.target.value), style:{flex:'1 1 130px',maxWidth:170}},
-        AUDIT_CATEGORIES.map(c => React.createElement('option',{key:c,value:c===''?'':c}, c==='All'?'All Categories': c.charAt(0).toUpperCase()+c.slice(1)))
+        AUDIT_CATEGORIES.map(c => React.createElement('option',{key:c||'all',value:c}, c===''?'All Categories': c.charAt(0).toUpperCase()+c.slice(1)))
       ),
       hasFilters && React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setFilterUser('');setFilterCat('');setSearch('');}}, '✕ Clear'),
       React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:downloadCSV,title:'Download CSV'},'↓ Export')
@@ -3840,7 +3853,9 @@ function AuditLogPage({data}) {
     React.createElement('div', {className:'card', style:{padding:0,overflow:'hidden',marginTop:10}},
       loading
         ? React.createElement('div',{className:'empty'},'Loading audit log…')
-        : filtered.length === 0
+        : fetchError
+          ? React.createElement('div',{className:'empty',style:{color:'var(--red)'}}, '⚠ ' + fetchError)
+          : filtered.length === 0
           ? React.createElement('div',{className:'empty'},'No events found')
           : React.createElement('div', {className:'tbl-scroll'},
 
@@ -3885,11 +3900,15 @@ function AuditLogPage({data}) {
           ['Time',     selected.time_label],
           ['Date',     selected.date_label],
           ['Category', (selected.category||'system').charAt(0).toUpperCase()+(selected.category||'system').slice(1)],
-          ...(selected.meta ? Object.entries(
-              typeof selected.meta === 'string'
-                ? (() => { try { return JSON.parse(selected.meta); } catch(e) { return {Note: selected.meta}; } })()
-                : selected.meta
-            ).map(([k,v]) => [k.charAt(0).toUpperCase()+k.slice(1), String(v)]) : [])
+          ...(selected.meta ? (() => {
+              try {
+                const parsed = typeof selected.meta === 'string' ? JSON.parse(selected.meta) : selected.meta;
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                  return Object.entries(parsed).map(([k,v]) => [k.charAt(0).toUpperCase()+k.slice(1), String(v)]);
+                }
+                return [];
+              } catch(e) { return []; }
+            })() : [])
         ].map(([label, val]) =>
           React.createElement('div', {key:label, className:'audit-detail-row'},
             React.createElement('span', {className:'audit-detail-label'}, label),
