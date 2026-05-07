@@ -703,6 +703,51 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .onboard-next{background:var(--text);color:var(--bg);border:none;padding:10px 28px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
 .onboard-next:hover{opacity:.85}
 @media(max-width:480px){.onboard-card{padding:24px 18px}}
+
+/* ── SETUP LOADER ── */
+@keyframes setup-fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes setup-fadeout{from{opacity:1}to{opacity:0}}
+@keyframes bar-fill{from{width:0%}to{width:100%}}
+@keyframes dot-pulse{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+@keyframes app-reveal{from{opacity:0;transform:scale(1.008)}to{opacity:1;transform:scale(1)}}
+
+.setup-screen{
+  position:fixed;inset:0;z-index:700;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;
+  animation:setup-fadein .35s ease both;
+}
+.setup-screen.fading-out{
+  animation:setup-fadeout .55s ease forwards;
+  pointer-events:none;
+}
+.setup-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;animation:setup-fadein .4s .1s ease both;opacity:0}
+.setup-logo-icon{font-size:22px}
+.setup-logo-text{font-size:16px;font-weight:700;color:var(--text)}
+.setup-greeting{font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:48px;animation:setup-fadein .4s .2s ease both;opacity:0}
+.setup-steps-list{display:flex;flex-direction:column;gap:12px;width:300px;margin-bottom:40px}
+.setup-step-row{display:flex;align-items:center;gap:12px;animation:setup-fadein .35s ease both;opacity:0}
+.setup-step-row:nth-child(1){animation-delay:.3s}
+.setup-step-row:nth-child(2){animation-delay:.7s}
+.setup-step-row:nth-child(3){animation-delay:1.1s}
+.setup-step-row:nth-child(4){animation-delay:1.5s}
+.setup-step-icon{width:30px;height:30px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;transition:background .3s,border-color .3s}
+.setup-step-icon.done{background:var(--green-bg);border-color:rgba(61,186,120,.35)}
+.setup-step-label{font-size:13px;color:var(--text2);flex:1;transition:color .3s}
+.setup-step-label.done{color:var(--text)}
+.setup-step-check{font-size:13px;color:var(--green);opacity:0;transition:opacity .3s;font-weight:700}
+.setup-step-check.show{opacity:1}
+.setup-bar-wrap{width:300px;height:3px;background:var(--bg3);border-radius:10px;overflow:hidden;animation:setup-fadein .4s .25s ease both;opacity:0}
+.setup-bar-fill{height:100%;background:var(--text);border-radius:10px;width:0%;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.setup-dots{display:flex;gap:5px;margin-top:16px;animation:setup-fadein .4s .3s ease both;opacity:0}
+.setup-dot{width:5px;height:5px;border-radius:50%;background:var(--text3);animation:dot-pulse 1.4s infinite ease-in-out}
+.setup-dot:nth-child(1){animation-delay:0s}
+.setup-dot:nth-child(2){animation-delay:.2s}
+.setup-dot:nth-child(3){animation-delay:.4s}
+
+/* ── HOME FADE-IN ── */
+.app-fadein{animation:app-reveal .6s cubic-bezier(.4,0,.2,1) both}
 .exp-filter-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}
 .exp-filter-bar input,.exp-filter-bar select{width:auto;flex:1;min-width:120px;max-width:200px}
 .exp-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
@@ -3468,10 +3513,81 @@ function getOnboardingSteps(user) {
   return ONBOARDING_STEPS.owner;
 }
 
+/* ── SETUP LOADER COMPONENT ── */
+function SetupLoader({user, onDone}) {
+  const [progress, setProgress] = useState(0);
+  const [doneSteps, setDoneSteps] = useState([]);
+  const [fadingOut, setFadingOut] = useState(false);
+
+  const getRoleLabel = () => {
+    const email = (user.email||'').toLowerCase();
+    if(email==='ram@mka.com') return 'Senior Owner';
+    if(email==='asha@mka.com') return 'Owner';
+    if(user.role==='admin') return 'Administrator';
+    return user.role.charAt(0).toUpperCase()+user.role.slice(1);
+  };
+
+  const STEPS = [
+    {icon:'◈', label:'Loading your dashboard'},
+    {icon:'▣', label:'Syncing product catalog'},
+    {icon:'◻', label:'Preparing your workspace'},
+    {icon:'✦', label:'Almost ready'},
+  ];
+
+  useEffect(() => {
+    // Step reveals: 0.3s, 0.7s, 1.1s, 1.5s (match CSS delays)
+    // Progress bar fills over ~2.2s then fades out
+    const stepTimings = [600, 1000, 1400, 1800];
+    const timers = stepTimings.map((delay, i) =>
+      setTimeout(() => {
+        setDoneSteps(prev => [...prev, i]);
+        setProgress(((i + 1) / STEPS.length) * 100);
+      }, delay)
+    );
+
+    // Start fade-out at 2.3s, call onDone at 2.85s
+    const fadeTimer = setTimeout(() => setFadingOut(true), 2300);
+    const doneTimer = setTimeout(() => onDone(), 2850);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(fadeTimer);
+      clearTimeout(doneTimer);
+    };
+  }, []);
+
+  return React.createElement('div', {className: 'setup-screen' + (fadingOut ? ' fading-out' : '')},
+    React.createElement('div', {className:'setup-logo-row'},
+      React.createElement('span', {className:'setup-logo-icon'}, '⚙'),
+      React.createElement('span', {className:'setup-logo-text'}, 'MKA ERP')
+    ),
+    React.createElement('div', {className:'setup-greeting'},
+      'Setting up for ' + user.name + ' · ' + getRoleLabel()
+    ),
+    React.createElement('div', {className:'setup-steps-list'},
+      STEPS.map((s, i) => {
+        const done = doneSteps.includes(i);
+        return React.createElement('div', {key:i, className:'setup-step-row'},
+          React.createElement('div', {className:'setup-step-icon' + (done ? ' done' : '')}, s.icon),
+          React.createElement('span', {className:'setup-step-label' + (done ? ' done' : '')}, s.label),
+          React.createElement('span', {className:'setup-step-check' + (done ? ' show' : '')}, '✓')
+        );
+      })
+    ),
+    React.createElement('div', {className:'setup-bar-wrap'},
+      React.createElement('div', {className:'setup-bar-fill', style:{width: progress + '%'}})
+    ),
+    React.createElement('div', {className:'setup-dots'},
+      [0,1,2].map(i => React.createElement('div', {key:i, className:'setup-dot'}))
+    )
+  );
+}
+
 function OnboardingFlow({user, onComplete}) {
   const steps = getOnboardingSteps(user);
   const [step, setStep] = useState(0);
   const [completing, setCompleting] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
   const current = steps[step];
   const isLast = step === steps.length - 1;
 
@@ -3486,21 +3602,15 @@ function OnboardingFlow({user, onComplete}) {
   function finish() {
     if(completing) return;
     setCompleting(true);
+    // Fire backend call immediately (non-blocking for UX)
+    const updatedUser = {...user, new_user: false};
+    localStorage.setItem('user', JSON.stringify(updatedUser));
     fetch('https://mkaerp-production.up.railway.app/users/'+user.id+'/complete-onboarding', {
       method: 'POST',
       headers: {'Content-Type':'application/json'}
-    })
-    .then(() => {
-      const updatedUser = {...user, new_user: false};
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      onComplete(updatedUser);
-    })
-    .catch(() => {
-      // Complete locally even if request fails
-      const updatedUser = {...user, new_user: false};
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      onComplete(updatedUser);
-    });
+    }).catch(() => {});
+    // Show the loader — it will call onComplete when its animation finishes
+    setShowLoader(true);
   }
 
   const getRoleLabel = () => {
@@ -3510,6 +3620,13 @@ function OnboardingFlow({user, onComplete}) {
     if(user.role==='admin') return 'Administrator';
     return user.role.charAt(0).toUpperCase()+user.role.slice(1);
   };
+
+  // Show loader screen once finish() is called
+  if(showLoader)
+    return React.createElement(SetupLoader, {
+      user,
+      onDone: () => onComplete({...user, new_user: false})
+    });
 
   return React.createElement('div', {className:'onboard-overlay'},
     React.createElement('div', {className:'onboard-card'},
@@ -3566,6 +3683,7 @@ function OnboardingFlow({user, onComplete}) {
 function App(){
   const [user,setUser]=useState(null);
   const [showOnboarding,setShowOnboarding]=useState(false);
+  const [appReady,setAppReady]=useState(false);
   const [active,setActive]=useState('dashboard');
 
   // 🔥 MAIN DATA STATE
@@ -3741,6 +3859,7 @@ function App(){
       onComplete: (updatedUser) => {
         setUser(updatedUser);
         setShowOnboarding(false);
+        setAppReady(true);
       }
     });
 
@@ -3791,7 +3910,7 @@ function App(){
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
-  return React.createElement('div',{className:'app'},
+  return React.createElement('div',{className:'app'+(appReady?' app-fadein':'')},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
 
     React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme}),
