@@ -451,6 +451,84 @@ app.post('/audit-log', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// ═══════════════════════════════════════════════════════════════
+//  MAIL ALERTS
+// ═══════════════════════════════════════════════════════════════
+const nodemailer = require('nodemailer');
+ 
+// ─── In-memory spam guard: track last send time per sender ───
+const lastDigestSent = {}; // { adminEmail: timestamp }
+const DIGEST_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between sends
+ 
+// POST /send-approval-digest
+// Body: { html, invoiceCount, critCount, highCount, sentBy, sentAt }
+// Access: admin only (enforced in frontend; double-checked here by audit log)
+app.post('/send-approval-digest', async (req, res) => {
+  try {
+    const { html, invoiceCount, critCount, highCount, sentBy, sentAt } = req.body;
+ 
+    if (!html || !invoiceCount) {
+      return res.status(400).json({ error: 'html and invoiceCount are required' });
+    }
+ 
+    // ── Spam guard ──────────────────────────────────────────
+    const senderKey = sentBy || 'unknown';
+    const now = Date.now();
+    const last = lastDigestSent[senderKey] || 0;
+    if (now - last < DIGEST_COOLDOWN_MS) {
+      const waitMin = Math.ceil((DIGEST_COOLDOWN_MS - (now - last)) / 60000);
+      return res.status(429).json({ error: `Digest already sent recently. Try again in ${waitMin} minute(s).` });
+    }
+ 
+    // ── Send via Nodemailer ──────────────────────────────────
+    const transporter = nodemailer.createTransport({
+      host:   process.env.SMTP_HOST || 'smtp.gmail.com',
+      port:   parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+ 
+    const ownerEmail = process.env.OWNER_EMAIL;
+    if (!ownerEmail) {
+      return res.status(500).json({ error: 'OWNER_EMAIL environment variable not set on server' });
+    }
+ 
+    const subject = `[MKA ERP] ${invoiceCount} Invoice${invoiceCount !== 1 ? 's' : ''} Awaiting Approval`
+      + (critCount > 0 ? ` — ${critCount} Critical` : '');
+ 
+    await transporter.sendMail({
+      from: `"MKA ERP System" <${process.env.SMTP_USER}>`,
+      to:   ownerEmail,
+      subject,
+      html,
+    });
+ 
+    // ── Update spam guard & log ──────────────────────────────
+    lastDigestSent[senderKey] = now;
+ 
+    // Persist to audit log
+    await pool.query(
+      `INSERT INTO audit_log (user_name, category, action, meta, time_label, date_label, ts)
+       VALUES ($1, 'approval', $2, $3, $4, $5, $6)`,
+      [
+        sentBy || 'admin',
+        `Approval digest emailed to owner — ${invoiceCount} pending (${critCount} critical, ${highCount} high)`,
+        JSON.stringify({ invoiceCount, critCount, highCount, to: ownerEmail }),
+        new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+        new Date().toLocaleDateString('en-GB'),
+        new Date().toISOString(),
+      ]
+    );
+ 
+    ok(res, { sent: true, to: ownerEmail, invoiceCount });
+  } catch (e) {
+    fail(res, e);
+  }
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  START
