@@ -349,7 +349,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   .mob-icon{font-size:18px}
   .mob-label{font-size:9px}
 }
-.doc { max-width:850px;margin:auto;font-family:'Sora';color:#111 }
+.doc { max-width:100%;margin:auto;font-family:'Sora';color:#111 }
 .doc-top { display:flex;justify-content:space-between;font-size:12px }
 .doc-title { text-align:right;font-size:28px;font-weight:700;color:#2b5d86;margin:20px 0 }
 .line { height:3px;background:#2b5d86;margin-bottom:20px }
@@ -373,11 +373,27 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   }
 }
 .doc {
-  max-width: 850px;
+  max-width: 100%;
   margin: auto;
   font-family: 'Sora', sans-serif;
   color: #111;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 1025px; /* A4 at 96dpi (794px) minus padding (32px top + 32px bottom) × scale = ~1025px content height */
+  box-sizing: border-box;
+}
+
+.doc-content {
+  flex: 1; /* pushes footer to the bottom */
+}
+
+.footer-img-box {
+  margin-top: auto;
+  padding-top: 16px;
+  width: 50%;
+  align-items: center;
+  justify-content: center;
 }
 
 /* HEADER */
@@ -412,7 +428,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 }
 
 .doc-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   color: #2b5d86;
   margin-top: 10px;
@@ -430,8 +446,10 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   border: 1px solid #ccc;
   display: flex;
   justify-content: space-between;
-  padding: 15px;
+  align-items: flex-start;
+  padding: 12px 15px;
   margin-bottom: 20px;
+  gap: 16px;
 }
 
 .label {
@@ -442,6 +460,8 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 
 .right-box {
   text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* TABLE */
@@ -507,6 +527,14 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .footer-img img {
   max-width: 100%;
   height: auto;
+  justify-content: center;
+}
+
+.footer-img-box img {
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  justify-content: center;
 }
 .footer-box {
   margin-top: auto;              /* 🔥 pushes to bottom naturally */
@@ -514,6 +542,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   background: #eef5fb;
   padding: 10px 14px;
   font-size: 8.5px;              /* 🔻 tighter like real invoices */
+  justify-content: center;
 }
 
 /* Company */
@@ -522,6 +551,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   font-weight: 700;
   font-size: 10px;
   margin-bottom: 4px;
+  justify-content: center;
 }
 
 /* Details */
@@ -816,11 +846,59 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const {useState,useEffect,useRef}=React;
 // ── COMPANY CONSTANTS (VATIN & VAT are fixed for all documents) ──
 const COMPANY_VATIN = 'OM1100144996';   // ← VATIN
 const COMPANY_VAT_NO = 'OM1100037509';  // ← VAT No
+
+// ── FOOTER IMAGE CONFIG (editable via Settings → Document Footer) ──
+let FOOTER_IMG_WIDTH  = 100;  // % of page width (1–100)
+let FOOTER_IMG_HEIGHT = 90;   // max height in px
+
+// Footer settings panel component — renders a small popover with sliders
+function FooterSettingsBtn() {
+  const [open, setOpen] = React.useState(false);
+  const [w, setW] = React.useState(FOOTER_IMG_WIDTH);
+  const [h, setH] = React.useState(FOOTER_IMG_HEIGHT);
+  const apply = () => { FOOTER_IMG_WIDTH = w; FOOTER_IMG_HEIGHT = h; setOpen(false); };
+  return React.createElement('div', { style: { position: 'relative', display: 'inline-block' } },
+    React.createElement('button', {
+      className: 'btn btn-ghost btn-sm',
+      title: 'Footer image settings',
+      onClick: () => setOpen(o => !o),
+      style: { fontSize: 16, padding: '4px 8px' }
+    }, '⚙'),
+    open && React.createElement('div', {
+      style: {
+        position: 'absolute', bottom: '110%', right: 0, zIndex: 999,
+        background: 'var(--bg2)', border: '1px solid var(--border2)',
+        borderRadius: 10, padding: '14px 16px', width: 220,
+        boxShadow: '0 4px 20px rgba(0,0,0,.3)'
+      }
+    },
+      React.createElement('div', { style: { fontSize: 12, fontWeight: 700, marginBottom: 12, color: 'var(--text)' } }, '📐 Footer Image Size'),
+      React.createElement('label', { style: { fontSize: 11, color: 'var(--text3)' } }, `Width: ${w}%`),
+      React.createElement('input', {
+        type: 'range', min: 20, max: 100, value: w,
+        onChange: e => setW(Number(e.target.value)),
+        style: { width: '100%', margin: '4px 0 10px' }
+      }),
+      React.createElement('label', { style: { fontSize: 11, color: 'var(--text3)' } }, `Max Height: ${h}px`),
+      React.createElement('input', {
+        type: 'range', min: 40, max: 200, value: h,
+        onChange: e => setH(Number(e.target.value)),
+        style: { width: '100%', margin: '4px 0 12px' }
+      }),
+      React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement('button', { className: 'btn btn-primary btn-sm', style: { flex: 1 }, onClick: apply }, 'Apply'),
+        React.createElement('button', { className: 'btn btn-ghost btn-sm', style: { flex: 1 }, onClick: () => setOpen(false) }, 'Cancel')
+      )
+    )
+  );
+}
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
 const LEADS_INIT = [];
@@ -961,50 +1039,8 @@ function generateDocumentHTML(data, type="quotation") {
       </div>
     </div>
 
-    <div class="footer-box">
-
-      <!-- COMPANY -->
-      <div class="footer-company">
-        MUSCAT KITCHEN APPLIANCES & EQUIPMENT TRADING LLC
-      </div>
-
-      <!-- DETAILS -->
-      <div class="footer-details">
-        P.O.Box: 1, PC 112, Muscat, Sultanate Of Oman, CR NO: 1380163<br>
-        Phone: +968 9598 0180 | Email: services@muscatkitchenappliances.com | www.muscatkitchenappliances.com<br>
-        Bank Muscat — Account No: 0442 05953211 0018
-      </div>
-
-      <!-- TERMS -->
-      <div class="footer-terms-row">
-
-        <!-- ENGLISH -->
-        <div class="footer-terms en">
-          <div class="terms-title">Terms & Conditions</div>
-          <ul>
-            <li>15 days exchange if goods are in original condition</li>
-            <li>1 year warranty against manufacturing defects only</li>
-            <li>Warranty void in case of misuse or third-party repair</li>
-            <li>Company not responsible for manual document errors</li>
-          </ul>
-        </div>
-
-        <!-- ARABIC -->
-        <div class="footer-terms ar">
-          <div class="terms-title">الشروط والأحكام</div>
-          <ul>
-            <li>١٥٠ أيام الصرف إذا البضائع وتعبئتها في ظروف الأصلية</li>
-            <li>١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية</li>
-            <li>ضمان سنة ضد عيوب التصنيع فقط</li>
-            <li>يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث</li>
-            <li>الشركة غير مسؤولة عن الأخطاء اليدوية في المستند</li>
-          </ul>
-        </div>
-
-      </div>
-
-    </div>
-
+    <div class="footer-img-box">
+      <img src="https://raw.githubusercontent.com/Arya25program/MKAERP/main/footer.png" style="width:${FOOTER_IMG_WIDTH}%;max-height:${FOOTER_IMG_HEIGHT}px;object-fit:contain;object-position:center;display:block;">
     </div>
 
   </div>
@@ -1101,41 +1137,8 @@ function generateDeliveryOrderHTML(data) {
 
     </div>
 
-    <div class="footer-box">
-
-      <div class="footer-company">
-        MUSCAT KITCHEN APPLIANCES & EQUIPMENT TRADING LLC
-      </div>
-
-      <div class="footer-details">
-        P.O.Box: 1, PC 112, Muscat, Sultanate Of Oman, CR NO: 1380163<br>
-        Phone: +968 9598 0180 | Email: services@muscatkitchenappliances.com | www.muscatkitchenappliances.com<br>
-        Bank Muscat — Account No: 0442 05953211 0018
-      </div>
-
-      <div class="footer-terms-row">
-        <div class="footer-terms en">
-          <div class="terms-title">Terms & Conditions</div>
-          <ul>
-            <li>15 days exchange if goods are in original condition</li>
-            <li>1 year warranty against manufacturing defects only</li>
-            <li>Warranty void in case of misuse or third-party repair</li>
-            <li>Company not responsible for manual document errors</li>
-          </ul>
-        </div>
-        <div class="footer-terms ar">
-          <div class="terms-title">الشروط والأحكام</div>
-          <ul>
-            <li>١٥ يوم استبدال في حال بقاء المنتج بحالته الأصلية</li>
-            <li>ضمان سنة ضد عيوب التصنيع فقط</li>
-            <li>يسقط الضمان في حال سوء الاستخدام أو الإصلاح من طرف ثالث</li>
-            <li>الشركة غير مسؤولة عن الأخطاء اليدوية في المستند</li>
-          </ul>
-        </div>
-      </div>
-
-    </div>
-
+    <div class="footer-img-box">
+      <img src="https://raw.githubusercontent.com/Arya25program/MKAERP/main/footer.png" style="width:${FOOTER_IMG_WIDTH}%;max-height:${FOOTER_IMG_HEIGHT}px;object-fit:contain;object-position:center;display:block;">
     </div>
 
   </div>
@@ -1143,46 +1146,114 @@ function generateDeliveryOrderHTML(data) {
 }
 
 
+// Renders one HTML block into the open jsPDF doc starting at a given page.
+// Returns a promise that resolves when done.
+function renderBlockToPDF(jsdoc, htmlContent, isFirstPage) {
+  return new Promise((resolve) => {
+    const A4_W_MM = 210;
+    const A4_H_MM = 297;
+    const RENDER_W = 794; // A4 at 96dpi
+
+    const container = document.createElement('div');
+    container.style.cssText = [
+      'position:fixed',
+      'top:-99999px',
+      'left:-99999px',
+      'width:' + RENDER_W + 'px',
+      'background:#fff',
+      'font-family:Sora,sans-serif',
+      'font-size:13px',
+      'color:#111',
+      'box-sizing:border-box',
+      'padding:32px 40px',
+      'overflow:visible'
+    ].join(';');
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    // Wait for all images to load before capturing
+    const imgs = Array.from(container.querySelectorAll('img'));
+    const waitImgs = imgs.map(img => new Promise(r => {
+      if (img.complete && img.naturalWidth > 0) { r(); return; }
+      img.onload = r; img.onerror = r;
+    }));
+
+    Promise.all(waitImgs).then(() => {
+      html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        width: RENDER_W,
+        windowWidth: RENDER_W,
+        backgroundColor: '#ffffff'
+      }).then(canvas => {
+        document.body.removeChild(container);
+
+        // canvas is 2x scale, so actual px per A4 page height:
+        const scale = 2;
+        const pageHeightPx = Math.round((A4_H_MM / A4_W_MM) * RENDER_W * scale);
+        const totalPages = Math.ceil(canvas.height / pageHeightPx);
+
+        for (let p = 0; p < totalPages; p++) {
+          if (!isFirstPage || p > 0) jsdoc.addPage();
+
+          // Slice this page's strip out of the full canvas
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width  = canvas.width;
+          sliceCanvas.height = pageHeightPx;
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(canvas, 0, p * pageHeightPx, canvas.width, pageHeightPx, 0, 0, canvas.width, pageHeightPx);
+
+          const imgData = sliceCanvas.toDataURL('image/jpeg', 0.97);
+          jsdoc.addImage(imgData, 'JPEG', 0, 0, A4_W_MM, A4_H_MM);
+        }
+
+        resolve();
+      });
+    });
+  });
+}
+
+function exportToPDF(pages, filename) {
+  const { jsPDF } = window.jspdf;
+  const jsdoc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  pages.reduce((promise, html, i) => {
+    return promise.then(() => renderBlockToPDF(jsdoc, html, i === 0));
+  }, Promise.resolve()).then(() => {
+    jsdoc.save(filename);
+  });
+}
+
 function printWithImages(html) {
+  // Legacy fallback — kept for any direct callers
   const container = document.getElementById("print-area");
   container.innerHTML = html;
-
   const images = container.querySelectorAll("img");
   let loaded = 0;
-
-  if (images.length === 0) {
-    window.print();
-    return;
-  }
-
+  if (images.length === 0) { window.print(); return; }
   images.forEach(img => {
-    if (img.complete) {
-      loaded++;
-      if (loaded === images.length) window.print();
-    } else {
-      img.onload = () => {
-        loaded++;
-        if (loaded === images.length) window.print();
-      };
-      img.onerror = () => {
-        loaded++;
-        if (loaded === images.length) window.print();
-      };
+    if (img.complete) { loaded++; if (loaded === images.length) window.print(); }
+    else {
+      img.onload = () => { loaded++; if (loaded === images.length) window.print(); };
+      img.onerror = () => { loaded++; if (loaded === images.length) window.print(); };
     }
   });
 }
 
 function printInvoice(inv){
   const taxHtml = generateDocumentHTML(inv, "invoice");
-  const doHtml = generateDeliveryOrderHTML(inv);
-  // Wrap each in .print-doc, separated by .print-doc-break for reliable page break
-  const combined = `<div class="print-doc">${taxHtml}</div><div class="print-doc-break"></div><div class="print-doc">${doHtml}</div>`;
-  printWithImages(combined);
+  const doHtml  = generateDeliveryOrderHTML(inv);
+  const ref = inv.id || inv.customerRef || 'invoice';
+  exportToPDF([taxHtml, doHtml], `Invoice_${ref}.pdf`);
 }
 
 function printQuotation(q){
   const html = generateDocumentHTML(q, "quotation");
-  printWithImages(html);
+  const ref  = q.id || q.customerRef || 'quotation';
+  exportToPDF([html], `Quotation_${ref}.pdf`);
 }
 
 function Notif({msg,type,onClose}){
@@ -1356,6 +1427,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'approvals',icon:'✦',label:'Approvals'},
     {id:'products',icon:'▣',label:'Products'},
+    {id:'product-limits',icon:'⚠',label:'Product Limits'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
     {id:'users',icon:'◍',label:'Users'},
@@ -1375,6 +1447,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
       {id:'invoices',icon:'◻',label:'Invoices'},
       {id:'approvals',icon:'✦',label:'Approvals'},
       {id:'products',icon:'▣',label:'Products'},
+      {id:'product-limits',icon:'⚠',label:'Product Limits'},
       {id:'quotation',icon:'❖',label:'Quotation Uphold'},
       ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp. Approvals'}]:[]),
       ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Exp. Tracker'}]:[]),
@@ -1695,7 +1768,7 @@ function OwnerDashboard({data}){
   const pending=invoices.filter(i=>i.status==='pending').length;
   const months=['Jan','Feb','Mar','Apr','May','Jun'];
   const sd=[12,19,8,24,18,32],ld=[18,22,14,28,20,35],mx=Math.max(...sd,...ld);
-  const lowStockItems=(products||[]).filter(p=>p.stock>0&&p.stock<=10);
+  const lowStockItems=(products||[]).filter(p=>p.stock>0&&p.stock<=Number(p.reorderThreshold??10));
   const outOfStockItems=(products||[]).filter(p=>p.stock===0);
   const alertItems=[...outOfStockItems,...lowStockItems];
   return React.createElement('div',null,
@@ -1706,12 +1779,12 @@ function OwnerDashboard({data}){
       ),
       React.createElement('div',{style:{fontSize:12,color:'var(--red)',marginBottom:10,lineHeight:1.5}},
         outOfStockItems.length>0&&outOfStockItems.length+' product'+(outOfStockItems.length>1?'s are':' is')+' out of stock. ',
-        lowStockItems.length>0&&lowStockItems.length+' product'+(lowStockItems.length>1?'s are':' is')+' running low (≤10 units). Please reorder promptly.'
+        lowStockItems.length>0&&lowStockItems.length+' product'+(lowStockItems.length>1?'s are':' is')+' at or below reorder threshold. '
       ),
       alertItems.slice(0,6).map(p=>React.createElement('div',{key:p.id,style:{display:'inline-flex',alignItems:'center',gap:5,background:'var(--red)',color:'#fff',borderRadius:7,padding:'3px 9px',fontSize:11,marginRight:6,marginBottom:4}},
-        p.stock===0?'⛔ ':'⚠ ',p.name,' — ',p.stock===0?'OUT OF STOCK':p.stock+' left'
+        p.stock===0?'\u26d4 ':'\u26a0 ',p.name,' \u2014 ',p.stock===0?'OUT OF STOCK':p.stock+' left (limit: '+(p.reorderThreshold??10)+')'
       )),
-      alertItems.length>6&&React.createElement('span',{style:{fontSize:11,color:'var(--red)'}},'+' +(alertItems.length-6)+' more…')
+      alertItems.length>6&&React.createElement('span',{style:{fontSize:11,color:'var(--red)'}},'+' +(alertItems.length-6)+' more\u2026')
     ),
     React.createElement('div',{className:'metrics'},
       [{label:'Total Revenue',val:fmtCurrency(totalRev),change:'+12.4%',cc:'var(--green)'},
@@ -2025,6 +2098,10 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
   const [lpoModal,setLpoModal]=useState(null);
   const [lpoNo,setLpoNo]=useState('');
   const [lpoDate,setLpoDate]=useState('');
+  // Re-print confirmation state
+  const [reprintModal,setReprintModal]=useState(null);
+  const [reprintLpoNo,setReprintLpoNo]=useState('');
+  const [reprintLpoDate,setReprintLpoDate]=useState('');
 
   const openLpoModal=id=>{
     const inv=(data.documents||[]).find(d=>d.id===id);
@@ -2032,6 +2109,27 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
     setLpoNo(inv.lpoNo||'');
     setLpoDate(inv.lpoDate||'');
     setLpoModal(inv);
+  };
+
+  const openReprintModal=inv=>{
+    setReprintLpoNo(inv.lpoNo||'');
+    setReprintLpoDate(inv.lpoDate||'');
+    setReprintModal(inv);
+  };
+
+  // Helper: check stock against per-product thresholds after generation
+  const checkThresholds=(inv,products)=>{
+    const alerts=[];
+    inv.items.forEach(it=>{
+      const p=products.find(p=>p.id===it.productId||normalize(p.name)===normalize(it.name));
+      if(p){
+        const newStock=Math.max(0,p.stock-(parseInt(it.qty)||1));
+        const threshold=Number(p.reorderThreshold||10);
+        if(newStock===0) alerts.push(p.name+' is now OUT OF STOCK');
+        else if(newStock<=threshold) alerts.push(p.name+' is LOW — '+newStock+' left (threshold: '+threshold+')');
+      }
+    });
+    return alerts;
   };
 
   const generate=()=>{
@@ -2052,35 +2150,51 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
       });
       return{...d,documents,products};
     });
-    const lowAfter=[];
-    inv.items.forEach(it=>{
-      const p=data.products.find(p=>p.id===it.productId||normalize(p.name)===normalize(it.name));
-      if(p){
-        const newStock=Math.max(0,p.stock-(parseInt(it.qty)||1));
-        if(newStock===0)lowAfter.push(p.name+' is now OUT OF STOCK');
-        else if(newStock<=10)lowAfter.push(p.name+' is now LOW ('+newStock+' left)');
-      }
-    });
-    if(lowAfter.length){
-      setTimeout(()=>notify('⚠ Stock alert: '+lowAfter.join(' | '),'error'),600);
-    }
-    notify('Invoice generated — printing…','success');
+    const alerts=checkThresholds(inv,data.products);
+    if(alerts.length) setTimeout(()=>notify('\u26a0 Stock alert: '+alerts.join(' | '),'error'),600);
+
+    // Persist LPO + accountant_sent to DB
+    fetch(`https://mkaerp-production.up.railway.app/documents/${inv.id}/lpo`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lpo_no:lpoNo||'',lpo_date:lpoDate||null,accountant_sent:true})
+    }).catch(err=>console.error('LPO save failed:',err));
+
+    notify('Invoice generated \u2014 printing\u2026','success');
     setLpoModal(null);
     setTimeout(()=>printInvoice(updatedInv),400);
   };
+
+  const confirmReprint=()=>{
+    const inv=reprintModal;
+    if(!inv)return;
+    // Update LPO if changed during re-print confirmation
+    const updatedInv={...inv,lpoNo:reprintLpoNo||inv.lpoNo,lpoDate:reprintLpoDate||inv.lpoDate};
+    if(reprintLpoNo!==inv.lpoNo||reprintLpoDate!==inv.lpoDate){
+      fetch(`https://mkaerp-production.up.railway.app/documents/${inv.id}/lpo`,{
+        method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({lpo_no:reprintLpoNo,lpo_date:reprintLpoDate||null,accountant_sent:true})
+      }).catch(err=>console.error('LPO update failed:',err));
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===inv.id?{...doc,lpoNo:reprintLpoNo,lpoDate:reprintLpoDate}:doc)}));
+    }
+    logAction(user,'invoice',user.name+' reprinted invoice '+inv.id+' for '+inv.customerName,{invoice:inv.id,customer:inv.customerName});
+    setReprintModal(null);
+    notify('Reprinting\u2026','success');
+    setTimeout(()=>printInvoice(updatedInv),300);
+  };
+
   return React.createElement('div',null,
     approved.length===0?React.createElement('div',{className:'card'},React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12}}))):
     React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:14}},
       approved.map(inv=>React.createElement('div',{key:inv.id,className:'card'},
         React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:12}},
           React.createElement('div',null,
-            React.createElement('div',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id+(inv.fromQuotation?' · from quotation':'')),
+            React.createElement('div',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id+(inv.fromQuotation?' \u00b7 from quotation':'')),
             React.createElement('div',{style:{fontSize:14,fontWeight:600,marginTop:2}},inv.customerName),
-            React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},inv.customerPhone+(inv.customerAddress?' · '+inv.customerAddress:''))
+            React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},inv.customerPhone+(inv.customerAddress?' \u00b7 '+inv.customerAddress:''))
           ),
           React.createElement('div',{style:{textAlign:'right'}},
             React.createElement('div',{style:{fontSize:17,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(inv.total)),
-            React.createElement('div',{className:'approval-banner',style:{marginTop:8}},'✓ '+inv.approvedBy+(inv.approvedAt?' · '+inv.approvedAt:''))
+            React.createElement('div',{className:'approval-banner',style:{marginTop:8}},'\u2713 '+inv.approvedBy+(inv.approvedAt?' \u00b7 '+inv.approvedAt:''))
           )
         ),
         React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',marginBottom:12}},
@@ -2091,19 +2205,32 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
             React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text2)'}},fmtCurrency(it.price*it.qty))
           ))
         ),
-        React.createElement('div',{style:{display:'flex',justifyContent:'flex-end'}},
+        // LPO badge if set
+        inv.lpoNo&&React.createElement('div',{style:{display:'flex',gap:8,marginBottom:10,fontSize:11,color:'var(--text2)'}},
+          React.createElement('span',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:6,padding:'2px 8px',fontFamily:"'JetBrains Mono',monospace",fontSize:10}},'LPO: '+inv.lpoNo),
+          inv.lpoDate&&React.createElement('span',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:6,padding:'2px 8px',fontSize:10}},inv.lpoDate)
+        ),
+        React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',gap:8,alignItems:'center'}},
           inv.accountantSent
-            ?React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center'}},
-                React.createElement('span',{className:'badge approved'},'✓ Generated'),
-                React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>printInvoice(inv)},'Print Again')
+            ?React.createElement(React.Fragment,null,
+                React.createElement('span',{className:'badge approved'},'\u2713 Generated'),
+                React.createElement(FooterSettingsBtn),
+                // Re-print opens confirmation modal instead of printing directly
+                React.createElement('button',{
+                  className:'btn btn-ghost btn-sm',
+                  title:'Requires re-confirmation before reprinting',
+                  onClick:()=>openReprintModal(inv)
+                },'\ud83d\udd04 Reprint')
               )
             :canGen&&React.createElement('button',{className:'btn btn-amber',onClick:()=>openLpoModal(inv.id)},'Generate & Print')
         )
       ))
     ),
+
+  // ── First-time Generate modal ──
   lpoModal&&React.createElement('div',{className:'modal-overlay'},
     React.createElement('div',{className:'modal',style:{maxWidth:460}},
-      React.createElement('div',{className:'modal-title'},'Enter LPO Details — '+lpoModal.id),
+      React.createElement('div',{className:'modal-title'},'Enter LPO Details \u2014 '+lpoModal.id),
       React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16}},'Enter the LPO number and date from the customer purchase order before generating the invoice.'),
       React.createElement('div',{className:'form-grid'},
         React.createElement('div',{className:'form-row'},
@@ -2119,7 +2246,35 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
       ),
       React.createElement('div',{className:'modal-actions'},
         React.createElement('button',{className:'btn btn-ghost',onClick:()=>setLpoModal(null)},'Cancel'),
-        React.createElement('button',{className:'btn btn-amber',onClick:generate},'Generate & Print →')
+        React.createElement('button',{className:'btn btn-amber',onClick:generate},'Generate & Print \u2192')
+      )
+    )
+  ),
+
+  // ── Re-print confirmation modal ──
+  reprintModal&&React.createElement('div',{className:'modal-overlay'},
+    React.createElement('div',{className:'modal',style:{maxWidth:460}},
+      React.createElement('div',{className:'modal-title'},'\ud83d\udd04 Confirm Reprint \u2014 '+reprintModal.id),
+      React.createElement('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.25)',borderRadius:10,padding:'10px 14px',fontSize:12,color:'var(--amber)',marginBottom:16}},
+        '\u26a0 This invoice was already generated and sent. Reprinting will produce a duplicate document. Verify LPO details are correct before proceeding.'
+      ),
+      React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:4}},'Customer: ',React.createElement('b',null,reprintModal.customerName)),
+      React.createElement('div',{style:{fontSize:12,color:'var(--text2)',marginBottom:16}},'Total: ',React.createElement('b',null,fmtCurrency(reprintModal.total))),
+      React.createElement('div',{className:'form-grid'},
+        React.createElement('div',{className:'form-row'},
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'LPO No (verify or update)'),
+            React.createElement('input',{value:reprintLpoNo,onChange:e=>setReprintLpoNo(e.target.value),placeholder:'LPO No',autoFocus:true})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'LPO Date'),
+            React.createElement('input',{type:'date',value:reprintLpoDate,onChange:e=>setReprintLpoDate(e.target.value)})
+          )
+        )
+      ),
+      React.createElement('div',{className:'modal-actions'},
+        React.createElement('button',{className:'btn btn-ghost',onClick:()=>setReprintModal(null)},'Cancel'),
+        React.createElement('button',{className:'btn btn-danger',onClick:confirmReprint},'\ud83d\udd04 Confirm Reprint')
       )
     )
   )
@@ -2966,6 +3121,7 @@ function FormalQuotations({user,data,setData,notify}){
       ),
       React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',gap:8,marginTop:16}},
         React.createElement('button',{className:'btn btn-ghost',onClick:()=>{setForm({...viewQ,products:viewQ.items||viewQ.products||[]});setMkaRef(viewQ.mkaRef||'');setDiscountPct(viewQ.discountPct||'');setDiscountTitle(viewQ.discountTitle||'');setEditQ(viewQ);setViewQ(null);setShowForm(true)}},'Edit'),
+        React.createElement(FooterSettingsBtn),
         React.createElement('button',{className:'btn btn-primary',onClick:()=>printQuotation(viewQ)},'Print / Export')
       )
     )
@@ -3765,6 +3921,158 @@ function logAction(user, category, action, meta) {
   }).catch(()=>{});
 }
 
+/* ── PRODUCT LIMITS PAGE ──────────────────────────────────────
+   Accessible to: owner & admin roles only.
+   Lets them set a per-product reorder threshold. When stock
+   falls to or below that number after an invoice is generated,
+   an alert fires. Items are highlighted here when breached.
+   ──────────────────────────────────────────────────────────── */
+function ProductLimitsPage({user,data,setData,notify}){
+  const R=React.createElement;
+  const products=data.products||[];
+  const BASE='https://mkaerp-production.up.railway.app';
+
+  const [edits,setEdits]=useState({});
+  const [saving,setSaving]=useState({});
+  const [search,setSearch]=useState('');
+  const [filter,setFilter]=useState('all');
+
+  const setEdit=(id,val)=>setEdits(e=>({...e,[id]:val}));
+
+  const saveThreshold=async(p)=>{
+    const val=parseInt(edits[p.id]);
+    if(isNaN(val)||val<0){notify('Enter a valid number (0 or above)','error');return;}
+    setSaving(s=>({...s,[p.id]:true}));
+    try{
+      const res=await fetch(`${BASE}/products/${p.id}/threshold`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reorder_threshold:val})
+      });
+      if(!res.ok)throw new Error(await res.text());
+      setData(d=>({...d,products:d.products.map(pr=>pr.id===p.id?{...pr,reorderThreshold:val}:pr)}));
+      setEdits(e=>{const n={...e};delete n[p.id];return n;});
+      logAction(user,'product',user.name+' set reorder threshold for '+p.name+' to '+val,{product:p.name,threshold:val});
+      notify(p.name+' threshold saved \u2014 alert fires at \u2264'+val,'success');
+    }catch(e){
+      notify('Save failed: '+e.message,'error');
+    }
+    setSaving(s=>({...s,[p.id]:false}));
+  };
+
+  const filtered=products.filter(p=>{
+    const matchSearch=!search||p.name.toLowerCase().includes(search.toLowerCase())||(p.category||'').toLowerCase().includes(search.toLowerCase());
+    const thresh=Number(p.reorderThreshold??10);
+    const breached=p.stock<=thresh;
+    if(filter==='breached'&&!breached)return false;
+    if(filter==='ok'&&breached)return false;
+    return matchSearch;
+  });
+
+  const breachedCount=products.filter(p=>p.stock<=Number(p.reorderThreshold??10)).length;
+  const noThresholdCount=products.filter(p=>p.reorderThreshold===undefined||p.reorderThreshold===null).length;
+
+  return R('div',null,
+
+    R('div',{className:'grid-3',style:{marginBottom:20}},
+      [
+        {label:'Total Products',val:products.length,color:'var(--text)'},
+        {label:'Below Threshold',val:breachedCount,color:breachedCount>0?'var(--red)':'var(--green)'},
+        {label:'No Threshold Set',val:noThresholdCount,color:noThresholdCount>0?'var(--amber)':'var(--green)'},
+      ].map(m=>R('div',{key:m.label,className:'metric'},
+        R('div',{className:'metric-label'},m.label),
+        R('div',{className:'metric-value',style:{color:m.color}},m.val)
+      ))
+    ),
+
+    R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:12,padding:'12px 16px',fontSize:12,color:'var(--amber)',marginBottom:18,lineHeight:1.6}},
+      R('b',null,'\u26a0 How thresholds work: '),
+      "When an invoice is generated and a product's remaining stock falls to or below its threshold, an alert fires in-app. Default is 10 if none is set. Set to 0 to only alert on out-of-stock."
+    ),
+
+    R('div',{className:'card'},
+      R('div',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:16,flexWrap:'wrap'}},
+        R('input',{
+          placeholder:'\ud83d\udd0d Search products\u2026',
+          value:search,onChange:e=>setSearch(e.target.value),
+          style:{flex:'1 1 180px',maxWidth:280,fontSize:12}
+        }),
+        R('select',{value:filter,onChange:e=>setFilter(e.target.value),style:{fontSize:12,padding:'6px 10px',width:200}},
+          R('option',{value:'all'},'All Products'),
+          R('option',{value:'breached'},'\u26a0 Below Threshold'),
+          R('option',{value:'ok'},'\u2713 Above Threshold')
+        )
+      ),
+
+      R('div',{className:'tbl-scroll'},
+        R('table',{style:{minWidth:640}},
+          R('thead',null,R('tr',null,
+            R('th',null,'Product'),
+            R('th',null,'Category'),
+            R('th',null,'Stock'),
+            R('th',null,'Threshold'),
+            R('th',null,'Status'),
+            R('th',null,'Set Limit')
+          )),
+          R('tbody',null,
+            filtered.length===0
+              ?R('tr',null,R('td',{colSpan:6,style:{textAlign:'center',padding:24,color:'var(--text3)'}},'No products match'))
+              :filtered.map(p=>{
+                const thresh=Number(p.reorderThreshold??10);
+                const breached=p.stock<=thresh;
+                const outOfStock=p.stock===0;
+                const editVal=edits[p.id];
+                const isDirty=editVal!==undefined;
+                return R('tr',{key:p.id},
+                  R('td',{className:'primary'},p.name),
+                  R('td',null,p.category||'\u2014'),
+                  R('td',null,
+                    R('span',{style:{
+                      fontFamily:"'JetBrains Mono',monospace",fontWeight:600,
+                      color:outOfStock?'var(--red)':breached?'var(--amber)':'var(--green)'
+                    }},p.stock)
+                  ),
+                  R('td',null,
+                    R('span',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:'var(--text2)'}},
+                      (p.reorderThreshold!==undefined&&p.reorderThreshold!==null)?thresh:'\u2014'
+                    )
+                  ),
+                  R('td',null,
+                    outOfStock
+                      ?R('span',{className:'badge rejected'},'Out of stock')
+                      :breached
+                        ?R('span',{className:'badge low-stock'},'\u26a0 Below threshold')
+                        :R('span',{className:'badge in-stock'},'\u2713 OK')
+                  ),
+                  R('td',null,
+                    R('div',{style:{display:'flex',gap:6,alignItems:'center'}},
+                      R('input',{
+                        type:'number',min:0,
+                        value:isDirty?editVal:String(thresh),
+                        onChange:e=>setEdit(p.id,e.target.value),
+                        style:{width:70,fontSize:12,padding:'5px 8px',textAlign:'center',
+                               borderColor:isDirty?'var(--amber)':'var(--border2)'}
+                      }),
+                      isDirty&&R('button',{
+                        className:'btn btn-amber btn-sm',
+                        disabled:!!saving[p.id],
+                        onClick:()=>saveThreshold(p)
+                      },saving[p.id]?'\u22ef':'Save'),
+                      isDirty&&R('button',{
+                        className:'btn btn-ghost btn-sm',
+                        onClick:()=>setEdits(e=>{const n={...e};delete n[p.id];return n;})
+                      },'\u00d7')
+                    )
+                  )
+                );
+              })
+          )
+        )
+      )
+    )
+  );
+}
+
 /* ── AUDIT LOG PAGE ── */
 const AUDIT_CATEGORIES = ['','login','logout','invoice','approval','rejection','customer','product','expense','quotation','delivery','user','system'];
 
@@ -3986,7 +4294,8 @@ function App(){
           ...p,
           price: Number(p.price || 0),
           stock: Number(p.stock || 0),
-          addedDate: p.added_date || null
+          addedDate: p.added_date || null,
+          reorderThreshold: p.reorder_threshold !== undefined && p.reorder_threshold !== null ? Number(p.reorder_threshold) : null,
         }));
 
         console.log("LOADED PRODUCTS:", formatted); // 🔥 DEBUG
@@ -4119,6 +4428,7 @@ function App(){
     'exp-approvals':['Expenditure Approvals','Review & approve expense requests'],
     'exp-tracker':['Expenditure Tracker','Manage & track all expenditures'],
     'audit-log':['Audit Log','Full system activity feed'],
+    'product-limits':['Product Limits','Reorder thresholds & stock alerts'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -4151,6 +4461,7 @@ function App(){
     if(active==='exp-approvals')return React.createElement(ExpenditureApprovalsPage,props);
     if(active==='exp-tracker')return React.createElement(ExpenditureTrackerPage,props);
     if(active==='audit-log')return React.createElement(AuditLogPage,props);
+    if(active==='product-limits')return React.createElement(ProductLimitsPage,props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
