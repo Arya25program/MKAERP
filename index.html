@@ -4172,12 +4172,16 @@ function VATReportPage({user,data}){
       )
     ),
 
-    // ── VAT note
-    R('div',{style:{fontSize:11,color:'var(--text3)',marginTop:12,lineHeight:1.7,padding:'0 4px'}},
-      '\u2139 VAT is calculated at 5% on approved, generated invoices only. ',
-      'Formula: Subtotal = Gross \u00f7 1.05 | VAT = Gross \u2212 Subtotal. ',
-      'VATIN: OM1100044996 \u00b7 VAT No: OM1100037509. ',
-      'The exported Excel file contains two sheets: Monthly Summary and Invoice Detail.'
+    // ── Info box (matches Product Limits style)
+    R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:12,padding:'12px 16px',fontSize:12,color:'var(--amber)',marginTop:18,lineHeight:1.7}},
+      R('div',null,
+        R('b',null,'\u2139 How VAT is calculated: '),
+        'Each invoice total already includes 5% VAT, so the subtotal is worked back using Gross \u00f7 1.05, and VAT = Gross \u2212 Subtotal.'
+      ),
+      R('div',{style:{marginTop:4}},
+        R('b',null,'\ud83d\udcca What counts: '),
+        'Only approved invoices that have been generated and printed by the accountant are included in this report.'
+      )
     )
   );
 }
