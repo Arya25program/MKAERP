@@ -15,12 +15,6 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "pg": "^8.20.0"
-  },
-  {
-  "dependencies": {
-    "cors": "...",
-    "express": "...",
-    "pg": "...",
     "nodemailer": "^6.9.16"
   }
 }
