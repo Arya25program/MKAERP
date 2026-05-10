@@ -11,6 +11,10 @@ const { Pool } = require('pg');
 const app  = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
+// ─── DB migrations (run once on deploy) ───────────────────────
+// ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER DEFAULT 10;
+// ──────────────────────────────────────────────────────────────
+
 app.use(cors());
 app.use(express.json());
 
@@ -120,7 +124,7 @@ app.post('/products', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /products/:id
+// PATCH /products/:id  — full edit (admin/owner)
 app.patch('/products/:id', async (req, res) => {
   try {
     const { name, price, stock, category } = req.body;
@@ -129,6 +133,25 @@ app.patch('/products/:id', async (req, res) => {
        WHERE id=$5 RETURNING *`,
       [name, price, stock, category, req.params.id]
     );
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+
+// PATCH /products/:id/threshold  — set reorder threshold only (owner & admin)
+// The frontend enforces role-based access; the backend persists it.
+// SQL: ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER DEFAULT 10;
+app.patch('/products/:id/threshold', async (req, res) => {
+  try {
+    const { reorder_threshold } = req.body;
+    if (reorder_threshold === undefined || reorder_threshold === null || isNaN(Number(reorder_threshold))) {
+      return res.status(400).json({ error: 'reorder_threshold must be a number' });
+    }
+    const { rows } = await pool.query(
+      `UPDATE products SET reorder_threshold = $1 WHERE id = $2
+       RETURNING id, name, reorder_threshold`,
+      [Number(reorder_threshold), req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Product not found' });
     ok(res, rows[0]);
   } catch (e) { fail(res, e); }
 });
