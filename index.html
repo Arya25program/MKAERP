@@ -1433,6 +1433,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
     {id:'users',icon:'◍',label:'Users'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'vat-report',icon:'◈',label:'VAT Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
   ];
@@ -1449,6 +1450,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
       {id:'products',icon:'▣',label:'Products'},
       {id:'product-limits',icon:'⚠',label:'Product Limits'},
       {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+      {id:'vat-report',icon:'◈',label:'VAT Report'},
       ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp. Approvals'}]:[]),
       ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Exp. Tracker'}]:[]),
     ];
@@ -2432,14 +2434,41 @@ function ProductsPage({ user, data, setData, notify }) {
       notify('Name required', 'error');
       return;
     }
+    const prev = showEdit;
+    const stockBefore = Number(prev.stock);
+    const stockAfter  = Number(ef.stock);
+    const stockChanged = stockBefore !== stockAfter;
+
+    // Persist to backend
+    fetch(`https://mkaerp-production.up.railway.app/products/${prev.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: ef.name, price: ef.price, stock: stockAfter, category: ef.category })
+    }).catch(err => console.error('Product save failed:', err));
+
     setData(d => ({
       ...d,
       products: (d.products || []).map(p =>
-        p.id === showEdit.id ? { ...p, ...ef } : p
+        p.id === prev.id ? { ...p, ...ef, stock: stockAfter } : p
       )
     }));
-    notify('Product updated', 'success');
-    logAction(user,'product',user.name+' updated product: '+ef.name,{product:ef.name,stock:ef.stock,price:ef.price});
+
+    // Always log the edit; log stock changes with before/after detail
+    if (stockChanged) {
+      logAction(user, 'product',
+        user.name + ' adjusted stock for "' + ef.name + '": ' + stockBefore + ' → ' + stockAfter,
+        { product: ef.name, product_id: prev.id, stock_before: stockBefore, stock_after: stockAfter, delta: stockAfter - stockBefore }
+      );
+    } else {
+      logAction(user, 'product',
+        user.name + ' updated product: ' + ef.name,
+        { product: ef.name, product_id: prev.id, price: ef.price, category: ef.category }
+      );
+    }
+
+    notify(stockChanged
+      ? 'Stock updated: ' + stockBefore + ' → ' + stockAfter + ' units'
+      : 'Product updated', 'success');
     setShowEdit(null);
   };
 
@@ -2614,7 +2643,11 @@ function ProductsPage({ user, data, setData, notify }) {
                 type: 'number',
                 value: ef.stock,
                 onChange: e => setEf(f => ({ ...f, stock: e.target.value }))
-              })
+              }),
+              showEdit && Number(ef.stock) !== Number(showEdit.stock) &&
+                R('div', { style: { fontSize: 10, color: 'var(--amber)', marginTop: 3 } },
+                  'Was: ' + showEdit.stock + ' \u2192 Now: ' + ef.stock + ' (delta: ' + (Number(ef.stock) - Number(showEdit.stock)) + ')'
+                )
             )
           )
         ),
@@ -3921,6 +3954,234 @@ function logAction(user, category, action, meta) {
   }).catch(()=>{});
 }
 
+/* ── VAT REPORT PAGE ──────────────────────────────────────────
+   Owner & admin only.
+   Shows a monthly VAT summary table built from approved invoices.
+   VAT is 5% of the subtotal (total / 1.05 × 0.05).
+   Exports a multi-sheet .xlsx via SheetJS (CDN, no server call).
+   ──────────────────────────────────────────────────────────── */
+function VATReportPage({user,data}){
+  const R=React.createElement;
+  const VAT_RATE=0.05;
+
+  const [year,setYear]=useState(new Date().getFullYear());
+  const [exporting,setExporting]=useState(false);
+
+  // Only approved invoices that have been generated (accountantSent) contribute to VAT
+  const invoices=(data.documents||[]).filter(d=>
+    d.type==='invoice'&&d.status==='approved'&&d.accountantSent
+  );
+
+  // Group by year-month
+  const MONTHS=['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+
+  const byMonth=Array.from({length:12},(_,i)=>{
+    const monthInvs=invoices.filter(inv=>{
+      if(!inv.created)return false;
+      const d=new Date(inv.created);
+      return d.getFullYear()===year&&d.getMonth()===i;
+    });
+    const grossTotal=monthInvs.reduce((s,inv)=>s+Number(inv.total||0),0);
+    // total already includes VAT: gross = subtotal * 1.05
+    const subtotal=grossTotal/1.05;
+    const vat=grossTotal-subtotal;
+    return{
+      month:MONTHS[i],
+      monthNum:i+1,
+      count:monthInvs.length,
+      grossTotal,
+      subtotal,
+      vat,
+      invoices:monthInvs
+    };
+  });
+
+  const totals=byMonth.reduce((acc,m)=>({
+    count:acc.count+m.count,
+    grossTotal:acc.grossTotal+m.grossTotal,
+    subtotal:acc.subtotal+m.subtotal,
+    vat:acc.vat+m.vat
+  }),{count:0,grossTotal:0,subtotal:0,vat:0});
+
+  // Available years from data
+  const years=[...new Set(invoices.map(inv=>{
+    if(!inv.created)return null;
+    return new Date(inv.created).getFullYear();
+  }).filter(Boolean))].sort((a,b)=>b-a);
+  if(!years.includes(new Date().getFullYear()))years.unshift(new Date().getFullYear());
+
+  // ── Excel export via SheetJS ──
+  const exportExcel=async()=>{
+    setExporting(true);
+    try{
+      // Load SheetJS dynamically from CDN if not present
+      if(!window.XLSX){
+        await new Promise((res,rej)=>{
+          const s=document.createElement('script');
+          s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          s.onload=res; s.onerror=rej;
+          document.head.appendChild(s);
+        });
+      }
+      const XLSX=window.XLSX;
+      const wb=XLSX.utils.book_new();
+
+      // ── Sheet 1: Monthly Summary ──
+      const summaryRows=[
+        ['MKA ERP — VAT Report','','','',''],
+        ['Year: '+year,'','Generated: '+new Date().toLocaleDateString('en-GB'),'',''],
+        ['VAT Rate: 5%','','','',''],
+        [],
+        ['Month','Invoices','Subtotal (OMR)','VAT 5% (OMR)','Gross Total (OMR)'],
+        ...byMonth.map(m=>[
+          m.month,
+          m.count,
+          parseFloat(m.subtotal.toFixed(3)),
+          parseFloat(m.vat.toFixed(3)),
+          parseFloat(m.grossTotal.toFixed(3))
+        ]),
+        [],
+        ['TOTAL ('+year+')',
+          totals.count,
+          parseFloat(totals.subtotal.toFixed(3)),
+          parseFloat(totals.vat.toFixed(3)),
+          parseFloat(totals.grossTotal.toFixed(3))
+        ]
+      ];
+      const ws1=XLSX.utils.aoa_to_sheet(summaryRows);
+      // Column widths
+      ws1['!cols']=[{wch:14},{wch:10},{wch:18},{wch:16},{wch:18}];
+      // Bold header rows
+      const boldCells=['A1','A4','A5','B5','C5','D5','E5'];
+      boldCells.forEach(addr=>{
+        if(ws1[addr])ws1[addr].s={font:{bold:true}};
+      });
+      XLSX.utils.book_append_sheet(wb,ws1,'Monthly Summary');
+
+      // ── Sheet 2: Invoice Detail ──
+      const detailRows=[
+        ['Invoice Ref','Date','Customer','LPO No','LPO Date','Subtotal (OMR)','VAT 5% (OMR)','Gross Total (OMR)','Employee'],
+        ...invoices
+          .filter(inv=>{
+            if(!inv.created)return false;
+            return new Date(inv.created).getFullYear()===year;
+          })
+          .sort((a,b)=>new Date(a.created)-new Date(b.created))
+          .map(inv=>{
+            const gross=Number(inv.total||0);
+            const sub=gross/1.05;
+            const vat=gross-sub;
+            return[
+              inv.id,
+              inv.created,
+              inv.customerName,
+              inv.lpoNo||'',
+              inv.lpoDate||'',
+              parseFloat(sub.toFixed(3)),
+              parseFloat(vat.toFixed(3)),
+              parseFloat(gross.toFixed(3)),
+              inv.employeeName||''
+            ];
+          })
+      ];
+      const ws2=XLSX.utils.aoa_to_sheet(detailRows);
+      ws2['!cols']=[{wch:18},{wch:12},{wch:22},{wch:14},{wch:12},{wch:16},{wch:14},{wch:18},{wch:16}];
+      XLSX.utils.book_append_sheet(wb,ws2,'Invoice Detail');
+
+      XLSX.writeFile(wb,'MKA_VAT_Report_'+year+'.xlsx');
+      logAction(user,'invoice',user.name+' exported VAT report for '+year,{year,total_vat:totals.vat.toFixed(3)});
+    }catch(e){
+      console.error('Export failed:',e);
+      alert('Export failed: '+e.message);
+    }
+    setExporting(false);
+  };
+
+  const fmt=n=>'OMR '+n.toFixed(3);
+  const fmtN=n=>n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
+
+  return R('div',null,
+
+    // ── Controls bar
+    R('div',{style:{display:'flex',gap:12,alignItems:'center',marginBottom:20,flexWrap:'wrap'}},
+      R('div',{style:{display:'flex',alignItems:'center',gap:8}},
+        R('label',{style:{fontSize:12,color:'var(--text2)',fontWeight:600}},'Year'),
+        R('select',{
+          value:year,onChange:e=>setYear(Number(e.target.value)),
+          style:{fontSize:13,padding:'6px 12px',minWidth:100}
+        },
+          years.map(y=>R('option',{key:y,value:y},y))
+        )
+      ),
+      R('button',{
+        className:'btn btn-primary',
+        onClick:exportExcel,
+        disabled:exporting,
+        style:{marginLeft:'auto'}
+      },exporting?'\u22ef Exporting…':'\u2913 Export to Excel')
+    ),
+
+    // ── Summary metrics
+    R('div',{className:'grid-3',style:{marginBottom:20}},
+      [
+        {label:'Total Invoices ('+year+')',val:totals.count,color:'var(--text)'},
+        {label:'Total VAT Collected',val:'OMR '+fmtN(totals.vat),color:'var(--green)'},
+        {label:'Gross Revenue',val:'OMR '+fmtN(totals.grossTotal),color:'var(--text)'},
+      ].map(m=>R('div',{key:m.label,className:'metric'},
+        R('div',{className:'metric-label'},m.label),
+        R('div',{className:'metric-value',style:{color:m.color,fontSize:m.val.length>10?16:undefined}},m.val)
+      ))
+    ),
+
+    // ── Monthly table
+    R('div',{className:'card'},
+      R('div',{className:'card-title',style:{marginBottom:16}},'Monthly VAT Breakdown — '+year),
+      R('div',{className:'tbl-scroll'},
+        R('table',null,
+          R('thead',null,R('tr',null,
+            R('th',null,'Month'),
+            R('th',{style:{textAlign:'center'}},'Invoices'),
+            R('th',{style:{textAlign:'right'}},'Subtotal'),
+            R('th',{style:{textAlign:'right'}},'VAT 5%'),
+            R('th',{style:{textAlign:'right'}},'Gross Total')
+          )),
+          R('tbody',null,
+            byMonth.map(m=>R('tr',{key:m.month,
+              style:{opacity:m.count===0?0.4:1}
+            },
+              R('td',{style:{fontWeight:m.count>0?600:400}},m.month),
+              R('td',{style:{textAlign:'center',color:'var(--text2)'}},m.count||'\u2014'),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12}},
+                m.count>0?fmtN(m.subtotal):'\u2014'),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:'var(--green)',fontWeight:600}},
+                m.count>0?fmtN(m.vat):'\u2014'),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12}},
+                m.count>0?fmtN(m.grossTotal):'\u2014')
+            )),
+            // Totals row
+            R('tr',{style:{borderTop:'2px solid var(--border)',fontWeight:700,background:'var(--bg3)'}},
+              R('td',null,'Total'),
+              R('td',{style:{textAlign:'center'}},totals.count),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace"}},fmtN(totals.subtotal)),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",color:'var(--green)'}},fmtN(totals.vat)),
+              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace"}},fmtN(totals.grossTotal))
+            )
+          )
+        )
+      )
+    ),
+
+    // ── VAT note
+    R('div',{style:{fontSize:11,color:'var(--text3)',marginTop:12,lineHeight:1.7,padding:'0 4px'}},
+      '\u2139 VAT is calculated at 5% on approved, generated invoices only. ',
+      'Formula: Subtotal = Gross \u00f7 1.05 | VAT = Gross \u2212 Subtotal. ',
+      'VATIN: OM1100044996 \u00b7 VAT No: OM1100037509. ',
+      'The exported Excel file contains two sheets: Monthly Summary and Invoice Detail.'
+    )
+  );
+}
+
 /* ── PRODUCT LIMITS PAGE ──────────────────────────────────────
    Accessible to: owner & admin roles only.
    Lets them set a per-product reorder threshold. When stock
@@ -4429,6 +4690,7 @@ function App(){
     'exp-tracker':['Expenditure Tracker','Manage & track all expenditures'],
     'audit-log':['Audit Log','Full system activity feed'],
     'product-limits':['Product Limits','Reorder thresholds & stock alerts'],
+    'vat-report':['VAT Report','Monthly VAT summary & Excel export'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -4462,6 +4724,7 @@ function App(){
     if(active==='exp-tracker')return React.createElement(ExpenditureTrackerPage,props);
     if(active==='audit-log')return React.createElement(AuditLogPage,props);
     if(active==='product-limits')return React.createElement(ProductLimitsPage,props);
+    if(active==='vat-report')return React.createElement(VATReportPage,props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
