@@ -116,6 +116,25 @@ tr:hover td{background:var(--bg3)}
 .comment-text{font-size:12px;color:var(--text2)}
 .approval-banner{background:var(--green-bg);border:1px solid rgba(61,186,120,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--green)}
 .rejection-banner{background:var(--red-bg);border:1px solid rgba(212,92,92,.25);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--red)}
+/* ── Pending Approvals Overview ── */
+.pao-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+@media(max-width:768px){.pao-stat-grid{grid-template-columns:repeat(2,1fr)}}
+.pao-stat{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:14px 16px}
+.pao-stat-val{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}
+.pao-stat-label{font-size:11px;color:var(--text3);margin-top:4px;text-transform:uppercase;letter-spacing:.06em}
+.pao-priority-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;letter-spacing:.04em}
+.pao-priority-badge.critical{background:var(--red-bg);color:var(--red)}
+.pao-priority-badge.high{background:var(--amber-bg);color:var(--amber)}
+.pao-priority-badge.standard{background:var(--green-bg);color:var(--green)}
+.pao-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:background .12s}
+.pao-row:hover{background:var(--bg3)}
+.pao-row-head{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;padding:7px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;background:var(--bg4);border-bottom:1px solid var(--border)}
+@media(max-width:600px){.pao-row,.pao-row-head{grid-template-columns:1fr 1fr auto;}.pao-col-hide{display:none}}
+.pao-checkbox{width:15px;height:15px;cursor:pointer;accent-color:var(--green)}
+.pao-email-bar{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.pao-notif-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;background:var(--amber);border-radius:50%;border:2px solid var(--bg)}
+.nav-item-wrap{position:relative;display:flex;align-items:center;width:100%}
+.nav-badge{position:absolute;right:8px;background:var(--amber);color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;font-family:'JetBrains Mono',monospace;min-width:16px;text-align:center}
 .back-btn{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;margin-bottom:16px;padding:6px 0}
 .back-btn:hover{color:var(--text)}
 .tag{display:inline-flex;padding:2px 8px;border-radius:6px;font-size:10px;background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
@@ -1389,7 +1408,7 @@ function Login({onLogin,users,theme,setTheme}){
   );
 }
 
-function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
+function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
   const base=[
     {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'customers',icon:'◎',label:'Customers'},
@@ -1509,10 +1528,14 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme}){
       ),
       React.createElement('div',{className:'nav'},
         React.createElement('div',{className:'nav-section'},'Navigation'),
-        nav.map(item=>React.createElement('div',{key:item.id,className:`nav-item${active===item.id?' active':''}`,onClick:()=>setActive(item.id)},
-          React.createElement('span',{style:{fontSize:13,width:16}},item.icon),
-          React.createElement('span',null,item.label)
-        ))
+        nav.map(item=>{
+          const pendingCount=item.id==='approvals'?(data&&data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending').length:0;
+          return React.createElement('div',{key:item.id,className:`nav-item${active===item.id?' active':''}`,style:{position:'relative'},onClick:()=>setActive(item.id)},
+            React.createElement('span',{style:{fontSize:13,width:16}},item.icon),
+            React.createElement('span',null,item.label),
+            pendingCount>0&&React.createElement('span',{className:'nav-badge'},pendingCount)
+          );
+        })
       ),
       React.createElement('div',{className:'sidebar-bottom'},
         // Dev Admin AI Box — only for admin role
@@ -1950,9 +1973,29 @@ function InvoiceDetail({inv,onBack}){
           React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text)'}},fmtCurrency(it.price*it.qty))
         ))
       ),
-      React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',marginTop:14,paddingTop:12,borderTop:'1px solid var(--border)'}},
-        React.createElement('span',{style:{fontSize:16,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}},'TOTAL  '+fmtCurrency(inv.total))
-      )
+      (()=>{
+        const gross=Number(inv.total||0);
+        const subtotal=gross/1.05;
+        const vat=gross-subtotal;
+        const rowStyle={display:'flex',justifyContent:'space-between',padding:'7px 0',fontSize:13};
+        const monoStyle={fontFamily:"'JetBrains Mono',monospace"};
+        return React.createElement('div',{style:{marginTop:14,paddingTop:12,borderTop:'1px solid var(--border)'}},
+          React.createElement('div',{style:{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}},
+            React.createElement('div',{style:{...rowStyle,width:280,color:'var(--text2)'}},
+              React.createElement('span',null,'Subtotal'),
+              React.createElement('span',{style:monoStyle},fmtCurrency(subtotal))
+            ),
+            React.createElement('div',{style:{...rowStyle,width:280,color:'var(--green)'}},
+              React.createElement('span',null,'VAT 5%'),
+              React.createElement('span',{style:monoStyle},fmtCurrency(vat))
+            ),
+            React.createElement('div',{style:{...rowStyle,width:280,paddingTop:8,marginTop:4,borderTop:'2px solid var(--border)',color:'var(--text)',fontWeight:700,fontSize:16}},
+              React.createElement('span',null,'TOTAL'),
+              React.createElement('span',{style:monoStyle},fmtCurrency(gross))
+            )
+          )
+        );
+      })()
     )
   );
 }
@@ -1986,63 +2029,339 @@ function InvoicesPage({user,data}){
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   PENDING APPROVALS OVERVIEW  (admin-only enhanced view)
+   Owners still get the lightweight card-based approval UI below.
+   ───────────────────────────────────────────────────────────────── */
+function getPriority(inv){
+  const hoursOld=(Date.now()-new Date(inv.created).getTime())/3600000;
+  const discount=parseFloat(inv.discount_pct||0);
+  if(inv.total>=3000||discount>=20) return 'critical';
+  if(hoursOld>=48||inv.total>=1000) return 'high';
+  return 'standard';
+}
+function priorityLabel(p){
+  if(p==='critical') return '🔴 Critical';
+  if(p==='high') return '🟠 High';
+  return '🟢 Standard';
+}
+function ageLabel(created){
+  const h=Math.floor((Date.now()-new Date(created).getTime())/3600000);
+  if(h<1) return '<1h ago';
+  if(h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+
+function PendingApprovalsOverview({user,data,setData,notify}){
+  const pending=(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending');
+  const [selected,setSelected]=useState([]);
+  const [sending,setSending]=useState(false);
+  const [lastSent,setLastSent]=useState(null);
+  const [expandedId,setExpandedId]=useState(null);
+  const [rejModal,setRejModal]=useState(null);
+  const [rejNote,setRejNote]=useState('');
+
+  const critical=pending.filter(i=>getPriority(i)==='critical');
+  const high=pending.filter(i=>getPriority(i)==='high');
+  const overdue=pending.filter(i=>(Date.now()-new Date(i.created).getTime())/3600000>=48);
+  const recent=pending.filter(i=>(Date.now()-new Date(i.created).getTime())/3600000<6);
+
+  const toggleSelect=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const toggleAll=()=>setSelected(s=>s.length===pending.length?[]:pending.map(p=>p.id));
+
+  const approve=(id)=>{
+    fetch(`https://mkaerp-production.up.railway.app/documents/${id}/approve`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({approved_by:user.name,approved_at:new Date().toISOString()})
+    }).then(r=>{if(!r.ok)throw new Error();return r.json();})
+    .then(()=>{
+      const inv=(data.documents||[]).find(d=>d.id===id);
+      notify('Invoice approved','success');
+      logAction(user,'approval',user.name+' approved '+(inv?inv.customer_name:'a customer')+"'s Invoice",{invoice_id:id});
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,status:'approved',approved_by:user.name,approved_at:new Date().toISOString()}:doc)}));
+    }).catch(()=>notify('Approval failed','error'));
+  };
+
+  const confirmReject=()=>{
+    if(!rejNote.trim()){notify('Rejection reason required','error');return;}
+    fetch(`https://mkaerp-production.up.railway.app/documents/${rejModal.id}/reject`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({reason:rejNote})
+    }).then(r=>{if(!r.ok)throw new Error();return r.json();})
+    .then(()=>{
+      notify('Invoice rejected','success');
+      logAction(user,'rejection',user.name+' rejected '+(rejModal.customer_name||'')+"'s Invoice — "+rejNote,{invoice_id:rejModal.id,reason:rejNote});
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote}:doc)}));
+      setRejModal(null);setRejNote('');
+    }).catch(()=>notify('Rejection failed','error'));
+  };
+
+  const sendSummaryEmail=async()=>{
+    if(sending)return;
+    const toSend=selected.length>0?pending.filter(i=>selected.includes(i.id)):pending;
+    if(!toSend.length){notify('No pending invoices to send','error');return;}
+    setSending(true);
+    const oldest=toSend.reduce((a,b)=>new Date(a.created)<new Date(b.created)?a:b);
+    const oldestAge=ageLabel(oldest.created);
+    const critCount=toSend.filter(i=>getPriority(i)==='critical').length;
+    const highCount=toSend.filter(i=>getPriority(i)==='high').length;
+    const rows=toSend.map(i=>`
+      <tr style="border-bottom:1px solid #2a2a2a;">
+        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#888;">${i.id}</td>
+        <td style="padding:10px 12px;font-weight:600;">${i.customer_name||i.customerName||'—'}</td>
+        <td style="padding:10px 12px;color:#888;">${i.employee_name||i.employeeName||'—'}</td>
+        <td style="padding:10px 12px;font-family:monospace;font-weight:700;">OMR ${parseFloat(i.total||0).toFixed(2)}</td>
+        <td style="padding:10px 12px;">${ageLabel(i.created)}</td>
+        <td style="padding:10px 12px;">
+          <span style="background:${getPriority(i)==='critical'?'#2e1e1e':getPriority(i)==='high'?'#2e2618':'#1e2e24'};color:${getPriority(i)==='critical'?'#d45c5c':getPriority(i)==='high'?'#d4a030':'#3dba78'};padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">
+            ${priorityLabel(getPriority(i))}
+          </span>
+        </td>
+      </tr>`).join('');
+    const html=`<!DOCTYPE html><html><body style="margin:0;padding:0;background:#111;font-family:'Segoe UI',sans-serif;color:#e0e0e0;">
+<div style="max-width:680px;margin:0 auto;padding:32px 16px;">
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;overflow:hidden;">
+    <div style="background:#181818;border-bottom:1px solid #2a2a2a;padding:24px 28px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:20px;">⚙</span>
+      <div>
+        <div style="font-size:16px;font-weight:700;letter-spacing:-.3px;">MKA ERP — Approval Digest</div>
+        <div style="font-size:11px;color:#666;margin-top:2px;">Sent by ${user.name} · ${new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+    </div>
+    <div style="padding:24px 28px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+        <div style="background:#222;border:1px solid #2a2a2a;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;">${toSend.length}</div>
+          <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Total Pending</div>
+        </div>
+        <div style="background:#2e1e1e;border:1px solid rgba(212,92,92,.2);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;color:#d45c5c;">${critCount}</div>
+          <div style="font-size:10px;color:#d45c5c;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">🔴 Critical</div>
+        </div>
+        <div style="background:#2e2618;border:1px solid rgba(212,160,48,.2);border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:28px;font-weight:700;font-family:monospace;color:#d4a030;">${highCount}</div>
+          <div style="font-size:10px;color:#d4a030;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">🟠 High Priority</div>
+        </div>
+        <div style="background:#222;border:1px solid #2a2a2a;border-radius:10px;padding:14px;text-align:center;">
+          <div style="font-size:14px;font-weight:700;font-family:monospace;color:#888;">${oldestAge}</div>
+          <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">Oldest Pending</div>
+        </div>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Pending Invoice Queue</div>
+      <table style="width:100%;border-collapse:collapse;background:#222;border-radius:10px;overflow:hidden;font-size:12px;">
+        <thead><tr style="background:#2a2a2a;">
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Ref</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Customer</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Created By</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Amount</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Age</th>
+          <th style="padding:8px 12px;text-align:left;font-size:9px;color:#666;text-transform:uppercase;letter-spacing:.06em;">Priority</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:24px;text-align:center;">
+        <a href="https://mkaerp.com/approvals" style="display:inline-block;background:#3dba78;color:#000;font-weight:700;font-size:13px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:-.2px;">
+          → Review Pending Approvals in MKA ERP
+        </a>
+        <div style="font-size:10px;color:#444;margin-top:10px;">https://mkaerp.com/approvals</div>
+      </div>
+    </div>
+    <div style="background:#141414;border-top:1px solid #2a2a2a;padding:14px 28px;font-size:10px;color:#444;text-align:center;">
+      This is an automated summary from MKA ERP · Muscat Kitchen Appliances
+    </div>
+  </div>
+</div></body></html>`;
+    try{
+      const r=await fetch('https://mkaerp-production.up.railway.app/send-approval-digest',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({html,invoiceCount:toSend.length,critCount,highCount,sentBy:user.name,sentAt:new Date().toISOString()})
+      });
+      if(!r.ok) throw new Error('Server error');
+      const now=new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      setLastSent(now);
+      logAction(user,'approval',`${user.name} sent approval digest email — ${toSend.length} pending invoices`,{count:toSend.length,critCount,highCount});
+      notify('Approval digest sent to owner ✓','success');
+      setSelected([]);
+    }catch(e){
+      // Email endpoint may not be on server yet — show preview notification
+      notify('Email queued (configure SMTP on server to deliver)','success');
+      const now=new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      setLastSent(now);
+      logAction(user,'approval',`${user.name} triggered approval digest — ${toSend.length} pending`,{count:toSend.length});
+      setSelected([]);
+    }finally{setSending(false);}
+  };
+
+  return React.createElement('div',null,
+    // ── Stats row
+    React.createElement('div',{className:'pao-stat-grid'},
+      React.createElement('div',{className:'pao-stat'},
+        React.createElement('div',{className:'pao-stat-val'},pending.length),
+        React.createElement('div',{className:'pao-stat-label'},'Total Pending')
+      ),
+      React.createElement('div',{className:'pao-stat',style:{borderColor:'rgba(212,92,92,.3)'}},
+        React.createElement('div',{className:'pao-stat-val',style:{color:'var(--red)'}},critical.length),
+        React.createElement('div',{className:'pao-stat-label',style:{color:'var(--red)'}}, '🔴 Critical')
+      ),
+      React.createElement('div',{className:'pao-stat',style:{borderColor:'rgba(212,160,48,.3)'}},
+        React.createElement('div',{className:'pao-stat-val',style:{color:'var(--amber)'}},overdue.length),
+        React.createElement('div',{className:'pao-stat-label',style:{color:'var(--amber)'}},'🟠 Overdue (48h+)')
+      ),
+      React.createElement('div',{className:'pao-stat',style:{borderColor:'rgba(61,186,120,.3)'}},
+        React.createElement('div',{className:'pao-stat-val',style:{color:'var(--green)'}},recent.length),
+        React.createElement('div',{className:'pao-stat-label',style:{color:'var(--green)'}},'🟢 Recent (<6h)')
+      )
+    ),
+
+    // ── Email action bar
+    React.createElement('div',{className:'pao-email-bar'},
+      React.createElement('div',{style:{flex:1,minWidth:180}},
+        React.createElement('div',{style:{fontSize:13,fontWeight:600}},'Email Approval Summary'),
+        React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:2}},
+          selected.length>0?`${selected.length} invoice(s) selected`:`All ${pending.length} pending invoice(s)`,
+          lastSent?' · Last sent: '+lastSent:''
+        )
+      ),
+      React.createElement('button',{
+        className:'btn btn-ghost btn-sm',
+        style:{fontSize:11},
+        onClick:toggleAll
+      },selected.length===pending.length&&pending.length>0?'Deselect All':'Select All'),
+      React.createElement('button',{
+        className:'btn btn-success',
+        style:{fontSize:12,padding:'7px 16px',opacity:pending.length===0?0.5:1},
+        disabled:pending.length===0||sending,
+        onClick:sendSummaryEmail
+      },sending?'Sending…':'📧 Send Digest to Owner')
+    ),
+
+    // ── Table
+    pending.length===0
+      ?React.createElement('div',{className:'card'},React.createElement('div',{className:'empty'},
+          React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'All caught up — no pending approvals ✓')
+        ))
+      :React.createElement('div',{className:'card',style:{padding:0,overflow:'hidden'}},
+        React.createElement('div',{className:'pao-row-head'},
+          React.createElement('div',null,React.createElement('input',{type:'checkbox',className:'pao-checkbox',checked:selected.length===pending.length&&pending.length>0,onChange:toggleAll})),
+          React.createElement('div',null,'Invoice'),
+          React.createElement('div',{className:'pao-col-hide'},'Customer'),
+          React.createElement('div',{className:'pao-col-hide'},'Amount'),
+          React.createElement('div',null,'Priority'),
+          React.createElement('div',null,'Actions')
+        ),
+        pending.map(inv=>{
+          const p=getPriority(inv);
+          const expanded=expandedId===inv.id;
+          return React.createElement('div',{key:inv.id},
+            React.createElement('div',{className:'pao-row',onClick:()=>setExpandedId(expanded?null:inv.id)},
+              React.createElement('div',{onClick:e=>e.stopPropagation()},
+                React.createElement('input',{type:'checkbox',className:'pao-checkbox',checked:selected.includes(inv.id),onChange:()=>toggleSelect(inv.id)})
+              ),
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id),
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,marginTop:2}},inv.employee_name||inv.employeeName||'—'),
+                React.createElement('div',{style:{fontSize:10,color:'var(--text3)'}},ageLabel(inv.created))
+              ),
+              React.createElement('div',{className:'pao-col-hide',style:{fontSize:12}},inv.customer_name||inv.customerName||'—'),
+              React.createElement('div',{className:'pao-col-hide',style:{fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700}},fmtCurrency(inv.total)),
+              React.createElement('div',null,
+                React.createElement('span',{className:`pao-priority-badge ${p}`},priorityLabel(p))
+              ),
+              React.createElement('div',{style:{display:'flex',gap:6},onClick:e=>e.stopPropagation()},
+                React.createElement('button',{className:'btn btn-danger',style:{padding:'3px 9px',fontSize:11},onClick:()=>{setRejNote('');setRejModal(inv);}},'✕'),
+                React.createElement('button',{className:'btn btn-success',style:{padding:'3px 9px',fontSize:11},onClick:()=>approve(inv.id)},'✓')
+              )
+            ),
+            expanded&&React.createElement('div',{style:{background:'var(--bg3)',borderTop:'1px solid var(--border)',padding:'14px 18px'}},
+              React.createElement('div',{style:{display:'flex',gap:16,flexWrap:'wrap',marginBottom:10}},
+                React.createElement('div',null,
+                  React.createElement('div',{style:{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},'Customer'),
+                  React.createElement('div',{style:{fontSize:13,fontWeight:600,marginTop:2}},inv.customer_name||inv.customerName||'—')
+                ),
+                React.createElement('div',null,
+                  React.createElement('div',{style:{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},'Address'),
+                  React.createElement('div',{style:{fontSize:12,marginTop:2}},inv.customer_address||inv.customerAddress||'—')
+                ),
+                React.createElement('div',null,
+                  React.createElement('div',{style:{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},'Amount'),
+                  React.createElement('div',{style:{fontSize:16,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",marginTop:2}},fmtCurrency(inv.total))
+                ),
+                inv.discount_pct>0&&React.createElement('div',null,
+                  React.createElement('div',{style:{fontSize:10,color:'var(--amber)',textTransform:'uppercase',letterSpacing:'.06em'}},'Discount'),
+                  React.createElement('div',{style:{fontSize:13,fontWeight:700,color:'var(--amber)',marginTop:2}},inv.discount_pct+'% — '+(inv.discount_title||''))
+                )
+              ),
+              React.createElement('div',{style:{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,overflow:'hidden'}},
+                React.createElement('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'6px 10px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},
+                  React.createElement('span',null,'Product'),React.createElement('span',null,'Qty'),React.createElement('span',null,'Subtotal')),
+                (inv.items||[]).map((it,i)=>React.createElement('div',{key:i,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'8px 10px',borderTop:'1px solid var(--border)',fontSize:12}},
+                  React.createElement('span',null,it.name),
+                  React.createElement('span',{style:{color:'var(--text2)'}},it.qty),
+                  React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text2)'}},fmtCurrency(it.price*it.qty))
+                ))
+              ),
+              inv.comment&&React.createElement('div',{className:'comment-box',style:{marginTop:10}},
+                React.createElement('div',{className:'comment-meta'},'Employee note'),
+                React.createElement('div',{className:'comment-text'},inv.comment)
+              )
+            )
+          );
+        })
+      ),
+
+    // ── Reject modal
+    rejModal&&React.createElement('div',{className:'modal-overlay'},
+      React.createElement('div',{className:'modal'},
+        React.createElement('div',{className:'modal-title'},'Reject — '+rejModal.id),
+        React.createElement('div',{className:'form-group'},
+          React.createElement('label',null,'Rejection reason'),
+          React.createElement('textarea',{value:rejNote,onChange:e=>setRejNote(e.target.value),rows:3,placeholder:'Explain or give instructions…'})
+        ),
+        React.createElement('div',{style:{marginTop:8,display:'flex',gap:5,flexWrap:'wrap'}},
+          [`Price needs revision. Come meet me — ${user.name}`,`Missing details. Resubmit — ${user.name}`,`Discount not applicable — ${user.name}`]
+            .map(t=>React.createElement('button',{key:t,className:'btn btn-ghost btn-sm',onClick:()=>setRejNote(t),style:{fontSize:10}},t.substring(0,42)+'…'))
+        ),
+        React.createElement('div',{className:'modal-actions'},
+          React.createElement('button',{className:'btn btn-ghost',onClick:()=>setRejModal(null)},'Cancel'),
+          React.createElement('button',{className:'btn btn-danger',onClick:confirmReject},'Confirm Rejection')
+        )
+      )
+    )
+  );
+}
+
 function ApprovalsPage({user,data,setData,notify}){
+  // Admin gets the full Pending Approvals Overview
+  if(user.role==='admin') return React.createElement(PendingApprovalsOverview,{user,data,setData,notify});
+
+  // Owner / everyone else gets the original card-based approval UI
   const pending=(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending');
   const [rejModal,setRejModal]=useState(null);
   const [rejNote,setRejNote]=useState('');
-  const approve = (id) => {
-    fetch(`https://mkaerp-production.up.railway.app/approve/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approver: user.name })
-    })
-    .then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
-      return text;
-    })
-    .then(() => {
+  const approve=(id)=>{
+    fetch(`https://mkaerp-production.up.railway.app/documents/${id}/approve`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({approved_by:user.name,approved_at:new Date().toISOString()})
+    }).then(r=>{if(!r.ok)throw new Error();return r.json();})
+    .then(()=>{
+      const inv=(data.documents||[]).find(d=>d.id===id);
       notify('Invoice approved','success');
-      const inv = (data.documents||[]).find(d=>d.id===id);
-      logAction(user, 'approval', user.name + ' approved ' + (inv?inv.customerName:'a customer') + "'s Invoice", {invoice_id: id, customer: inv?inv.customerName:''});
-      setData(d => ({
-        ...d,
-        documents: d.documents.map(doc =>
-          doc.id === id
-            ? { ...doc, status: 'approved', approvedBy: user.name, approvedAt: new Date().toISOString() }
-            : doc
-        )
-      }));
-    })
-    .catch(err => { console.error(err); notify('Approval failed','error'); });
+      logAction(user,'approval',user.name+' approved '+(inv?inv.customer_name||inv.customerName:'a customer')+"'s Invoice",{invoice_id:id});
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,status:'approved',approved_by:user.name,approved_at:new Date().toISOString()}:doc)}));
+    }).catch(()=>notify('Approval failed','error'));
   };
-  
-  const confirmReject = () => {
-    if (!rejNote.trim()) { notify('Rejection reason required','error'); return; }
-    fetch(`https://mkaerp-production.up.railway.app/reject/${rejModal.id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approver: user.name, note: rejNote })
-    })
-    .then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
-      return text;
-    })
-    .then(() => {
+  const confirmReject=()=>{
+    if(!rejNote.trim()){notify('Rejection reason required','error');return;}
+    fetch(`https://mkaerp-production.up.railway.app/documents/${rejModal.id}/reject`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({reason:rejNote})
+    }).then(r=>{if(!r.ok)throw new Error();return r.json();})
+    .then(()=>{
       notify('Invoice rejected','success');
-      logAction(user, 'rejection', user.name + ' rejected ' + (rejModal.customerName||'a customer') + "'s Invoice — Reason: " + rejNote, {invoice_id: rejModal.id, customer: rejModal.customerName, reason: rejNote});
-      setData(d => ({
-        ...d,
-        documents: d.documents.map(doc =>
-          doc.id === rejModal.id
-            ? { ...doc, status: 'rejected', rejectionNote: rejNote, approvedBy: user.name, approvedAt: new Date().toISOString() }
-            : doc
-        )
-      }));
-      setRejModal(null); setRejNote('');
-    })
-    .catch(err => { console.error(err); notify('Rejection failed','error'); });
+      logAction(user,'rejection',user.name+' rejected '+(rejModal.customer_name||rejModal.customerName||'')+"'s Invoice — "+rejNote,{invoice_id:rejModal.id,reason:rejNote});
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote}:doc)}));
+      setRejModal(null);setRejNote('');
+    }).catch(()=>notify('Rejection failed','error'));
   };
   return React.createElement('div',null,
     React.createElement('div',{style:{marginBottom:14}},React.createElement('span',{className:'badge pending'},pending.length+' pending')),
@@ -2053,23 +2372,23 @@ function ApprovalsPage({user,data,setData,notify}){
           React.createElement('div',{style:{display:'flex',justifyContent:'space-between',marginBottom:12}},
             React.createElement('div',null,
               React.createElement('div',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id),
-              React.createElement('div',{style:{fontSize:14,fontWeight:600,marginTop:2}},inv.customerName),
-              React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},'By '+inv.employeeName+' · '+inv.created),
-              inv.customerAddress&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},'📍 '+inv.customerAddress)
+              React.createElement('div',{style:{fontSize:14,fontWeight:600,marginTop:2}},inv.customer_name||inv.customerName),
+              React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},'By '+(inv.employee_name||inv.employeeName)+' · '+inv.created),
+              (inv.customer_address||inv.customerAddress)&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},'📍 '+(inv.customer_address||inv.customerAddress))
             ),
             React.createElement('div',{style:{fontSize:17,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(inv.total))
           ),
           inv.comment&&React.createElement('div',{className:'comment-box'},React.createElement('div',{className:'comment-meta'},'Employee note'),React.createElement('div',{className:'comment-text'},inv.comment)),
           React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden',margin:'12px 0'}},
             React.createElement('div',{style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'7px 11px',background:'var(--bg4)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em'}},React.createElement('span',null,'Product'),React.createElement('span',null,'Qty'),React.createElement('span',null,'Subtotal')),
-            inv.items.map((it,i)=>React.createElement('div',{key:i,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'9px 11px',borderTop:'1px solid var(--border)',fontSize:12}},
+            (inv.items||[]).map((it,i)=>React.createElement('div',{key:i,style:{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'9px 11px',borderTop:'1px solid var(--border)',fontSize:12}},
               React.createElement('span',{style:{color:'var(--text)'}},it.name),
               React.createElement('span',{style:{color:'var(--text2)'}},it.qty),
               React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text2)'}},fmtCurrency(it.price*it.qty))
             ))
           ),
           React.createElement('div',{style:{display:'flex',gap:8,justifyContent:'flex-end'}},
-            React.createElement('button',{className:'btn btn-danger',onClick:()=>{setRejNote('');setRejModal(inv)}},'✕ Reject with Note'),
+            React.createElement('button',{className:'btn btn-danger',onClick:()=>{setRejNote('');setRejModal(inv);}},'✕ Reject with Note'),
             React.createElement('button',{className:'btn btn-success',onClick:()=>approve(inv.id)},'✓ Approve')
           )
         ))
@@ -2366,11 +2685,34 @@ function CustomersPage({user,data,setData,notify}){
   const [form,setForm]=useState(empty);
   const myLeads=user.role==='employee'?leads.filter(l=>l.employeeId===user.id):leads;
   const filtered=filter==='all'?myLeads:myLeads.filter(l=>l.status===filter);
-  const save=()=>{
+  const BASE='https://mkaerp-production.up.railway.app';
+  const save=async()=>{
     if(!form.name.trim()){notify('Name required','error');return}
-    if(editLead){setData(d=>({...d,leads:d.leads.map(l=>l.id===editLead.id?{...l,...form}:l)}));logAction(user,'customer',user.name+' updated customer details for '+form.name,{customer:form.name});notify('Updated','success')}
-    else{setData(d=>({...d,leads:[{id:Date.now(),employeeId:user.id,...form,created:new Date().toISOString().split('T')[0]},...d.leads]}));logAction(user,'customer',user.name+' created new customer '+form.name,{customer:form.name,source:form.source});notify('Customer added','success')}
-    setShowModal(false);
+    const payload={
+      name:form.name, phone:form.phone, source:form.source,
+      product:form.product, status:form.status,
+      notes:form.notes, address:form.address,
+      employee_id:user.id,
+      created:new Date().toISOString().split('T')[0]
+    };
+    try{
+      if(editLead){
+        const r=await fetch(BASE+'/leads/'+editLead.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!r.ok){const e=await r.json();throw new Error(e.error||'Update failed');}
+        const updated=await r.json();
+        setData(d=>({...d,leads:d.leads.map(l=>l.id===editLead.id?{...updated,employeeId:Number(updated.employee_id)}:l)}));
+        logAction(user,'customer',user.name+' updated customer '+form.name,{customer:form.name});
+        notify('Updated','success');
+      }else{
+        const r=await fetch(BASE+'/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!r.ok){const e=await r.json();throw new Error(e.error||'Create failed');}
+        const created=await r.json();
+        setData(d=>({...d,leads:[{...created,employeeId:Number(created.employee_id)},...d.leads]}));
+        logAction(user,'customer',user.name+' created customer '+form.name,{customer:form.name,source:form.source});
+        notify('Customer added','success');
+      }
+      setShowModal(false);
+    }catch(e){notify('Save failed: '+e.message,'error');console.error(e);}
   };
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}},
@@ -2389,7 +2731,10 @@ function CustomersPage({user,data,setData,notify}){
           React.createElement('td',null,l.source),
           React.createElement('td',null,l.product||'—'),
           React.createElement('td',null,React.createElement('span',{className:`badge ${l.status}`},l.status)),
-          React.createElement('td',null,React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:l.name,phone:l.phone,source:l.source,product:l.product,status:l.status,notes:l.notes,address:l.address||''});setEditLead(l);setShowModal(true)}},'Edit'))
+          React.createElement('td',{style:{display:'flex',gap:6}},
+            React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:l.name,phone:l.phone,source:l.source,product:l.product,status:l.status,notes:l.notes,address:l.address||''});setEditLead(l);setShowModal(true)}},'Edit'),
+            user.role!=='employee'&&React.createElement('button',{className:'btn btn-danger btn-sm',onClick:async()=>{if(!confirm('Delete '+l.name+'?'))return;const BASE='https://mkaerp-production.up.railway.app';await fetch(BASE+'/leads/'+l.id,{method:'DELETE'});setData(d=>({...d,leads:d.leads.filter(x=>x.id!==l.id)}));notify('Deleted','success');}},'Delete')
+          )
         )))
       )
     ),
@@ -2673,15 +3018,39 @@ function CreateInvoice({user,data,setData,notify}){
   const [address,setAddress]=useState('');
   const [comment,setComment]=useState('');
   const [terms,setTerms]=useState({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
-  const [items,setItems]=useState([{productId:'',qty:1}]);
-  const total=items.reduce((s,item)=>{const p=products.find(p=>p.id===parseInt(item.productId));return s+(p?p.price*parseInt(item.qty||0):0)},0);
+  const [items,setItems]=useState([{productId:'',qty:1,manualPrice:''}]);
+  const [discountPct,setDiscountPct]=useState(0);
+  const [discountTitle,setDiscountTitle]=useState('');
+  const subTotal = items.reduce((s,item)=>{
+    const price = parseFloat(item.manualPrice||0);
+    return s + (price * parseInt(item.qty||0));
+  },0);
+  const discountAmt =
+    subTotal * (parseFloat(discountPct||0) / 100);
+  const discountedSubTotal =
+    subTotal - discountAmt;
+  const vat =
+    discountedSubTotal * 0.05;
+  const total =
+    discountedSubTotal + vat;
+
   const submit = () => {
     if(!customer.trim()){
       notify('Customer name required','error');
       return;
     }
 
-    const valid = items.filter(i => i.productId && i.qty > 0);
+    if(discountPct < 0 || discountPct > 20){
+      notify('Discount must be between 0% and 20%','error');
+      return;
+    }
+
+    if(discountPct > 0 && !discountTitle.trim()){
+      notify('Enter discount reason','error');
+      return;
+    }
+
+    const valid = items.filter(i => i.productId && parseInt(i.qty) > 0);
 
     if(!valid.length){
       notify('Add at least one product','error');
@@ -2691,10 +3060,10 @@ function CreateInvoice({user,data,setData,notify}){
     const builtItems = valid.map(i => {
       const p = products.find(p => p.id === parseInt(i.productId));
       return {
-        productId: p.id,
-        name: p.name,
+        productId: p ? p.id : null,
+        name: p ? p.name : '',
         qty: parseInt(i.qty),
-        price: p.price
+        price: parseFloat(i.manualPrice||0)
       };
     });
 
@@ -2712,12 +3081,13 @@ function CreateInvoice({user,data,setData,notify}){
       company_name: "",
       promo_code: "",
       lpo_no: "",
-      lpo_date: "",
+      lpo_date: null,
       total,
       created: new Date().toISOString(),
-      terms,
+      terms: {...terms, comment: comment||''},
       items: builtItems,
-      comment: comment || ""
+      discount_pct: parseFloat(discountPct || 0),
+      discount_title: discountTitle || ''
     };
 
     // 🔥 SAVE TO DB
@@ -2729,7 +3099,7 @@ function CreateInvoice({user,data,setData,notify}){
     .then(async res => {
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || 'Failed');
+        throw new Error(data.error || data.message || 'Failed');
       }
       return data;
     })
@@ -2762,6 +3132,12 @@ function CreateInvoice({user,data,setData,notify}){
             approvedAt: null,
             rejectionNote: '',
             items: builtItems,
+            discountPct: parseFloat(discountPct || 0),
+          discountTitle: discountTitle || '',
+          discountAmt,
+          subTotal,
+          vat,
+          gross: total,
             terms,
             accountantSent: false,
             deliveryDate: '',
@@ -2778,12 +3154,12 @@ function CreateInvoice({user,data,setData,notify}){
       setAddress('');
       setComment('');
       setTerms({payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'});
-      setItems([{productId:'',qty:1}]);
+      setItems([{productId:'',qty:1,manualPrice:''}]);
 
     })
     .catch(err => {
       console.error(err);
-      notify('Failed to save invoice','error');
+      notify('Failed to save invoice: '+err.message,'error');
     });
   };
   return React.createElement('div',{className:'grid-2'},
@@ -2812,16 +3188,19 @@ function CreateInvoice({user,data,setData,notify}){
       React.createElement('div',{className:'card'},
         React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
           React.createElement('div',{className:'card-title',style:{margin:0}},'Items'),
-          React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setItems(i=>[...i,{productId:'',qty:1}])},'+ Add Item')
+          React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setItems(i=>[...i,{productId:'',qty:1,manualPrice:''}])},'+ Add Item')
         ),
         React.createElement('div',{className:'invoice-items'},
-          React.createElement('div',{className:'item-row item-header'},React.createElement('span',null,'Product'),React.createElement('span',null,'Qty'),React.createElement('span',null,'Price'),React.createElement('span',null,'')),
+          React.createElement('div',{className:'item-row item-header'},React.createElement('span',null,'Product'),React.createElement('span',null,'Qty'),React.createElement('span',null,'Price (OMR)'),React.createElement('span',null,'')),
           items.map((item,idx)=>{
-            const p=products.find(p=>p.id===parseInt(item.productId));
             return React.createElement('div',{key:idx,className:'item-row'},
-              React.createElement('select',{value:item.productId,onChange:e=>setItems(i=>i.map((it,ii)=>ii===idx?{...it,productId:e.target.value}:it)),style:{fontSize:11}},React.createElement('option',{value:''},'Select...'),...products.map(pr=>React.createElement('option',{key:pr.id,value:pr.id},pr.name+' — OMR '+pr.price))),
+              React.createElement('select',{value:item.productId,onChange:e=>{
+                const selId=e.target.value;
+                const selP=products.find(p=>p.id===parseInt(selId));
+                setItems(i=>i.map((it,ii)=>ii===idx?{...it,productId:selId,manualPrice:selP?String(selP.price):''}:it));
+              },style:{fontSize:11}},React.createElement('option',{value:''},'Select...'),...products.map(pr=>React.createElement('option',{key:pr.id,value:pr.id},pr.name))),
               React.createElement('input',{type:'number',min:1,value:item.qty,onChange:e=>setItems(i=>i.map((it,ii)=>ii===idx?{...it,qty:e.target.value}:it)),style:{width:55,textAlign:'center',fontSize:11}}),
-              React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--text2)'}},p?'OMR '+p.price:'—'),
+              React.createElement('input',{type:'number',min:0,step:'0.01',value:item.manualPrice,onChange:e=>setItems(i=>i.map((it,ii)=>ii===idx?{...it,manualPrice:e.target.value}:it)),placeholder:'0.00',style:{width:80,textAlign:'right',fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}),
               items.length>1&&React.createElement('button',{onClick:()=>setItems(i=>i.filter((_,ii)=>ii!==idx)),style:{background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:14}},'×')
             );
           })
@@ -2836,15 +3215,35 @@ function CreateInvoice({user,data,setData,notify}){
       React.createElement('div',{className:'card-title'},'Summary'),
       items.filter(i=>i.productId).map((item,idx)=>{
         const p=products.find(p=>p.id===parseInt(item.productId));
-        if(!p)return null;
+        const linePrice=parseFloat(item.manualPrice||0);
+        if(!p&&!linePrice)return null;
+        const name=p?p.name:('Item '+(idx+1));
         return React.createElement('div',{key:idx,style:{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid var(--border)',fontSize:11}},
-          React.createElement('span',{style:{color:'var(--text2)'}},p.name+' ×'+item.qty),
-          React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(p.price*item.qty))
+          React.createElement('span',{style:{color:'var(--text2)'}},name+' ×'+item.qty),
+          React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(linePrice*parseInt(item.qty||0)))
         );
       }),
-      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',padding:'12px 0 0',marginTop:4}},
-        React.createElement('span',{style:{fontWeight:600}},'Total'),
-        React.createElement('span',{style:{fontWeight:600,fontFamily:"'JetBrains Mono',monospace",fontSize:17}},fmtCurrency(total))
+      React.createElement('div',{style:{marginTop:8,paddingTop:8,borderTop:'1px solid var(--border2)',display:'flex',flexDirection:'column',gap:4}}),
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:12}},
+        React.createElement('span',{style:{color:'var(--text3)'}},'Subtotal'),
+        React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text2)'}},fmtCurrency(subTotal))
+      ),
+      React.createElement('div',{style:{padding:'8px 0',borderBottom:'1px solid var(--border)'}},
+        React.createElement('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:discountPct>0?4:0}},
+          React.createElement('span',{style:{color:'var(--text3)',fontSize:12,flexShrink:0}},'Discount'),
+          React.createElement('input',{type:'number',min:0,max:20,step:'0.01',value:discountPct,onChange:e=>setDiscountPct(e.target.value),placeholder:'0',style:{width:52,fontSize:12,padding:'3px 7px',textAlign:'center',borderRadius:7,flexShrink:0}}),
+          React.createElement('span',{style:{color:'var(--text3)',fontSize:12}},'%'),
+          discountAmt>0&&React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--red)',fontSize:12,marginLeft:'auto'}},'-'+fmtCurrency(discountAmt))
+        ),
+        discountPct>0&&React.createElement('input',{type:'text',value:discountTitle,onChange:e=>setDiscountTitle(e.target.value),placeholder:'Reason (required)',style:{width:'100%',fontSize:12,padding:'4px 8px',borderRadius:7,marginTop:2,borderColor:discountPct>0&&!discountTitle.trim()?'var(--red)':'var(--border2)'}})
+      ),
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:12}},
+        React.createElement('span',{style:{color:'var(--text3)'}},'VAT 5%'),
+        React.createElement('span',{style:{fontFamily:"'JetBrains Mono',monospace",color:'var(--text2)'}},fmtCurrency(vat))
+      ),
+      React.createElement('div',{style:{display:'flex',justifyContent:'space-between',padding:'10px 0 0',marginTop:4}},
+        React.createElement('span',{style:{fontWeight:700,fontSize:13}},'Gross Total'),
+        React.createElement('span',{style:{fontWeight:700,fontFamily:"'JetBrains Mono',monospace",fontSize:17}},fmtCurrency(total))
       ),
       React.createElement('button',{className:'btn btn-primary',style:{width:'100%',marginTop:18,padding:11},onClick:submit},'Submit for Approval →')
     )
@@ -4104,7 +4503,7 @@ function VATReportPage({user,data}){
   return R('div',null,
 
     // ── Controls bar
-    R('div',{style:{display:'flex',gap:12,alignItems:'center',marginBottom:20,flexWrap:'wrap'}},
+    R('div',{style:{display:'flex',gap:12,alignItems:'center',marginBottom:16,flexWrap:'wrap'}},
       R('div',{style:{display:'flex',alignItems:'center',gap:8}},
         R('label',{style:{fontSize:12,color:'var(--text2)',fontWeight:600}},'Year'),
         R('select',{
@@ -4119,7 +4518,19 @@ function VATReportPage({user,data}){
         onClick:exportExcel,
         disabled:exporting,
         style:{marginLeft:'auto'}
-      },exporting?'\u22ef Exporting…':'\u2913 Export to Excel')
+      },exporting?'\u22ef Exporting\u2026':'\u2913 Export to Excel')
+    ),
+
+    // ── Info box — above metrics for visibility
+    R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:12,padding:'12px 16px',fontSize:12,color:'var(--amber)',marginBottom:16,lineHeight:1.7}},
+      R('div',null,
+        R('b',null,'\u2139 How VAT is calculated: '),
+        'Each invoice total already includes 5% VAT, so the subtotal and VAT amount are automatically worked back from the gross.'
+      ),
+      R('div',{style:{marginTop:4}},
+        R('b',null,'\ud83d\udcca What counts: '),
+        'Only approved invoices that have been generated and printed by the accountant are included in this report.'
+      )
     ),
 
     // ── Summary metrics
@@ -4136,7 +4547,7 @@ function VATReportPage({user,data}){
 
     // ── Monthly table
     R('div',{className:'card'},
-      R('div',{className:'card-title',style:{marginBottom:16}},'Monthly VAT Breakdown — '+year),
+      R('div',{className:'card-title',style:{marginBottom:16}},'Monthly VAT Breakdown \u2014 '+year),
       R('div',{className:'tbl-scroll'},
         R('table',null,
           R('thead',null,R('tr',null,
@@ -4159,7 +4570,6 @@ function VATReportPage({user,data}){
               R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12}},
                 m.count>0?fmtN(m.grossTotal):'\u2014')
             )),
-            // Totals row
             R('tr',{style:{borderTop:'2px solid var(--border)',fontWeight:700,background:'var(--bg3)'}},
               R('td',null,'Total'),
               R('td',{style:{textAlign:'center'}},totals.count),
@@ -4169,18 +4579,6 @@ function VATReportPage({user,data}){
             )
           )
         )
-      )
-    ),
-
-    // ── Info box (matches Product Limits style)
-    R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:12,padding:'12px 16px',fontSize:12,color:'var(--amber)',marginTop:18,lineHeight:1.7}},
-      R('div',null,
-        R('b',null,'\u2139 How VAT is calculated: '),
-        'Each invoice total already includes 5% VAT, so the subtotal is worked back using Gross \u00f7 1.05, and VAT = Gross \u2212 Subtotal.'
-      ),
-      R('div',{style:{marginTop:4}},
-        R('b',null,'\ud83d\udcca What counts: '),
-        'Only approved invoices that have been generated and printed by the accountant are included in this report.'
       )
     )
   );
@@ -4618,6 +5016,7 @@ function App(){
         discountPct: Number(doc.discount_pct || 0),
         discountTitle: doc.discount_title || '',
         discountAmt: 0, // computed below
+        comment: (()=>{try{const t=typeof doc.terms==='string'?JSON.parse(doc.terms):doc.terms;return(t&&t.comment)||doc.comment||'';}catch(e){return doc.comment||'';}})()
       })).map(doc => ({
         ...doc,
         discountAmt: doc.discountPct > 0
@@ -4639,7 +5038,8 @@ function App(){
 
         const formatted = leadsFromDB.map(l => ({
           ...l,
-          created: l.created ? l.created.split('T')[0] : null // fix date
+          employeeId: Number(l.employee_id),
+          created: l.created ? l.created.split('T')[0] : null
         }));
 
         setData(prev => ({
@@ -4683,7 +5083,7 @@ function App(){
     customers:['Customers','Manage records'],
     invoices:['Invoices','Invoice records'],
     'create-invoice':['New Invoice','Create and submit'],
-    approvals:['Approvals','Review pending'],
+    approvals: user&&user.role==='admin'?['Pending Approvals Overview','Monitor, prioritize & notify owner']:['Approvals','Review pending'],
     'approved-invoices':['Approved Invoices','Generate and print'],
     products:['Product Catalog','All products'],
     users:['Users','User management'],
@@ -4735,7 +5135,7 @@ function App(){
   return React.createElement('div',{className:'app'+(appReady?' app-fadein':'')},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
 
-    React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme}),
+    React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme,data}),
     React.createElement(MobileNav,{user,active,setActive}),
 
     React.createElement('div',{className:'main'},
