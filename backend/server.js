@@ -11,14 +11,9 @@ const { Pool } = require('pg');
 const app  = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
 
-// ─── DB migrations (run once on deploy) ───────────────────────
-// ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER DEFAULT 10;
-// ──────────────────────────────────────────────────────────────
-
 app.use(cors());
 app.use(express.json());
 
-// ─── Helper ───────────────────────────────────────────────────
 function ok(res, data)    { res.json(data); }
 function fail(res, err, status = 500) {
   console.error(err);
@@ -30,7 +25,6 @@ function fail(res, err, status = 500) {
 //  AUTH
 // ═══════════════════════════════════════════════════════════════
 
-// POST /login
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -48,7 +42,6 @@ app.post('/login', async (req, res) => {
 //  USERS
 // ═══════════════════════════════════════════════════════════════
 
-// GET /users
 app.get('/users', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM users ORDER BY id');
@@ -56,7 +49,6 @@ app.get('/users', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /users
 app.post('/users', async (req, res) => {
   try {
     const { name, email, password, role, active } = req.body;
@@ -69,7 +61,6 @@ app.post('/users', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /users/:id
 app.patch('/users/:id', async (req, res) => {
   try {
     const { name, email, password, role, active } = req.body;
@@ -82,7 +73,6 @@ app.patch('/users/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// DELETE /users/:id
 app.delete('/users/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
@@ -90,7 +80,6 @@ app.delete('/users/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /users/:id/complete-onboarding
 app.post('/users/:id/complete-onboarding', async (req, res) => {
   try {
     await pool.query('UPDATE users SET new_user = false WHERE id = $1', [req.params.id]);
@@ -103,7 +92,6 @@ app.post('/users/:id/complete-onboarding', async (req, res) => {
 //  PRODUCTS
 // ═══════════════════════════════════════════════════════════════
 
-// GET /products
 app.get('/products', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM products ORDER BY id');
@@ -111,7 +99,6 @@ app.get('/products', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /products
 app.post('/products', async (req, res) => {
   try {
     const { name, price, stock, category, added_date } = req.body;
@@ -124,7 +111,6 @@ app.post('/products', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /products/:id  — full edit (admin/owner)
 app.patch('/products/:id', async (req, res) => {
   try {
     const { name, price, stock, category } = req.body;
@@ -137,9 +123,6 @@ app.patch('/products/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /products/:id/threshold  — set reorder threshold only (owner & admin)
-// The frontend enforces role-based access; the backend persists it.
-// SQL: ALTER TABLE products ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER DEFAULT 10;
 app.patch('/products/:id/threshold', async (req, res) => {
   try {
     const { reorder_threshold } = req.body;
@@ -156,7 +139,6 @@ app.patch('/products/:id/threshold', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// DELETE /products/:id
 app.delete('/products/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM products WHERE id = $1', [req.params.id]);
@@ -169,7 +151,6 @@ app.delete('/products/:id', async (req, res) => {
 //  DOCUMENTS  (invoices + quotations)
 // ═══════════════════════════════════════════════════════════════
 
-// GET /documents
 app.get('/documents', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM documents ORDER BY created DESC');
@@ -177,7 +158,6 @@ app.get('/documents', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /documents  — create invoice or quotation
 app.post('/documents', async (req, res) => {
   try {
     const {
@@ -206,10 +186,10 @@ app.post('/documents', async (req, res) => {
       [
         id, type, employee_id,
         customer_name, customer_phone, customer_address,
-        customer_ref, mka_ref, company_name, promo_code,
+        customer_ref ?? '', mka_ref ?? '', company_name ?? '', promo_code ?? '',
         lpo_no ?? '', lpo_date ?? null,
         status, total, created,
-        JSON.stringify(terms), JSON.stringify(items),
+        JSON.stringify(terms ?? {}), JSON.stringify(items ?? []),
         discount_pct ?? 0, discount_title ?? ''
       ]
     );
@@ -217,45 +197,26 @@ app.post('/documents', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// ─────────────────────────────────────────────────────────────
-//  PATCH /documents/:id/lpo
-//  Called by the accountant when they click "Generate & Print".
-//  Saves LPO No, LPO Date, and marks accountant_sent = true.
-// ─────────────────────────────────────────────────────────────
 app.patch('/documents/:id/lpo', async (req, res) => {
   try {
     const { lpo_no, lpo_date, accountant_sent } = req.body;
-
     const { rows } = await pool.query(
       `UPDATE documents
-       SET lpo_no          = $1,
-           lpo_date        = $2,
-           accountant_sent = $3
-       WHERE id = $4
+       SET lpo_no=$1, lpo_date=$2, accountant_sent=$3
+       WHERE id=$4
        RETURNING id, lpo_no, lpo_date, accountant_sent`,
-      [
-        lpo_no  ?? '',
-        lpo_date || null,   // store NULL if empty string
-        accountant_sent ?? true,
-        req.params.id
-      ]
+      [lpo_no ?? '', lpo_date || null, accountant_sent ?? true, req.params.id]
     );
-
-    if (!rows.length) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
+    if (!rows.length) return res.status(404).json({ error: 'Document not found' });
     ok(res, rows[0]);
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /documents/:id/approve
 app.patch('/documents/:id/approve', async (req, res) => {
   try {
     const { approved_by, approved_at } = req.body;
     const { rows } = await pool.query(
-      `UPDATE documents
-       SET status='approved', approved_by=$1, approved_at=$2
+      `UPDATE documents SET status='approved', approved_by=$1, approved_at=$2
        WHERE id=$3 RETURNING *`,
       [approved_by, approved_at ?? new Date().toISOString(), req.params.id]
     );
@@ -263,7 +224,6 @@ app.patch('/documents/:id/approve', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /documents/:id/reject
 app.patch('/documents/:id/reject', async (req, res) => {
   try {
     const { reason } = req.body;
@@ -275,7 +235,6 @@ app.patch('/documents/:id/reject', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /documents/:id/delivery-date
 app.patch('/documents/:id/delivery-date', async (req, res) => {
   try {
     const { delivery_date } = req.body;
@@ -287,7 +246,6 @@ app.patch('/documents/:id/delivery-date', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /documents/:id/delivery-done
 app.patch('/documents/:id/delivery-done', async (req, res) => {
   try {
     const { delivery_done_date } = req.body;
@@ -299,7 +257,6 @@ app.patch('/documents/:id/delivery-done', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// DELETE /documents/:id
 app.delete('/documents/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM documents WHERE id = $1', [req.params.id]);
@@ -309,10 +266,16 @@ app.delete('/documents/:id', async (req, res) => {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  LEADS
+//  LEADS  (powers the "Customers" page)
+//
+//  ⚠️  REQUIRED one-time DB migration (run once in Supabase SQL editor):
+//
+//    ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_product_id_fkey;
+//    ALTER TABLE leads DROP COLUMN IF EXISTS product_id;
+//    ALTER TABLE leads ADD COLUMN IF NOT EXISTS product TEXT DEFAULT '';
+//
 // ═══════════════════════════════════════════════════════════════
 
-// GET /leads
 app.get('/leads', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM leads ORDER BY created DESC');
@@ -320,33 +283,37 @@ app.get('/leads', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /leads
 app.post('/leads', async (req, res) => {
   try {
     const { name, phone, source, product, status, notes, address, employee_id, created } = req.body;
     const { rows } = await pool.query(
       `INSERT INTO leads (name, phone, source, product, status, notes, address, employee_id, created)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [name, phone, source, product, status, notes, address, employee_id, created]
+      [
+        name, phone ?? '', source ?? 'Instagram',
+        product ?? '',          // product name as text
+        status ?? 'new',
+        notes ?? '', address ?? '',
+        employee_id,
+        created ?? new Date().toISOString().split('T')[0]
+      ]
     );
     ok(res, rows[0]);
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /leads/:id
 app.patch('/leads/:id', async (req, res) => {
   try {
     const { name, phone, source, product, status, notes, address } = req.body;
     const { rows } = await pool.query(
-      `UPDATE leads SET name=$1,phone=$2,source=$3,product=$4,status=$5,notes=$6,address=$7
-       WHERE id=$8 RETURNING *`,
-      [name, phone, source, product, status, notes, address, req.params.id]
+      `UPDATE leads SET name=$1, phone=$2, source=$3, product=$4,
+       status=$5, notes=$6, address=$7 WHERE id=$8 RETURNING *`,
+      [name, phone ?? '', source ?? '', product ?? '', status ?? 'new', notes ?? '', address ?? '', req.params.id]
     );
     ok(res, rows[0]);
   } catch (e) { fail(res, e); }
 });
 
-// DELETE /leads/:id
 app.delete('/leads/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM leads WHERE id = $1', [req.params.id]);
@@ -359,7 +326,6 @@ app.delete('/leads/:id', async (req, res) => {
 //  EXPENDITURE
 // ═══════════════════════════════════════════════════════════════
 
-// GET /expenditure
 app.get('/expenditure', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM expenditure ORDER BY created_at DESC');
@@ -367,7 +333,6 @@ app.get('/expenditure', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /expenditure
 app.post('/expenditure', async (req, res) => {
   try {
     const { user_id, amount, expense_type, description, used_for, car_plate, proof_url, is_petty_cash } = req.body;
@@ -380,7 +345,6 @@ app.post('/expenditure', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /expenditure/:id
 app.patch('/expenditure/:id', async (req, res) => {
   try {
     const { user_id, amount, expense_type, description, used_for, car_plate, proof_url, is_petty_cash } = req.body;
@@ -393,7 +357,6 @@ app.patch('/expenditure/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /expenditure/:id/approve
 app.patch('/expenditure/:id/approve', async (req, res) => {
   try {
     const { approved_by } = req.body;
@@ -405,7 +368,6 @@ app.patch('/expenditure/:id/approve', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// PATCH /expenditure/:id/reject
 app.patch('/expenditure/:id/reject', async (req, res) => {
   try {
     const { reason, approved_by } = req.body;
@@ -417,7 +379,6 @@ app.patch('/expenditure/:id/reject', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// DELETE /expenditure/:id
 app.delete('/expenditure/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM expenditure WHERE id = $1', [req.params.id]);
@@ -430,7 +391,6 @@ app.delete('/expenditure/:id', async (req, res) => {
 //  AUDIT LOG
 // ═══════════════════════════════════════════════════════════════
 
-// GET /audit-log
 app.get('/audit-log', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM audit_log ORDER BY ts DESC LIMIT 2000');
@@ -438,7 +398,6 @@ app.get('/audit-log', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// POST /audit-log
 app.post('/audit-log', async (req, res) => {
   try {
     const { user_id, user_name, category, action, meta, time_label, date_label, ts } = req.body;
@@ -450,6 +409,7 @@ app.post('/audit-log', async (req, res) => {
     ok(res, { ok: true });
   } catch (e) { fail(res, e); }
 });
+
 
 // ═══════════════════════════════════════════════════════════════
 //  START
