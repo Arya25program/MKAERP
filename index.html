@@ -2535,7 +2535,6 @@ function ApprovedInvoicesPage({user,data,setData,notify}){
           inv.accountantSent
             ?React.createElement(React.Fragment,null,
                 React.createElement('span',{className:'badge approved'},'\u2713 Generated'),
-                React.createElement(FooterSettingsBtn),
                 // Re-print opens confirmation modal instead of printing directly
                 React.createElement('button',{
                   className:'btn btn-ghost btn-sm',
@@ -3671,7 +3670,6 @@ function FormalQuotations({user,data,setData,notify,prefill,clearPrefill}){
       ),
       React.createElement('div',{style:{display:'flex',justifyContent:'flex-end',gap:8,marginTop:16}},
         React.createElement('button',{className:'btn btn-ghost',onClick:()=>{setForm({...viewQ,products:viewQ.items||viewQ.products||[]});setMkaRef(viewQ.mkaRef||'');setDiscountPct(viewQ.discountPct||'');setDiscountTitle(viewQ.discountTitle||'');setEditQ(viewQ);setViewQ(null);setShowForm(true)}},'Edit'),
-        React.createElement(FooterSettingsBtn),
         React.createElement('button',{className:'btn btn-primary',onClick:()=>printQuotation(viewQ)},'Print / Export')
       )
     )
