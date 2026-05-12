@@ -2035,9 +2035,9 @@ function InvoicesPage({user,data}){
    ───────────────────────────────────────────────────────────────── */
 function getPriority(inv){
   const hoursOld=(Date.now()-new Date(inv.created).getTime())/3600000;
-  const discount=parseFloat(inv.discount_pct||0);
-  if(inv.total>=3000||discount>=20) return 'critical';
-  if(hoursOld>=48||inv.total>=1000) return 'high';
+  const discount=parseFloat(inv.discount_pct||inv.discountPct||0);
+  if(inv.total>=1000||discount>=15) return 'critical';
+  if(hoursOld>=48||inv.total>=400||discount>=8) return 'high';
   return 'standard';
 }
 function priorityLabel(p){
@@ -2091,7 +2091,7 @@ function PendingApprovalsOverview({user,data,setData,notify}){
     .then(()=>{
       notify('Invoice rejected','success');
       logAction(user,'rejection',user.name+' rejected '+(rejModal.customer_name||'')+"'s Invoice — "+rejNote,{invoice_id:rejModal.id,reason:rejNote});
-      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote}:doc)}));
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote,rejectionNote:rejNote}:doc)}));
       setRejModal(null);setRejNote('');
     }).catch(()=>notify('Rejection failed','error'));
   };
@@ -2359,7 +2359,7 @@ function ApprovalsPage({user,data,setData,notify}){
     .then(()=>{
       notify('Invoice rejected','success');
       logAction(user,'rejection',user.name+' rejected '+(rejModal.customer_name||rejModal.customerName||'')+"'s Invoice — "+rejNote,{invoice_id:rejModal.id,reason:rejNote});
-      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote}:doc)}));
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===rejModal.id?{...doc,status:'rejected',reject_reason:rejNote,rejectionNote:rejNote}:doc)}));
       setRejModal(null);setRejNote('');
     }).catch(()=>notify('Rejection failed','error'));
   };
@@ -2608,21 +2608,66 @@ function DeliveryPage({user,data,setData,notify}){
   const [dDate,setDDate]=useState('');
   const [doneId,setDoneId]=useState(null);
   const [doneDate,setDoneDate]=useState('');
-  const saveDate=id=>{
-    if(!dDate){notify('Pick a delivery date','error');return}
-    setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDate:dDate}:doc)}));
-    notify('Delivery date set','success');
-    const inv=(data.documents||[]).find(d=>d.id===id);
-    logAction(user,'delivery',user.name+' scheduled delivery for '+(inv?inv.customerName:'an invoice')+' on '+dDate,{invoice_id:id,customer:inv?inv.customerName:'',date:dDate});
-    setEditId(null);setDDate('');
+  const saveDate = async (docId, deliveryDate) => {
+    try {
+      const res = await fetch(`https://mkaerp-production.up.railway.app/documents/${docId}/delivery-date`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          delivery_date: deliveryDate
+        })
+      });
+      if (!res.ok) throw new Error('Failed to save delivery date');
+      const updated = await res.json();
+      setData(d => ({
+        ...d,
+        documents: d.documents.map(doc =>
+          doc.id === docId
+            ? {
+                ...doc,
+                delivery_date: updated.delivery_date,
+                delivery_done: updated.delivery_done,
+                delivery_done_date: updated.delivery_done_date
+              }
+            : doc
+        )
+      }));
+    } catch (err) {
+      console.error(err);
+    }
   };
-  const markDone=id=>{
-    if(!doneDate){notify('Enter completion date','error');return}
-    setData(d=>({...d,documents:d.documents.map(doc=>doc.id===id?{...doc,deliveryDone:true,deliveryDoneDate:doneDate}:doc)}));
-    notify('Delivery marked as completed','success');
-    const inv=(data.documents||[]).find(d=>d.id===id);
-    logAction(user,'delivery',user.name+' marked delivery as completed for '+(inv?inv.customerName:'an invoice'),{invoice_id:id,customer:inv?inv.customerName:'',done_date:doneDate});
-    setDoneId(null);setDoneDate('');
+  const markDone = async (docId) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const res = await fetch(`https://mkaerp-production.up.railway.app/documents/${docId}/delivery-done`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          delivery_done_date: today
+        })
+      });
+      if (!res.ok) throw new Error('Failed to mark delivery done');
+      const updated = await res.json();
+      setData(d => ({
+        ...d,
+        documents: d.documents.map(doc =>
+          doc.id === docId
+            ? {
+                ...doc,
+                delivery_date: updated.delivery_date,
+                delivery_done: updated.delivery_done,
+                delivery_done_date: updated.delivery_done_date
+              }
+            : doc
+        )
+      }));
+    } catch (err) {
+      console.error(err);
+    }
   };
   return React.createElement('div',null,
     React.createElement('div',{className:'grid-3',style:{marginBottom:18}},
@@ -2773,7 +2818,7 @@ function ProductsPage({ user, data, setData, notify }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const isAdmin = user.role === 'admin';
-
+  const isEmployee = user.role === 'employee';
   const saveEdit = () => {
     if (!ef.name.trim()) {
       notify('Name required', 'error');
@@ -2898,10 +2943,9 @@ function ProductsPage({ user, data, setData, notify }) {
             R('tr', null,
               R('th', null, 'Product'),
               R('th', null, 'Category'),
-              R('th', null, 'Price'),
-              R('th', null, 'Stock'),
-              R('th', null, 'Added'),
-              R('th', null, 'Status'),
+              !isEmployee && R('th', null, 'Price'),
+              R('th', null, isEmployee ? 'Stock Status' : 'Stock'),
+              !isEmployee && R('th', null, 'Status'),
               isAdmin && R('th', null, '')
             )
           ),
@@ -2917,13 +2961,20 @@ function ProductsPage({ user, data, setData, notify }) {
                   R('tr', { key: p.id },
                     R('td', { className: 'primary' }, p.name),
                     R('td', null, p.category),
-                    R('td', null,
+                    !isEmployee && R('td', null,
                       R('span', { style: { fontFamily: "'JetBrains Mono', monospace" } },
                         `OMR ${Number(p.price || 0).toFixed(2)}`)
                     ),
-                    R('td', null, p.stock),
-                    R('td', null, p.addedDate || '—'),
                     R('td', null,
+                      isEmployee
+                        ? R('span', {
+                            className: `badge ${p.stock === 0 ? 'rejected' : p.stock <= 10 ? 'low-stock' : 'in-stock'}`
+                          },
+                            p.stock === 0 ? 'Out of stock' : p.stock <= 10 ? 'Low stock' : 'In stock'
+                          )
+                        : p.stock
+                    ),
+                    !isEmployee && R('td', null,
                       R('span', {
                         className: `badge ${
                           p.stock === 0 ? 'rejected' :
@@ -3252,136 +3303,194 @@ function CreateInvoice({user,data,setData,notify}){
 
 function QuotationUphold({user,data,setData,notify}){
   const [tab,setTab]=useState('demand');
+  const [prefill,setPrefill]=useState(null);
+  const switchToQuotation=(entry)=>{
+    setPrefill(entry);
+    setTab('formal');
+  };
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',gap:6,marginBottom:20}},
       [{id:'demand',label:'Demand Tracker'},{id:'formal',label:'Formal Quotations'}].map(t=>
         React.createElement('button',{key:t.id,className:'btn btn-ghost',style:{borderColor:tab===t.id?'var(--text3)':'var(--border)',color:tab===t.id?'var(--text)':'var(--text2)'},onClick:()=>setTab(t.id)},t.label)
       )
     ),
-    tab==='demand'?React.createElement(DemandTracker,{user,data,setData,notify}):React.createElement(FormalQuotations,{user,data,setData,notify})
+    tab==='demand'
+      ?React.createElement(DemandTracker,{user,data,setData,notify,switchToQuotation})
+      :React.createElement(FormalQuotations,{user,data,setData,notify,prefill,clearPrefill:()=>setPrefill(null)})
   );
 }
 
-function DemandTracker({user,data,setData,notify}){
-  const {products,users}=data;
-  // demand entries are quotation-type docs with a product field (legacy demand tracker format)
+function DemandTracker({user,data,setData,notify,switchToQuotation}){
+  const BASE='https://mkaerp-production.up.railway.app';
   const [showModal,setShowModal]=useState(false);
-  const [form,setForm]=useState({customerName:'',product:''});
+  const [form,setForm]=useState({customerName:'',productId:'',phone:''});
   const [customerModal,setCustomerModal]=useState(null);
-  const [cf,setCf]=useState({phone:'',address:''});
   const [sortBy,setSortBy]=useState('count');
-  // Demand tracker uses its own local state since these are lightweight entries, not full documents
-  const [demandList,setDemandList]=useState([]);
-  const allQ=demandList.filter(q=>!q.converted);
-  const maxCount=Math.max(1,...Object.values(allQ.reduce((acc,q)=>{acc[q.product]=(acc[q.product]||0)+1;return acc},{})));
+  const [loading,setLoading]=useState(false);
+
+  // demand entries stored in data.demandEntries (fetched from DB)
+  const demandList=data.demandEntries||[];
+  const active=demandList.filter(q=>!q.converted);
+
+  const maxCount=Math.max(1,...Object.values(
+    active.reduce((acc,q)=>{acc[q.product_id]=(acc[q.product_id]||0)+1;return acc},{})
+  ));
   const productGroups={};
-  allQ.forEach(q=>{if(!productGroups[q.product])productGroups[q.product]=[];productGroups[q.product].push(q)});
-  const sorted=Object.entries(productGroups).sort((a,b)=>sortBy==='count'?b[1].length-a[1].length:a[0].localeCompare(b[0]));
-  const convertToInvoice=()=>{
+  active.forEach(q=>{
+    const key=q.product_id;
+    if(!productGroups[key])productGroups[key]=[];
+    productGroups[key].push(q);
+  });
+  const sorted=Object.entries(productGroups).sort((a,b)=>
+    sortBy==='count'?b[1].length-a[1].length:
+    (a[1][0]?.product_name||'').localeCompare(b[1][0]?.product_name||'')
+  );
+
+  const addEntry=async()=>{
+    if(!form.customerName.trim()||!form.productId){notify('Name and product required','error');return;}
+    const prod=data.products.find(p=>p.id===Number(form.productId));
+    if(!prod){notify('Product not found','error');return;}
+    setLoading(true);
+    try{
+      const res=await fetch(BASE+'/demand-tracker',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          customer_name:form.customerName.trim(),
+          phone:form.phone||'',
+          product_id:prod.id,
+          product_name:prod.name
+        })
+      });
+      if(!res.ok)throw new Error(await res.text());
+      const created=await res.json();
+      setData(d=>({...d,demandEntries:[created,...(d.demandEntries||[])]}));
+      notify('Added to demand tracker','success');
+      setForm({customerName:'',productId:'',phone:''});
+      setShowModal(false);
+    }catch(e){console.error(e);notify('Failed to add entry','error');}
+    setLoading(false);
+  };
+
+  const removeEntry=async(id)=>{
+    try{
+      await fetch(BASE+'/demand-tracker/'+id,{method:'DELETE'});
+      setData(d=>({...d,demandEntries:(d.demandEntries||[]).filter(e=>e.id!==id)}));
+    }catch(e){console.error(e);}
+  };
+
+  const convertToQuotation=()=>{
     if(!customerModal)return;
-    const ownerUser=users.find(u=>u.role==='owner'&&u.active);
-    const pFound=data.products.find(p=>p.name===customerModal.product);
-    const items=[pFound
-      ?{productId:pFound.id,name:pFound.name,qty:1,price:pFound.price}
-      :{productId:0,name:customerModal.product,qty:1,price:0}];
-    const total=pFound?pFound.price:0;
-    const newDoc={
-      id:genId('INV'),
-      type:'invoice',
-      status:'approved',
-      employeeId:user.id,
-      employeeName:user.name,
-      customerName:customerModal.customerName,
-      customerPhone:cf.phone||customerModal.phone||'',
-      customerAddress:cf.address||customerModal.address||'',
-      customerRef:'',mkaRef:'',companyName:'',promoCode:'',lpoNo:'',lpoDate:'',
-      total,
-      created:new Date().toISOString().split('T')[0],
-      comment:'Converted from demand tracker.',
-      approvedBy:ownerUser?ownerUser.name:'Auto-approved',
-      approvedAt:tsNow(),
-      rejectionNote:'',
-      items,
-      terms:{payment:'',delivery:'',warranty:'',validity:''},
-      accountantSent:false,deliveryDate:'',deliveryDone:false,deliveryDoneDate:'',fromQuotation:true
-    };
-    setData(d=>({...d,documents:[newDoc,...d.documents]}));
-    setDemandList(prev=>prev.map(q=>q.id===customerModal.id?{...q,converted:true}:q));
-    notify('Invoice created, approved & sent to accountant!','success');
+    const prod=data.products.find(p=>p.id===customerModal.product_id);
+    switchToQuotation({
+      customerName:customerModal.customer_name,
+      phone:customerModal.phone||'',
+      productId:customerModal.product_id,
+      productName:customerModal.product_name,
+      productPrice:prod?prod.price:0,
+      demandEntryId:customerModal.id
+    });
     setCustomerModal(null);
   };
+
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}},
       React.createElement('div',{style:{display:'flex',gap:5}},
-        [{id:'count',label:'By demand'},{id:'alpha',label:'A–Z'}].map(s=>React.createElement('button',{key:s.id,className:'btn btn-ghost btn-sm',style:{borderColor:sortBy===s.id?'var(--text3)':'var(--border)',color:sortBy===s.id?'var(--text)':'var(--text2)'},onClick:()=>setSortBy(s.id)},s.label))
+        [{id:'count',label:'By demand'},{id:'alpha',label:'A–Z'}].map(s=>
+          React.createElement('button',{key:s.id,className:'btn btn-ghost btn-sm',
+            style:{borderColor:sortBy===s.id?'var(--text3)':'var(--border)',color:sortBy===s.id?'var(--text)':'var(--text2)'},
+            onClick:()=>setSortBy(s.id)},s.label)
+        )
       ),
       React.createElement('button',{className:'btn btn-primary',onClick:()=>setShowModal(true)},'+ Add Customer')
     ),
-    sorted.length===0?React.createElement('div',{className:'card'},React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No demand entries yet'))):
-    sorted.map(([product,customers])=>React.createElement('div',{key:product,className:'quot-group'},
-      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:14,marginBottom:12}},
-        React.createElement(CircleProgress,{count:customers.length,max:maxCount,size:48}),
-        React.createElement('div',{style:{flex:1}},
-          React.createElement('div',{style:{fontSize:13,fontWeight:600,color:'var(--text)'}},product),
-          React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:1}},customers.length+' customer'+(customers.length>1?'s':'')+' interested')
-        )
-      ),
-      React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
-        customers.map(q=>React.createElement('div',{key:q.id,className:'quot-chip',onClick:()=>{setCustomerModal(q);setCf({phone:q.phone||'',address:q.address||''})}},
-          React.createElement('span',{style:{color:'var(--text)'}},q.customerName),
-          React.createElement('span',{style:{fontSize:10,color:'var(--text3)'}},q.date)
-        ))
-      )
-    )),
+    sorted.length===0
+      ?React.createElement('div',{className:'card'},React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No demand entries yet')))
+      :sorted.map(([pid,customers])=>React.createElement('div',{key:pid,className:'quot-group'},
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:14,marginBottom:12}},
+            React.createElement(CircleProgress,{count:customers.length,max:maxCount,size:48}),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{fontSize:13,fontWeight:600,color:'var(--text)'}},customers[0]?.product_name||'Unknown'),
+              React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:1}},customers.length+' customer'+(customers.length>1?'s':'')+' interested')
+            )
+          ),
+          React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+            customers.map(q=>React.createElement('div',{key:q.id,className:'quot-chip',
+              onClick:()=>setCustomerModal(q)},
+              React.createElement('span',{style:{color:'var(--text)'}},q.customer_name),
+              React.createElement('span',{style:{fontSize:10,color:'var(--text3)'}},q.created_at?q.created_at.split('T')[0]:q.date||'')
+            ))
+          )
+        )),
     showModal&&React.createElement('div',{className:'modal-overlay'},
       React.createElement('div',{className:'modal',style:{width:420}},
         React.createElement('div',{className:'modal-title'},'Add to Demand Tracker'),
         React.createElement('div',{className:'form-grid'},
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Customer Name'),React.createElement('input',{value:form.customerName,onChange:e=>setForm(f=>({...f,customerName:e.target.value})),placeholder:'Full name',autoFocus:true})),
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Product Required'),
-            React.createElement('select',{value:form.product,onChange:e=>setForm(f=>({...f,product:e.target.value}))},
-              React.createElement('option',{value:''},'Select…'),...data.products.map(p=>React.createElement('option',{key:p.id,value:p.name},p.name))
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Customer Name'),
+            React.createElement('input',{value:form.customerName,onChange:e=>setForm(f=>({...f,customerName:e.target.value})),placeholder:'Full name',autoFocus:true})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Phone (optional)'),
+            React.createElement('input',{value:form.phone,onChange:e=>setForm(f=>({...f,phone:e.target.value})),placeholder:'9XXXXXXX'})
+          ),
+          React.createElement('div',{className:'form-group'},
+            React.createElement('label',null,'Product Required'),
+            React.createElement('select',{value:form.productId,onChange:e=>setForm(f=>({...f,productId:e.target.value}))},
+              React.createElement('option',{value:''},'Select…'),
+              ...data.products.map(p=>React.createElement('option',{key:p.id,value:p.id},p.name))
             )
           )
         ),
         React.createElement('div',{className:'modal-actions'},
           React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowModal(false)},'Cancel'),
-          React.createElement('button',{className:'btn btn-primary',onClick:()=>{
-            if(!form.customerName.trim()||!form.product){notify('Name and product required','error');return}
-            setDemandList(prev=>[...prev,{id:Date.now(),customerName:form.customerName,product:form.product,date:new Date().toISOString().split('T')[0],phone:'',address:'',converted:false}]);
-            notify('Added to demand list','success');setForm({customerName:'',product:''});setShowModal(false);
-          }},'Add')
+          React.createElement('button',{className:'btn btn-primary',disabled:loading,onClick:addEntry},loading?'Adding…':'Add')
         )
       )
     ),
     customerModal&&React.createElement('div',{className:'modal-overlay'},
       React.createElement('div',{className:'modal',style:{width:420}},
-        React.createElement('div',{className:'modal-title'},customerModal.customerName),
-        React.createElement('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--text2)'}},'Product: '+React.createElement('strong',{style:{color:'var(--text)'}},customerModal.product)),
-        React.createElement('div',{className:'form-grid'},
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone (optional)'),React.createElement('input',{value:cf.phone,onChange:e=>setCf(f=>({...f,phone:e.target.value})),placeholder:'9XXXXXXX'})),
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Address (optional)'),React.createElement('input',{value:cf.address,onChange:e=>setCf(f=>({...f,address:e.target.value})),placeholder:'Delivery address'}))
+        React.createElement('div',{className:'modal-title'},customerModal.customer_name),
+        React.createElement('div',{style:{background:'var(--bg3)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,color:'var(--text2)'}},
+          React.createElement('div',null,React.createElement('span',{style:{color:'var(--text3)'}},'Product: '),React.createElement('strong',{style:{color:'var(--text)'}},customerModal.product_name)),
+          customerModal.phone&&React.createElement('div',{style:{marginTop:4}},React.createElement('span',{style:{color:'var(--text3)'}},'Phone: '),React.createElement('strong',{style:{color:'var(--text)'}},customerModal.phone))
         ),
         React.createElement('div',{className:'modal-actions'},
+          React.createElement('button',{className:'btn btn-ghost btn-sm',style:{color:'var(--red)',borderColor:'transparent'},
+            onClick:async()=>{await removeEntry(customerModal.id);setCustomerModal(null);notify('Removed','success');}
+          },'🗑 Remove'),
           React.createElement('button',{className:'btn btn-ghost',onClick:()=>setCustomerModal(null)},'Close'),
-          React.createElement('button',{className:'btn btn-success',onClick:convertToInvoice},'Convert into Invoice →')
+          React.createElement('button',{className:'btn btn-success',onClick:convertToQuotation},'Convert to Quotation →')
         )
       )
     )
   );
 }
 
-function FormalQuotations({user,data,setData,notify}){
+function FormalQuotations({user,data,setData,notify,prefill,clearPrefill}){
+  const BASE='https://mkaerp-production.up.railway.app';
+  const empty={name:'',phone:'',customerRef:'',promoCode:'',companyName:'',date:new Date().toISOString().split('T')[0],products:[{name:'',price:'',qty:1}],terms:{payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'}};
   const [showForm,setShowForm]=useState(false);
   const [editQ,setEditQ]=useState(null);
   const [viewQ,setViewQ]=useState(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [mkaRef, setMkaRef] = useState('');
   const [showDropdown, setShowDropdown] = useState(null);
-  const empty={name:'',customerRef:'',promoCode:'',companyName:'',date:new Date().toISOString().split('T')[0],products:[{name:'',price:'',qty:1}],terms:{payment:'50% advance, 50% on delivery',delivery:'Within 7 working days',warranty:'1 year manufacturer warranty',validity:'Valid for 30 days'}};
   const [form,setForm]=useState(empty);
   const [discountPct,setDiscountPct]=useState('');
   const [discountTitle,setDiscountTitle]=useState('');
+  // Demand tracker prefill — opens form pre-filled when coming from DemandTracker
+  const [demandEntryId,setDemandEntryId]=useState(null);
+  React.useEffect(()=>{
+    if(!prefill)return;
+    const prod=data.products.find(p=>p.id===prefill.productId);
+    setForm({...empty,name:prefill.customerName||'',phone:prefill.phone||'',
+      products:[{id:prefill.productId,name:prefill.productName||'',price:prefill.productPrice||prod?.price||'',qty:1}]
+    });
+    setDemandEntryId(prefill.demandEntryId||null);
+    setShowForm(true);
+    clearPrefill&&clearPrefill();
+  },[prefill]);
   const updateProd=(idx,field,val)=>setForm(f=>({...f,products:f.products.map((p,i)=>i===idx?{...p,[field]:val}:p)}));
   const addProdRow=()=>setForm(f=>({...f,products:[...f.products,{name:'',price:'',qty:1}]}));
   const removeProdRow=idx=>setForm(f=>({...f,products:f.products.filter((_,i)=>i!==idx)}));
@@ -3441,7 +3550,6 @@ function FormalQuotations({user,data,setData,notify}){
       return text;
     })
     .then(() => {
-      notify("Quotation saved", "success");
 
       const localQ = {
         id: qId,
@@ -3479,6 +3587,16 @@ function FormalQuotations({user,data,setData,notify}){
           : [localQ, ...d.documents];
         return { ...d, documents: docs };
       });
+
+      // If converted from demand tracker, remove that entry
+      if(demandEntryId){
+        fetch(BASE+'/demand-tracker/'+demandEntryId,{method:'DELETE'}).catch(()=>{});
+        setData(d=>({...d,demandEntries:(d.demandEntries||[]).filter(e=>e.id!==demandEntryId)}));
+        setDemandEntryId(null);
+        notify('Quotation saved & removed from demand tracker','success');
+      }else{
+        notify('Quotation saved','success');
+      }
 
       setShowForm(false);
       setEditQ(null);
@@ -4366,9 +4484,9 @@ function VATReportPage({user,data}){
   const [year,setYear]=useState(new Date().getFullYear());
   const [exporting,setExporting]=useState(false);
 
-  // Only approved invoices that have been generated (accountantSent) contribute to VAT
+  // All approved invoices contribute to VAT (regardless of accountantSent)
   const invoices=(data.documents||[]).filter(d=>
-    d.type==='invoice'&&d.status==='approved'&&d.accountantSent
+    d.type==='invoice'&&d.status==='approved'
   );
 
   // Group by year-month
@@ -4529,7 +4647,7 @@ function VATReportPage({user,data}){
       ),
       R('div',{style:{marginTop:4}},
         R('b',null,'\ud83d\udcca What counts: '),
-        'Only approved invoices that have been generated and printed by the accountant are included in this report.'
+        'All approved invoices are included in this report.'
       )
     ),
 
@@ -4903,6 +5021,7 @@ function App(){
     documents:DOCUMENTS_INIT,
     products:[],
     users:[],
+    demandEntries:[],
   });
 
   const [notif,setNotif]=useState(null);
@@ -5016,7 +5135,8 @@ function App(){
         discountPct: Number(doc.discount_pct || 0),
         discountTitle: doc.discount_title || '',
         discountAmt: 0, // computed below
-        comment: (()=>{try{const t=typeof doc.terms==='string'?JSON.parse(doc.terms):doc.terms;return(t&&t.comment)||doc.comment||'';}catch(e){return doc.comment||'';}})()
+        comment: (()=>{try{const t=typeof doc.terms==='string'?JSON.parse(doc.terms):doc.terms;return(t&&t.comment)||doc.comment||'';}catch(e){return doc.comment||'';}})(),
+        rejectionNote: doc.reject_reason || ''
       })).map(doc => ({
         ...doc,
         discountAmt: doc.discountPct > 0
@@ -5048,6 +5168,16 @@ function App(){
         }));
       })
       .catch(err => console.error("Leads fetch error:", err));
+  }, []);
+
+  // FETCH DEMAND TRACKER
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/demand-tracker")
+      .then(res => res.json())
+      .then(entries => {
+        setData(prev => ({ ...prev, demandEntries: entries }));
+      })
+      .catch(err => console.error("Demand tracker fetch error:", err));
   }, []);
 
   // 🔐 LOGIN
