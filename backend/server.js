@@ -410,6 +410,38 @@ app.post('/audit-log', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// ═══════════════════════════════════════════════════════════════
+//  DEMAND TRACKER
+// ═══════════════════════════════════════════════════════════════
+ 
+app.get('/demand-tracker', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM demand_tracker WHERE converted = false ORDER BY created_at DESC'
+    );
+    ok(res, rows);
+  } catch (e) { fail(res, e); }
+});
+ 
+app.post('/demand-tracker', async (req, res) => {
+  try {
+    const { customer_name, phone, product_id, product_name } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO demand_tracker (customer_name, phone, product_id, product_name)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [customer_name, phone ?? '', product_id, product_name]
+    );
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+ 
+app.delete('/demand-tracker/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM demand_tracker WHERE id = $1', [req.params.id]);
+    ok(res, { deleted: true });
+  } catch (e) { fail(res, e); }
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  START
