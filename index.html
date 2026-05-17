@@ -850,6 +850,45 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .approve-btn:hover{opacity:.8}
 .reject-btn{background:var(--red-bg);color:var(--red);border:1px solid rgba(212,92,92,.2);padding:4px 10px;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
 .reject-btn:hover{opacity:.8}
+
+/* ── NOTIFICATION SYSTEM ── */
+.notif-bell-btn{position:relative;width:34px;height:34px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.notif-bell-btn:hover{border-color:var(--text3);color:var(--text)}
+.notif-bell-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg);font-family:'JetBrains Mono',monospace;animation:bell-pop .25s ease}
+@keyframes bell-pop{0%{transform:scale(0)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+.notif-dropdown{position:absolute;top:calc(100% + 8px);right:0;width:340px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;box-shadow:0 8px 32px var(--shadow);z-index:400;overflow:hidden;animation:modal-pop .18s ease both}
+.notif-dropdown-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.notif-dropdown-title{font-size:13px;font-weight:700;color:var(--text)}
+.notif-dropdown-actions{display:flex;gap:6px}
+.notif-item{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:var(--bg3)}
+.notif-item.unread{background:var(--bg3)}
+.notif-item.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);border-radius:0 2px 2px 0}
+.notif-item-icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.notif-item-icon.approval{background:var(--green-bg)}
+.notif-item-icon.rejection{background:var(--red-bg)}
+.notif-item-icon.invoice{background:var(--amber-bg)}
+.notif-item-icon.stock{background:var(--bg4)}
+.notif-item-icon.expense{background:var(--amber-bg)}
+.notif-item-icon.system{background:var(--bg4)}
+.notif-item-body{flex:1;min-width:0}
+.notif-item-text{font-size:12px;color:var(--text);line-height:1.45;word-break:break-word}
+.notif-item-time{font-size:10px;color:var(--text3);margin-top:3px;font-family:'JetBrains Mono',monospace}
+.notif-empty{padding:32px 16px;text-align:center;color:var(--text3);font-size:12px}
+/* Notifications Page */
+.npage-filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.npage-filter-tab{padding:6px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.npage-filter-tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.npage-notif-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative}
+.npage-notif-row:hover{background:var(--bg3)}
+.npage-notif-row.unread{background:color-mix(in srgb,var(--bg3) 60%,transparent)}
+.npage-notif-row.unread::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);border-radius:0 2px 2px 0}
+/* Stock refresh banner */
+.stock-refresh-banner{background:var(--amber-bg);border:1px solid rgba(212,160,48,.35);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:18px;animation:modal-pop .2s ease both}
+.stock-refresh-banner-text{flex:1;font-size:12px;color:var(--amber)}
+/* Nav badge update for notifications */
+.nav-notif-badge{position:absolute;right:8px;background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;font-family:'JetBrains Mono',monospace;min-width:16px;text-align:center}
 .exp-tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
 .exp-tab{padding:7px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
 .exp-tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
@@ -872,6 +911,7 @@ const {useState,useEffect,useRef}=React;
 // ── COMPANY CONSTANTS (VATIN & VAT are fixed for all documents) ──
 const COMPANY_VATIN = 'OM1100144996';   // ← VATIN
 const COMPANY_VAT_NO = 'OM1100037509';  // ← VAT No
+const BASE_URL = 'https://mkaerp-production.up.railway.app'; // ← Single source of truth
 
 // ── FOOTER IMAGE CONFIG (editable via Settings → Document Footer) ──
 let FOOTER_IMG_WIDTH  = 100;  // % of page width (1–100)
@@ -1408,75 +1448,9 @@ function Login({onLogin,users,theme,setTheme}){
   );
 }
 
-function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
-  const base=[
-    {id:'dashboard',icon:'◈',label:'Dashboard'},
-    {id:'customers',icon:'◎',label:'Customers'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-    {id:'approvals',icon:'✦',label:'Approvals'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
-    {id:'create-invoice',icon:'✦',label:'New Invoice'},
-    {id:'users',icon:'◍',label:'Users'},
-    {id:'devtools',icon:'⫘',label:'DevTools'},
-  ];
-
-  // Role/identity checks — admin role = Arya, gets all expenditure access
-  const isRamachandran = user.name==='Ramachandran'||user.id===1;
-  const isArya = user.name==='Arya'||user.id===10||user.role==='admin';
-  const canApproveExp = isRamachandran||isArya;
-  const canTrackExp = user.role==='accountant'||isArya;
-
-  const employeeNav=[
-    {id:'dashboard',icon:'◈',label:'Dashboard'},
-    {id:'my-sales',icon:'◎',label:'My Sales'},
-    {id:'customers',icon:'◎',label:'My Customers'},
-    {id:'invoices',icon:'◻',label:'My Invoices'},
-    {id:'create-invoice',icon:'✦',label:'New Invoice'},
-    {id:'products',icon:'▣',label:'Products'},
-  ];
-  const accountantNav=[
-    {id:'dashboard',icon:'◈',label:'Dashboard'},
-    {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
-    {id:'delivery',icon:'◉',label:'Delivery'},
-    {id:'exp-tracker',icon:'◆',label:'Expenditure Tracker'},
-  ];
-  const adminNav=[
-    {id:'dashboard',icon:'◈',label:'Dashboard'},
-    {id:'customers',icon:'◎',label:'Customers'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-    {id:'approvals',icon:'✦',label:'Approvals'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'product-limits',icon:'⚠',label:'Product Limits'},
-    {id:'quotation',icon:'❖',label:'Quotation Uphold'},
-    {id:'create-invoice',icon:'✦',label:'New Invoice'},
-    {id:'users',icon:'◍',label:'Users'},
-    {id:'sales-targets',icon:'◎',label:'Sales Targets'},
-    {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
-    {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
-    {id:'vat-report',icon:'◈',label:'VAT Report'},
-    {id:'audit-log',icon:'◉',label:'Audit Log'},
-    {id:'devtools',icon:'⫘',label:'DevTools'},
-  ];
-  let nav;
-  if(user.role==='employee') nav=employeeNav;
-  else if(user.role==='accountant') nav=accountantNav;
-  else if(user.role==='admin') nav=adminNav;
-  else{
-    nav=[
-      {id:'dashboard',icon:'◈',label:'Dashboard'},
-      {id:'customers',icon:'◎',label:'Customers'},
-      {id:'invoices',icon:'◻',label:'Invoices'},
-      {id:'approvals',icon:'✦',label:'Approvals'},
-      {id:'products',icon:'▣',label:'Products'},
-      {id:'product-limits',icon:'⚠',label:'Product Limits'},
-      {id:'quotation',icon:'❖',label:'Quotation Uphold'},
-      {id:'sales-targets',icon:'◎',label:'Sales Targets'},
-      {id:'vat-report',icon:'◈',label:'VAT Report'},
-      ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp. Approvals'}]:[]),
-      ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Exp. Tracker'}]:[]),
-    ];
-  }
+function Sidebar({user,active,setActive,onLogout,theme,setTheme,data,unreadCount,setActive:_sa}){
+  // Use the same full nav as hamburger menu for parity
+  const nav=getAllPagesForUser(user);
   // Dev Admin AI Chat state
   const [devInput,setDevInput]=useState('');
   const [chatOpen,setChatOpen]=useState(false);
@@ -1533,10 +1507,12 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
         React.createElement('div',{className:'nav-section'},'Navigation'),
         nav.map(item=>{
           const pendingCount=item.id==='approvals'?(data&&data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending').length:0;
+          const isNotif=item.id==='notifications';
           return React.createElement('div',{key:item.id,className:`nav-item${active===item.id?' active':''}`,style:{position:'relative'},onClick:()=>setActive(item.id)},
             React.createElement('span',{style:{fontSize:13,width:16}},item.icon),
             React.createElement('span',null,item.label),
-            pendingCount>0&&React.createElement('span',{className:'nav-badge'},pendingCount)
+            pendingCount>0&&React.createElement('span',{className:'nav-badge'},pendingCount),
+            isNotif&&unreadCount>0&&React.createElement('span',{className:'nav-notif-badge'},unreadCount)
           );
         })
       ),
@@ -1601,77 +1577,42 @@ function DevChatPopup({msgs,loading,onClose,onSend,chatRef,chatInputRef}){
 }
 
 /* ── MOBILE NAV + PROFILE ── */
+// Mobile bottom bar shows first 4-5 items of the user's full nav
 function getMobileNavForUser(user){
-  // Identify specific users by email
-  const isRam = (user.email||'').toLowerCase()==='ram@mka.com'||user.name==='Ramachandran'||user.id===1;
-  const isAsha = (user.email||'').toLowerCase()==='asha@mka.com';
-  const isAdmin = user.role==='admin';
-
-  // employee role: home, products, invoice, customers
-  if(user.role==='employee') return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'create-invoice',icon:'✦',label:'Invoice'},
-    {id:'customers',icon:'◎',label:'Customers'},
-  ];
-  // accountant role: home, products, expense tracking, approved invoices
-  if(user.role==='accountant') return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'exp-tracker',icon:'◆',label:'Expenses'},
-    {id:'approved-invoices',icon:'◻',label:'Invoices'},
-  ];
-  // admin role: home, products, users
-  if(isAdmin) return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'users',icon:'◍',label:'Users'},
-  ];
-  // ram@mka.com (owner/Ramachandran): home, products, expense approval, invoices
-  if(isRam) return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'exp-approvals',icon:'◆',label:'Exp.Appr'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-  ];
-  // asha@mka.com: home, products, quotation uphold, invoices
-  if(isAsha) return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'quotation',icon:'❖',label:'Quotes'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-  ];
-  // default owner fallback
-  return [
-    {id:'dashboard',icon:'⊞',label:'Home'},
-    {id:'products',icon:'▣',label:'Products'},
-    {id:'invoices',icon:'◻',label:'Invoices'},
-    {id:'approvals',icon:'✦',label:'Approve'},
-  ];
+  const full=getAllPagesForUser(user);
+  // Always show: dashboard + up to 3 more key pages + notifications last
+  const notif=full.find(p=>p.id==='notifications');
+  const core=full.filter(p=>p.id!=='notifications').slice(0,4);
+  return notif?[...core,notif]:core;
 }
 
 function getAllPagesForUser(user){
-  // Returns full list of pages accessible via hamburger menu
+  // Returns full list of pages accessible via sidebar + hamburger menu
   const isRam = (user.email||'').toLowerCase()==='ram@mka.com'||user.name==='Ramachandran'||user.id===1;
   const isAsha = (user.email||'').toLowerCase()==='asha@mka.com';
   const isAdmin = user.role==='admin';
 
+  const notifEntry={id:'notifications',icon:'🔔',label:'Notifications'};
+
   if(user.role==='employee') return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
     {id:'invoices',icon:'◻',label:'My Invoices'},
+    {id:'my-sales',icon:'◎',label:'My Sales'},
     {id:'customers',icon:'◎',label:'Customers'},
+    notifEntry,
   ];
   if(user.role==='accountant') return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'exp-tracker',icon:'◆',label:'Expense Tracking'},
     {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
+    notifEntry,
   ];
   if(isAdmin) return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'users',icon:'◍',label:'Users'},
     {id:'customers',icon:'◎',label:'Customers'},
@@ -1679,55 +1620,70 @@ function getAllPagesForUser(user){
     {id:'approvals',icon:'✦',label:'Approvals'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
+    {id:'product-limits',icon:'⚠',label:'Product Limits'},
+    {id:'sales-targets',icon:'◎',label:'Sales Targets'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
+    {id:'vat-report',icon:'◈',label:'VAT Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'devtools',icon:'⫘',label:'DevTools'},
+    notifEntry,
   ];
   if(isRam) return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'customers',icon:'◎',label:'Customers'},
     {id:'approvals',icon:'✦',label:'Approvals'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'product-limits',icon:'⚠',label:'Product Limits'},
+    {id:'sales-targets',icon:'◎',label:'Sales Targets'},
+    {id:'vat-report',icon:'◈',label:'VAT Report'},
+    {id:'audit-log',icon:'◉',label:'Audit Log'},
+    notifEntry,
   ];
   if(isAsha) return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'customers',icon:'◎',label:'Customers'},
     {id:'approvals',icon:'✦',label:'Approvals'},
+    notifEntry,
   ];
   // default owner
   return [
-    {id:'dashboard',icon:'⊞',label:'Dashboard'},
+    {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'approvals',icon:'✦',label:'Approvals'},
     {id:'customers',icon:'◎',label:'Customers'},
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+    {id:'product-limits',icon:'⚠',label:'Product Limits'},
+    {id:'sales-targets',icon:'◎',label:'Sales Targets'},
+    notifEntry,
   ];
 }
 
-function MobileNav({user,active,setActive}){
+function MobileNav({user,active,setActive,unreadCount}){
   const nav=getMobileNavForUser(user);
   return React.createElement('div',{className:'mobile-nav'},
     nav.map(item=>React.createElement('button',{
       key:item.id,
       className:`mob-item${active===item.id?' active':''}`,
-      onClick:()=>setActive(item.id)
+      onClick:()=>setActive(item.id),
+      style:{position:'relative'}
     },
       React.createElement('span',{className:'mob-icon'},item.icon),
-      React.createElement('span',{className:'mob-label'},item.label)
+      React.createElement('span',{className:'mob-label'},item.label),
+      item.id==='notifications'&&unreadCount>0&&React.createElement('span',{style:{position:'absolute',top:4,right:8,minWidth:15,height:15,background:'var(--red)',color:'#fff',borderRadius:8,fontSize:9,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 3px',border:'2px solid var(--bg)'}},unreadCount)
     ))
   );
 }
 
 /* ── HAMBURGER MENU PANEL ── */
-function HamburgerMenu({user,active,setActive,onLogout,onClose,theme,setTheme}){
+function HamburgerMenu({user,active,setActive,onLogout,onClose,theme,setTheme,unreadCount,pendingApprovals}){
   const allPages=getAllPagesForUser(user);
   return React.createElement('div',{className:'mob-menu-overlay',onClick:onClose},
     React.createElement('div',{className:'mob-menu-panel',onClick:e=>e.stopPropagation()},
@@ -1743,14 +1699,21 @@ function HamburgerMenu({user,active,setActive,onLogout,onClose,theme,setTheme}){
       ),
       // Pages section
       React.createElement('div',{className:'mob-menu-section'},'Navigation'),
-      allPages.map(item=>React.createElement('button',{
-        key:item.id,
-        className:`mob-menu-item${active===item.id?' active':''}`,
-        onClick:()=>{setActive(item.id);onClose();}
-      },
-        React.createElement('span',{className:'mob-menu-icon'},item.icon),
-        React.createElement('span',null,item.label)
-      )),
+      allPages.map(item=>{
+        const isNotif=item.id==='notifications';
+        const isApproval=item.id==='approvals';
+        const badge=isNotif&&unreadCount>0?unreadCount:isApproval&&pendingApprovals>0?pendingApprovals:0;
+        return React.createElement('button',{
+          key:item.id,
+          className:`mob-menu-item${active===item.id?' active':''}`,
+          onClick:()=>{setActive(item.id);onClose();},
+          style:{position:'relative'}
+        },
+          React.createElement('span',{className:'mob-menu-icon'},item.icon),
+          React.createElement('span',null,item.label),
+          badge>0&&React.createElement('span',{style:{marginLeft:'auto',minWidth:18,height:18,background:isNotif?'var(--red)':'var(--amber)',color:isNotif?'#fff':'#000',borderRadius:9,fontSize:10,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',fontFamily:"'JetBrains Mono',monospace"}},badge)
+        );
+      }),
       // Footer: theme toggle + sign out
       React.createElement('div',{className:'mob-menu-footer'},
         React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,padding:'8px 0'}},
@@ -3631,6 +3594,45 @@ function ProductsPage({ user, data, setData, notify }) {
   const [stockFilter, setStockFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
+  // 🔄 Live stock refresh detection
+  const [stockUpdated, setStockUpdated] = useState(false);
+  const lastStockRef = useRef(null);
+  useEffect(()=>{
+    // Store snapshot of stock on mount
+    if(lastStockRef.current===null){
+      lastStockRef.current=JSON.stringify((data.products||[]).map(p=>({id:p.id,stock:p.stock})));
+    }
+    const interval=setInterval(()=>{
+      fetch(`${BASE_URL}/products`)
+        .then(r=>r.json())
+        .then(prods=>{
+          const snap=JSON.stringify((prods||[]).map(p=>({id:p.id,stock:p.stock})));
+          if(lastStockRef.current!==null&&snap!==lastStockRef.current){
+            setStockUpdated(true);
+          }
+          lastStockRef.current=snap;
+        })
+        .catch(()=>{});
+    },20000); // check every 20s
+    return()=>clearInterval(interval);
+  },[]);
+
+  function reloadStock(){
+    fetch(`${BASE_URL}/products`)
+      .then(r=>r.json())
+      .then(prods=>{
+        const formatted=(prods||[]).map(p=>({
+          ...p,price:Number(p.price||0),stock:Number(p.stock||0),
+          addedDate:p.added_date||null,
+          reorderThreshold:p.reorder_threshold!=null?Number(p.reorder_threshold):null
+        }));
+        setData(d=>({...d,products:formatted}));
+        setStockUpdated(false);
+        lastStockRef.current=JSON.stringify(formatted.map(p=>({id:p.id,stock:p.stock})));
+        notify('Product catalog reloaded','success');
+      })
+      .catch(()=>notify('Reload failed','error'));
+  }
   const isAdmin = user.role === 'admin';
   const isEmployee = user.role === 'employee';
   const saveEdit = () => {
@@ -3694,6 +3696,16 @@ function ProductsPage({ user, data, setData, notify }) {
   const R = React.createElement;
 
   return R('div', null,
+
+    stockUpdated&&R('div',{className:'stock-refresh-banner'},
+      R('span',{style:{fontSize:18}},'📦'),
+      R('div',{className:'stock-refresh-banner-text'},
+        R('strong',null,'Stock Updated — '),
+        'Another user has changed product stock levels. Reload to see the latest.'
+      ),
+      R('button',{className:'btn btn-amber btn-sm',onClick:reloadStock},'↻ Reload Now'),
+      R('button',{className:'btn btn-ghost btn-sm',onClick:()=>setStockUpdated(false)},'Dismiss')
+    ),
 
     R('div', { className: 'grid-3', style: { marginBottom: 18 } },
       [
@@ -5254,7 +5266,6 @@ function OnboardingFlow({user, onComplete}) {
 }
 
 /* ── AUDIT LOG HELPER ── */
-const BASE_URL = 'https://mkaerp-production.up.railway.app';
 
 function logAction(user, category, action, meta) {
   if(!user) return;
@@ -5822,6 +5833,215 @@ function AuditLogPage({data}) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  NOTIFICATION ENGINE
+//  Uses polling against /audit-log and localStorage for read-state
+// ═══════════════════════════════════════════════════════════════
+// BASE_URL already declared above — reused here
+
+function getReadIds(){
+  try{return new Set(JSON.parse(localStorage.getItem('mka_notif_read')||'[]'));}catch{return new Set();}
+}
+function markRead(ids){
+  const prev=getReadIds();
+  ids.forEach(id=>prev.add(id));
+  localStorage.setItem('mka_notif_read',JSON.stringify([...prev]));
+}
+function markAllRead(notifs){
+  markRead(notifs.map(n=>n.id));
+}
+
+function notifIconClass(cat){
+  if(cat==='approval')return 'approval';
+  if(cat==='rejection')return 'rejection';
+  if(cat==='invoice'||cat==='quotation')return 'invoice';
+  if(cat==='product')return 'stock';
+  if(cat==='expense')return 'expense';
+  return 'system';
+}
+function notifEmoji(cat){
+  if(cat==='approval')return '✅';
+  if(cat==='rejection')return '❌';
+  if(cat==='invoice'||cat==='quotation')return '📄';
+  if(cat==='product')return '📦';
+  if(cat==='expense')return '💸';
+  if(cat==='login')return '🔑';
+  return '🔔';
+}
+
+function useNotifications(user){
+  const [notifs,setNotifs]=useState([]);
+  const [unread,setUnread]=useState(0);
+  const seenRef=useRef(new Set());
+
+  function refresh(){
+    if(!user)return;
+    fetch(`${BASE_URL}/audit-log`)
+      .then(r=>r.json())
+      .then(rows=>{
+        // Filter relevant notifications for this user
+        const relevant=(rows||[]).filter(row=>{
+          // Skip own actions (except if they were approved/rejected BY someone else)
+          if(row.user_id===user.id&&row.category!=='approval'&&row.category!=='rejection')return false;
+          // Everyone sees approvals/rejections that involve them
+          if(row.category==='approval'||row.category==='rejection'){
+            // Try to match employee from meta
+            const meta=row.meta?(typeof row.meta==='string'?JSON.parse(row.meta):row.meta):{};
+            // Owner/admin see all approvals/rejections
+            if(user.role==='owner'||user.role==='admin')return true;
+            // Employee sees their own doc approvals
+            if(meta&&meta.employee_id&&Number(meta.employee_id)===Number(user.id))return true;
+            return false;
+          }
+          if(row.category==='product')return true; // everyone sees stock changes
+          if(row.category==='expense'&&(user.role==='owner'||user.role==='admin'))return true;
+          if((row.category==='invoice'||row.category==='quotation')&&(user.role==='owner'||user.role==='admin'))return true;
+          return false;
+        }).slice(0,80);
+
+        const readIds=getReadIds();
+        const mapped=relevant.map(r=>({
+          id:r.id||r.ts,
+          cat:r.category,
+          action:r.action,
+          user_name:r.user_name,
+          ts:r.ts,
+          time:r.time_label,
+          date:r.date_label,
+          read:readIds.has(r.id||r.ts)
+        }));
+
+        // Detect brand-new notifs for live popup
+        mapped.forEach(n=>{
+          if(!n.read&&!seenRef.current.has(n.id)){
+            seenRef.current.add(n.id);
+          }
+        });
+
+        setNotifs(mapped);
+        setUnread(mapped.filter(n=>!n.read).length);
+      })
+      .catch(()=>{});
+  }
+
+  useEffect(()=>{
+    if(!user)return;
+    refresh();
+    const t=setInterval(refresh,15000); // poll every 15s
+    return()=>clearInterval(t);
+  },[user]);
+
+  function readAll(){markAllRead(notifs);setNotifs(n=>n.map(x=>({...x,read:true})));setUnread(0);}
+  function readOne(id){markRead([id]);setNotifs(n=>n.map(x=>x.id===id?{...x,read:true}:x));setUnread(c=>Math.max(0,c-1));}
+  return{notifs,unread,refresh,readAll,readOne};
+}
+
+function NotificationBell({notifs,unread,readAll,readOne,setActive}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    function handle(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false);}
+    document.addEventListener('mousedown',handle);
+    return()=>document.removeEventListener('mousedown',handle);
+  },[]);
+
+  const recent=notifs.slice(0,8);
+  return React.createElement('div',{style:{position:'relative'},ref},
+    React.createElement('button',{
+      className:'notif-bell-btn',
+      onClick:()=>setOpen(o=>!o),
+      title:'Notifications'
+    },
+      '🔔',
+      unread>0&&React.createElement('span',{className:'notif-bell-badge'},unread>99?'99+':unread)
+    ),
+    open&&React.createElement('div',{className:'notif-dropdown'},
+      React.createElement('div',{className:'notif-dropdown-head'},
+        React.createElement('span',{className:'notif-dropdown-title'},'Notifications'+(unread>0?' ('+unread+')':'')),
+        React.createElement('div',{className:'notif-dropdown-actions'},
+          unread>0&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:readAll},'Mark all read'),
+          React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setOpen(false);setActive('notifications');}},
+            'See all →'
+          )
+        )
+      ),
+      recent.length===0
+        ?React.createElement('div',{className:'notif-empty'},'No notifications yet')
+        :recent.map(n=>React.createElement('div',{
+          key:n.id,
+          className:`notif-item${n.read?'':' unread'}`,
+          onClick:()=>{readOne(n.id);setOpen(false);}
+        },
+          React.createElement('div',{className:`notif-item-icon ${notifIconClass(n.cat)}`},notifEmoji(n.cat)),
+          React.createElement('div',{className:'notif-item-body'},
+            React.createElement('div',{className:'notif-item-text'},n.action),
+            React.createElement('div',{className:'notif-item-time'},(n.time||'')+(n.date?' · '+n.date:''))
+          )
+        ))
+    )
+  );
+}
+
+function NotificationsPage({user,notifs,unread,readAll,readOne,refresh}){
+  const [filter,setFilter]=useState('all');
+  const [search,setSearch]=useState('');
+
+  const filtered=notifs.filter(n=>{
+    if(filter==='unread'&&n.read)return false;
+    if(filter!=='all'&&filter!=='unread'&&n.cat!==filter)return false;
+    if(search&&!n.action.toLowerCase().includes(search.toLowerCase()))return false;
+    return true;
+  });
+
+  const cats=['all','unread','approval','rejection','invoice','product','expense'];
+  return React.createElement('div',null,
+    // Header actions
+    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}},
+      React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},
+        unread>0
+          ?React.createElement('span',{style:{color:'var(--green)',fontWeight:600}},unread+' unread notification'+(unread>1?'s':''))
+          :'All caught up ✓'
+      ),
+      React.createElement('div',{style:{display:'flex',gap:8}},
+        React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:refresh},'↻ Refresh'),
+        unread>0&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:readAll},'Mark all read')
+      )
+    ),
+    // Filter tabs
+    React.createElement('div',{className:'npage-filter-bar'},
+      cats.map(c=>React.createElement('button',{
+        key:c,
+        className:`npage-filter-tab${filter===c?' active':''}`,
+        onClick:()=>setFilter(c)
+      },c.charAt(0).toUpperCase()+c.slice(1)))
+    ),
+    // Search
+    React.createElement('input',{
+      value:search,
+      onChange:e=>setSearch(e.target.value),
+      placeholder:'Search notifications…',
+      style:{marginBottom:14,maxWidth:340}
+    }),
+    // List
+    React.createElement('div',{className:'card',style:{padding:0,overflow:'hidden'}},
+      filtered.length===0
+        ?React.createElement('div',{className:'empty'},'No notifications match')
+        :filtered.map(n=>React.createElement('div',{
+          key:n.id,
+          className:`npage-notif-row${n.read?'':' unread'}`,
+          onClick:()=>readOne(n.id)
+        },
+          React.createElement('div',{className:`notif-item-icon ${notifIconClass(n.cat)}`,style:{width:36,height:36,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}},notifEmoji(n.cat)),
+          React.createElement('div',{style:{flex:1,minWidth:0}},
+            React.createElement('div',{style:{fontSize:13,color:'var(--text)',lineHeight:1.45,wordBreak:'break-word',fontWeight:n.read?400:500}},n.action),
+            React.createElement('div',{style:{fontSize:10,color:'var(--text3)',marginTop:3,fontFamily:"'JetBrains Mono',monospace"}},(n.time||'')+(n.date?' · '+n.date:''))
+          ),
+          !n.read&&React.createElement('span',{style:{width:8,height:8,background:'var(--green)',borderRadius:'50%',flexShrink:0,marginTop:6}})
+        ))
+    )
+  );
+}
+
 function App(){
   const [user,setUser]=useState(null);
   const [showOnboarding,setShowOnboarding]=useState(false);
@@ -5844,6 +6064,9 @@ function App(){
   const [mobMenu,setMobMenu]=useState(false);
 
   const notify=(msg,type='success')=>setNotif({msg,type});
+
+  // 🔔 NOTIFICATION ENGINE
+  const {notifs:appNotifs,unread:unreadCount,refresh:refreshNotifs,readAll,readOne}=useNotifications(user);
 
   // 🎨 theme
   useEffect(()=>{
@@ -6051,6 +6274,7 @@ function App(){
     'vat-report':['VAT Report','Monthly VAT summary & Excel export'],
     'sales-targets':['Sales Targets','Set & track monthly employee targets'],
     'my-sales':['My Sales','Your personal sales report & history'],
+    'notifications':['Notifications','Your activity & alerts'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -6087,14 +6311,15 @@ function App(){
     if(active==='vat-report')return React.createElement(VATReportPage,props);
     if(active==='sales-targets')return React.createElement(SalesTargetsPage,props);
     if(active==='my-sales')return React.createElement(MySalesPage,props);
+    if(active==='notifications')return React.createElement(NotificationsPage,{user,notifs:appNotifs,unread:unreadCount,readAll,readOne,refresh:refreshNotifs});
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
   return React.createElement('div',{className:'app'+(appReady?' app-fadein':'')},
     notif&&React.createElement(Notif,{...notif,onClose:()=>setNotif(null)}),
 
-    React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme,data}),
-    React.createElement(MobileNav,{user,active,setActive}),
+    React.createElement(Sidebar,{user,active,setActive,onLogout:logout,theme,setTheme,data,unreadCount}),
+    React.createElement(MobileNav,{user,active,setActive,unreadCount}),
 
     React.createElement('div',{className:'main'},
       React.createElement('div',{className:'topbar'},
@@ -6118,6 +6343,7 @@ function App(){
             onClick:()=>{if(theme!=='easter')setTheme('easter');}
           },new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})),
 
+          React.createElement(NotificationBell,{notifs:appNotifs,unread:unreadCount,readAll,readOne,setActive}),
           React.createElement(MobThemeBtn,{theme,setTheme}),
           React.createElement(MobProfileBtn,{user,onOpen:()=>setMobProfile(true)}),
           React.createElement(MobHamburgerBtn,{onClick:()=>setMobMenu(true)})
@@ -6127,7 +6353,7 @@ function App(){
       React.createElement('div',{className:'content'},page())
     ),
 
-    mobMenu&&React.createElement(HamburgerMenu,{user,active,setActive,onLogout:logout,onClose:()=>setMobMenu(false),theme,setTheme}),
+    mobMenu&&React.createElement(HamburgerMenu,{user,active,setActive,onLogout:logout,onClose:()=>setMobMenu(false),theme,setTheme,unreadCount,pendingApprovals:(data.documents||[]).filter(d=>d.type==='invoice'&&d.status==='pending').length}),
 
     mobProfile&&React.createElement('div',{className:'mob-profile-sheet',onClick:()=>setMobProfile(false)},
       React.createElement('div',{className:'mob-profile-inner',onClick:e=>e.stopPropagation()},
