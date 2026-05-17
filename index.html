@@ -3338,7 +3338,114 @@ function CustomersPage({user,data,setData,notify}){
   const [search,setSearch]=useState('');
   const empty={name:'',phone:'',source:'Instagram',product:'',status:'new',notes:'',address:''};
   const [form,setForm]=useState(empty);
+  const [exporting,setExporting]=useState(false);
   const BASE='https://mkaerp-production.up.railway.app';
+
+  const exportExcel=async()=>{
+    setExporting(true);
+    try{
+      const XLSX=await ensureXLSX();
+      const wb=XLSX.utils.book_new();
+      const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const now=new Date();
+      const dateStr=now.getDate()+' '+monthNames[now.getMonth()]+' '+now.getFullYear();
+
+      if(canSeeAll){
+        // ── Sheet 1: All customers (respecting current filters) ──
+        const allRows=[
+          ['MKA ERP — Customer List','','','','','',''],
+          ['Generated: '+dateStr+(empFilter!=='all'?' — '+( employees.find(e=>String(e.id)===empFilter)||{}).name:''),'','','','','',''],
+          [],
+          ['Customer Name','Phone','Address','Employee','Source','Product Interest','Status','Date Added']
+        ];
+        filtered.forEach(l=>{
+          allRows.push([
+            l.name||'',
+            l.phone||'',
+            l.address||'',
+            userMap[l.employeeId]||'',
+            l.source||'',
+            l.product||'',
+            l.status||'',
+            l.created||''
+          ]);
+        });
+        const ws1=XLSX.utils.aoa_to_sheet(allRows);
+        ws1['!cols']=[{wch:24},{wch:14},{wch:26},{wch:18},{wch:14},{wch:22},{wch:12},{wch:14}];
+        XLSX.utils.book_append_sheet(wb,ws1,'All Customers');
+
+        // ── One sheet per employee ──
+        employees.forEach(emp=>{
+          const empLeads=leads.filter(l=>l.employeeId===emp.id);
+          const rows=[
+            [emp.name+' — Customers','','','','',''],
+            ['Generated: '+dateStr,'','','','',''],
+            [],
+            ['Customer Name','Phone','Address','Source','Product Interest','Status','Date Added']
+          ];
+          empLeads.forEach(l=>{
+            rows.push([l.name||'',l.phone||'',l.address||'',l.source||'',l.product||'',l.status||'',l.created||'']);
+          });
+          rows.push([]);
+          rows.push(['Total',empLeads.length+'','','','','','']);
+          const ws=XLSX.utils.aoa_to_sheet(rows);
+          ws['!cols']=[{wch:24},{wch:14},{wch:26},{wch:14},{wch:22},{wch:12},{wch:14}];
+          const sheetName=emp.name.replace(/[:\\/?*[\]]/g,'').slice(0,31);
+          XLSX.utils.book_append_sheet(wb,ws,sheetName);
+        });
+
+        // ── Summary sheet ──
+        const summaryRows=[
+          ['MKA ERP — Customer Summary by Employee',''],
+          ['Generated: '+dateStr,''],
+          [],
+          ['Employee','Total','New','Converted','Lost']
+        ];
+        employees.forEach(emp=>{
+          const el=leads.filter(l=>l.employeeId===emp.id);
+          summaryRows.push([
+            emp.name,
+            el.length,
+            el.filter(l=>l.status==='new').length,
+            el.filter(l=>l.status==='converted').length,
+            el.filter(l=>l.status==='lost').length
+          ]);
+        });
+        const totalLeads=leads.length;
+        summaryRows.push([]);
+        summaryRows.push(['TOTAL',totalLeads,leads.filter(l=>l.status==='new').length,leads.filter(l=>l.status==='converted').length,leads.filter(l=>l.status==='lost').length]);
+        const wsSummary=XLSX.utils.aoa_to_sheet(summaryRows);
+        wsSummary['!cols']=[{wch:22},{wch:10},{wch:10},{wch:12},{wch:10}];
+        XLSX.utils.book_append_sheet(wb,wsSummary,'Summary');
+
+        const fileName='MKA_Customers_'+now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'.xlsx';
+        XLSX.writeFile(wb,fileName);
+      }else{
+        // ── Employee: export own customers only ──
+        const myList=leads.filter(l=>l.employeeId===user.id);
+        const rows=[
+          [user.name+' — My Customers','','','','',''],
+          ['Generated: '+dateStr,'','','','',''],
+          [],
+          ['Customer Name','Phone','Address','Source','Product Interest','Status','Date Added']
+        ];
+        myList.forEach(l=>{
+          rows.push([l.name||'',l.phone||'',l.address||'',l.source||'',l.product||'',l.status||'',l.created||'']);
+        });
+        rows.push([]);
+        rows.push(['Total',myList.length+'','','','','','']);
+        const ws=XLSX.utils.aoa_to_sheet(rows);
+        ws['!cols']=[{wch:24},{wch:14},{wch:26},{wch:14},{wch:22},{wch:12},{wch:14}];
+        XLSX.utils.book_append_sheet(wb,ws,'My Customers');
+        XLSX.writeFile(wb,'MKA_My_Customers_'+user.name.replace(/ /g,'_')+'_'+now.getFullYear()+'.xlsx');
+      }
+      notify('Exported successfully','success');
+    }catch(e){
+      console.error('Export failed:',e);
+      notify('Export failed: '+e.message,'error');
+    }
+    setExporting(false);
+  };
 
   // Build employee list for the dropdown (only employees role)
   const employees=users.filter(u=>u.role==='employee');
@@ -3418,6 +3525,13 @@ function CustomersPage({user,data,setData,notify}){
       React.createElement('div',{style:{flex:1}}),
       // Count badge
       React.createElement('span',{style:{fontSize:11,color:'var(--text3)'}},(filtered.length)+' customer'+(filtered.length!==1?'s':'')),
+      // Export button
+      React.createElement('button',{
+        className:'btn btn-ghost',
+        style:{display:'flex',alignItems:'center',gap:6,fontSize:12},
+        onClick:exportExcel,
+        disabled:exporting
+      },React.createElement('span',null,'📊'),exporting?'Exporting…':'Export Excel'),
       React.createElement('button',{className:'btn btn-primary',onClick:()=>{setForm(empty);setEditLead(null);setShowModal(true)}},'+ Add Customer')
     ),
 
