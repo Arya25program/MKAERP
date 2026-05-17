@@ -1429,6 +1429,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
 
   const employeeNav=[
     {id:'dashboard',icon:'◈',label:'Dashboard'},
+    {id:'my-sales',icon:'◎',label:'My Sales'},
     {id:'customers',icon:'◎',label:'My Customers'},
     {id:'invoices',icon:'◻',label:'My Invoices'},
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
@@ -1450,6 +1451,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'create-invoice',icon:'✦',label:'New Invoice'},
     {id:'users',icon:'◍',label:'Users'},
+    {id:'sales-targets',icon:'◎',label:'Sales Targets'},
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
     {id:'vat-report',icon:'◈',label:'VAT Report'},
@@ -1469,6 +1471,7 @@ function Sidebar({user,active,setActive,onLogout,theme,setTheme,data}){
       {id:'products',icon:'▣',label:'Products'},
       {id:'product-limits',icon:'⚠',label:'Product Limits'},
       {id:'quotation',icon:'❖',label:'Quotation Uphold'},
+      {id:'sales-targets',icon:'◎',label:'Sales Targets'},
       {id:'vat-report',icon:'◈',label:'VAT Report'},
       ...(canApproveExp?[{id:'exp-approvals',icon:'◆',label:'Exp. Approvals'}]:[]),
       ...(canTrackExp?[{id:'exp-tracker',icon:'◇',label:'Exp. Tracker'}]:[]),
@@ -1786,16 +1789,103 @@ function MobProfileBtn({user,onOpen}){
   );
 }
 
+// ── Shared helper: build 6-month window labels + values ──────────────────────
+function buildSixMonths(){
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push({
+      label:d.toLocaleString('default',{month:'short'}),
+      year:d.getFullYear(),
+      month:d.getMonth()+1,           // 1-12
+      key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+    });
+  }
+  return months;
+}
+
+function SalesVsTargetChart({salesByMonth,targetByMonth,months,height=90}){
+  const vals=months.map(m=>({
+    s:salesByMonth[m.key]||0,
+    t:targetByMonth[m.key]||0
+  }));
+  const mx=Math.max(...vals.flatMap(v=>[v.s,v.t]),1);
+  return React.createElement('div',null,
+    React.createElement('div',{style:{display:'flex',gap:14,marginBottom:10}},
+      [{c:'var(--green)',l:'Sales'},{c:'var(--text3)',l:'Target',dash:true}].map(x=>
+        React.createElement('div',{key:x.l,style:{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--text2)'}},
+          React.createElement('div',{style:{width:20,height:3,background:x.c,borderRadius:2,opacity:x.dash?.5:1}}),x.l
+        )
+      )
+    ),
+    React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:4,height}},
+      months.map((m,i)=>{
+        const {s,t}=vals[i];
+        const barH=h=>`${Math.max((h/mx)*100,h>0?2:0)}%`;
+        const hit=s>=t&&t>0;
+        return React.createElement('div',{key:m.key,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
+          React.createElement('div',{style:{width:'100%',display:'flex',gap:2,alignItems:'flex-end',height:height-16,position:'relative'}},
+            // target bar (ghost)
+            React.createElement('div',{style:{flex:1,height:barH(t),background:'var(--text3)',borderRadius:'3px 3px 0 0',opacity:.25}}),
+            // sales bar
+            React.createElement('div',{style:{flex:1,height:barH(s),background:hit?'var(--green)':'var(--amber)',borderRadius:'3px 3px 0 0',opacity:.9}})
+          ),
+          React.createElement('div',{style:{fontSize:9,color:'var(--text3)',marginTop:2}},m.label)
+        );
+      })
+    ),
+    React.createElement('div',{style:{display:'flex',gap:4,marginTop:10,flexWrap:'wrap'}},
+      months.map((m,i)=>{
+        const {s,t}=vals[i];
+        if(!t&&!s)return null;
+        const hit=s>=t&&t>0;
+        return React.createElement('div',{key:m.key,style:{fontSize:10,color:hit?'var(--green)':s>0?'var(--amber)':'var(--text3)',background:hit?'var(--green-bg)':s>0?'var(--amber-bg)':'var(--bg3)',borderRadius:6,padding:'2px 7px'}},
+          m.label+': '+fmtCurrency(s)+(t?' / '+fmtCurrency(t):'')
+        );
+      })
+    )
+  );
+}
+
 function OwnerDashboard({data}){
-  const {leads,documents,products}=data;
+  const {leads,documents,products,salesTargets=[],users=[]}=data;
   const invoices=documents.filter(d=>d.type==='invoice');
-  const totalRev=invoices.filter(i=>i.status==='approved').reduce((s,i)=>s+i.total,0);
+  const approvedInvs=invoices.filter(i=>i.status==='approved');
+  const totalRev=approvedInvs.reduce((s,i)=>s+i.total,0);
   const pending=invoices.filter(i=>i.status==='pending').length;
-  const months=['Jan','Feb','Mar','Apr','May','Jun'];
-  const sd=[12,19,8,24,18,32],ld=[18,22,14,28,20,35],mx=Math.max(...sd,...ld);
   const lowStockItems=(products||[]).filter(p=>p.stock>0&&p.stock<=Number(p.reorderThreshold??10));
   const outOfStockItems=(products||[]).filter(p=>p.stock===0);
   const alertItems=[...outOfStockItems,...lowStockItems];
+
+  // Build 6-month sales & target maps (all employees combined)
+  const months=buildSixMonths();
+  const salesByMonth={};
+  approvedInvs.forEach(inv=>{
+    if(!inv.created)return;
+    const key=inv.created.slice(0,7); // "YYYY-MM"
+    salesByMonth[key]=(salesByMonth[key]||0)+inv.total;
+  });
+  const targetByMonth={};
+  (salesTargets||[]).forEach(t=>{
+    const key=`${t.year}-${String(t.month).padStart(2,'0')}`;
+    targetByMonth[key]=(targetByMonth[key]||0)+Number(t.target||0);
+  });
+
+  // Per-employee sales table for current month
+  const now=new Date();
+  const curKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curLabel=now.toLocaleString('default',{month:'long',year:'numeric'});
+  const empSales={};
+  approvedInvs.forEach(inv=>{
+    if(!inv.created||!inv.created.startsWith(curKey))return;
+    empSales[inv.employeeId]=(empSales[inv.employeeId]||0)+inv.total;
+  });
+  const empTargets={};
+  (salesTargets||[]).filter(t=>t.year===now.getFullYear()&&t.month===(now.getMonth()+1))
+    .forEach(t=>{ empTargets[t.employee_id]=Number(t.target||0); });
+  const employees=(users||[]).filter(u=>u.role==='employee');
+
   return React.createElement('div',null,
     alertItems.length>0&&React.createElement('div',{style:{background:'var(--red-bg)',border:'1px solid var(--red)',borderRadius:12,padding:'14px 18px',marginBottom:18}},
       React.createElement('div',{style:{display:'flex',alignItems:'center',gap:9,marginBottom:8}},
@@ -1812,8 +1902,8 @@ function OwnerDashboard({data}){
       alertItems.length>6&&React.createElement('span',{style:{fontSize:11,color:'var(--red)'}},'+' +(alertItems.length-6)+' more\u2026')
     ),
     React.createElement('div',{className:'metrics'},
-      [{label:'Total Revenue',val:fmtCurrency(totalRev),change:'+12.4%',cc:'var(--green)'},
-       {label:'Invoices',val:invoices.length,change:invoices.filter(i=>i.status==='approved').length+' approved',cc:'var(--text3)'},
+      [{label:'Total Revenue',val:fmtCurrency(totalRev),change:approvedInvs.length+' approved invoices',cc:'var(--green)'},
+       {label:'Invoices',val:invoices.length,change:approvedInvs.length+' approved',cc:'var(--text3)'},
        {label:'Pending',val:pending,change:pending>0?'Needs attention':'All clear',cc:pending>0?'var(--amber)':'var(--text3)'},
        {label:'Customers',val:leads.length,change:leads.filter(l=>l.status==='new').length+' new',cc:'var(--text3)'},
       ].map((m,i)=>React.createElement('div',{key:i,className:'metric'},
@@ -1824,39 +1914,56 @@ function OwnerDashboard({data}){
     ),
     React.createElement('div',{className:'grid-2'},
       React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},'Sales vs Customers — 6 months'),
-        React.createElement('div',{style:{display:'flex',gap:12,marginBottom:12}},
-          [{c:'var(--text)',l:'Sales'},{c:'var(--text3)',l:'Customers'}].map(x=>React.createElement('div',{key:x.l,style:{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--text3)'}},React.createElement('div',{style:{width:7,height:7,background:x.c,borderRadius:2}}),x.l))
-        ),
-        React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:5,height:90}},
-          months.map((m,i)=>React.createElement('div',{key:m,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
-            React.createElement('div',{style:{width:'100%',display:'flex',gap:2,alignItems:'flex-end',height:72}},
-              React.createElement('div',{style:{flex:1,height:`${(sd[i]/mx)*100}%`,background:'var(--text)',borderRadius:'2px 2px 0 0',opacity:.9}}),
-              React.createElement('div',{style:{flex:1,height:`${(ld[i]/mx)*100}%`,background:'var(--text3)',borderRadius:'2px 2px 0 0',opacity:.9}})
-            ),
-            React.createElement('div',{style:{fontSize:9,color:'var(--text3)'}},m)
-          ))
-        )
+        React.createElement('div',{className:'card-title'},'Team Sales vs Target — 6 months'),
+        React.createElement(SalesVsTargetChart,{salesByMonth,targetByMonth,months,height:110})
       ),
       React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},'Pending approvals'),
-        invoices.filter(i=>i.status==='pending').length===0
-          ?React.createElement('div',{className:'empty',style:{padding:24}},React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'All clear ✓'))
-          :React.createElement('div',{style:{overflowX:'auto',WebkitOverflowScrolling:'touch'}},React.createElement('table',{style:{minWidth:260}},
-            React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Customer'),React.createElement('th',null,'Amount'),React.createElement('th',null,''))),
-            React.createElement('tbody',null,invoices.filter(i=>i.status==='pending').map(inv=>React.createElement('tr',{key:inv.id},
-              React.createElement('td',{className:'primary'},inv.customerName),
-              React.createElement('td',null,fmtCurrency(inv.total)),
-              React.createElement('td',null,React.createElement('span',{className:'badge pending'},'Pending'))
-            )))
-          ))
+        React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
+          React.createElement('div',{className:'card-title',style:{margin:0}},'Team — '+curLabel),
+          employees.length===0&&React.createElement('span',{style:{fontSize:11,color:'var(--text3)'}},'No employees')
+        ),
+        employees.length===0
+          ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No employee accounts found.')
+          :React.createElement('table',null,
+            React.createElement('thead',null,React.createElement('tr',null,
+              React.createElement('th',null,'Employee'),
+              React.createElement('th',null,'Sales'),
+              React.createElement('th',null,'Target'),
+              React.createElement('th',null,'%')
+            )),
+            React.createElement('tbody',null,employees.map(emp=>{
+              const s=empSales[emp.id]||0;
+              const t=empTargets[emp.id]||0;
+              const pct=t>0?Math.round((s/t)*100):null;
+              const color=pct===null?'var(--text3)':pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+              return React.createElement('tr',{key:emp.id},
+                React.createElement('td',{className:'primary'},emp.name),
+                React.createElement('td',null,fmtCurrency(s)),
+                React.createElement('td',null,t>0?fmtCurrency(t):'—'),
+                React.createElement('td',null,pct!==null?React.createElement('span',{style:{color,fontWeight:600}},pct+'%'):'—')
+              );
+            }))
+          )
       )
+    ),
+    React.createElement('div',{className:'card',style:{marginTop:18}},
+      React.createElement('div',{className:'card-title'},'Pending approvals'),
+      invoices.filter(i=>i.status==='pending').length===0
+        ?React.createElement('div',{className:'empty',style:{padding:16}},React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'All clear ✓'))
+        :React.createElement('div',{style:{overflowX:'auto',WebkitOverflowScrolling:'touch'}},React.createElement('table',{style:{minWidth:260}},
+          React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Customer'),React.createElement('th',null,'Amount'),React.createElement('th',null,''))),
+          React.createElement('tbody',null,invoices.filter(i=>i.status==='pending').map(inv=>React.createElement('tr',{key:inv.id},
+            React.createElement('td',{className:'primary'},inv.customerName),
+            React.createElement('td',null,fmtCurrency(inv.total)),
+            React.createElement('td',null,React.createElement('span',{className:'badge pending'},'Pending'))
+          )))
+        ))
     )
   );
 }
 
 function EmployeeDashboard({user,data}){
-  const {leads,documents,products}=data;
+  const {leads,documents,products,salesTargets=[]}=data;
   const invoices=documents.filter(d=>d.type==='invoice');
   const myInvs=invoices.filter(i=>i.employeeId===user.id);
   const myLeads=leads.filter(l=>l.employeeId===user.id);
@@ -1866,15 +1973,38 @@ function EmployeeDashboard({user,data}){
   myApproved.forEach(inv=>inv.items.forEach(it=>{ps[it.name]=(ps[it.name]||0)+it.qty}));
   const top=Object.entries(ps).sort((a,b)=>b[1]-a[1])[0];
   const myRej=myInvs.filter(i=>i.status==='rejected'&&i.rejectionNote);
+
+  // Build 6-month personal sales & target
+  const months=buildSixMonths();
+  const mySalesByMonth={};
+  myApproved.forEach(inv=>{
+    if(!inv.created)return;
+    const key=inv.created.slice(0,7);
+    mySalesByMonth[key]=(mySalesByMonth[key]||0)+inv.total;
+  });
+  const myTargetByMonth={};
+  (salesTargets||[]).filter(t=>t.employee_id===user.id).forEach(t=>{
+    const key=`${t.year}-${String(t.month).padStart(2,'0')}`;
+    myTargetByMonth[key]=Number(t.target||0);
+  });
+
+  // Current month stats
+  const now=new Date();
+  const curKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curSales=mySalesByMonth[curKey]||0;
+  const curTarget=myTargetByMonth[curKey]||0;
+  const pct=curTarget>0?Math.round((curSales/curTarget)*100):null;
+
   return React.createElement('div',null,
     React.createElement('div',{className:'metrics'},
       [{label:'My Revenue',val:fmtCurrency(myRev),cc:'var(--green)'},
        {label:'Invoices',val:myInvs.length,cc:'var(--text3)'},
        {label:'Pending',val:myInvs.filter(i=>i.status==='pending').length,cc:'var(--amber)'},
-       {label:'Customers',val:myLeads.length,cc:'var(--text3)'},
+       {label:'This Month',val:pct!==null?pct+'%':'—',change:pct!==null?(pct>=100?'Target hit! 🎯':fmtCurrency(curSales)+' of '+fmtCurrency(curTarget)):'No target set',cc:pct===null?'var(--text3)':pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)'},
       ].map((m,i)=>React.createElement('div',{key:i,className:'metric'},
         React.createElement('div',{className:'metric-label'},m.label),
-        React.createElement('div',{className:'metric-value'},m.val)
+        React.createElement('div',{className:'metric-value'},m.val),
+        m.change&&React.createElement('div',{className:'metric-change',style:{color:m.cc}},m.change)
       ))
     ),
     myRej.length>0&&myRej.map(inv=>React.createElement('div',{key:inv.id,className:'rejection-banner',style:{marginBottom:10}},
@@ -1883,12 +2013,8 @@ function EmployeeDashboard({user,data}){
     )),
     React.createElement('div',{className:'grid-2'},
       React.createElement('div',{className:'card'},
-        React.createElement('div',{className:'card-title'},'Top product'),
-        top?React.createElement('div',null,
-          React.createElement('div',{style:{fontSize:16,fontWeight:600,marginBottom:6}},top[0]),
-          React.createElement('div',{style:{fontSize:12,color:'var(--text2)'}},top[1]+' units sold'),
-          React.createElement('div',{style:{marginTop:10,display:'flex',flexWrap:'wrap',gap:5}},Object.entries(ps).map(([name,qty])=>React.createElement('div',{key:name,className:'tag'},name+' ×'+qty)))
-        ):React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No sales yet')
+        React.createElement('div',{className:'card-title'},'My Sales vs Target — 6 months'),
+        React.createElement(SalesVsTargetChart,{salesByMonth:mySalesByMonth,targetByMonth:myTargetByMonth,months,height:110})
       ),
       React.createElement('div',{className:'card'},
         React.createElement('div',{className:'card-title'},'Recent invoices'),
@@ -1902,6 +2028,486 @@ function EmployeeDashboard({user,data}){
           )))
         )
       )
+    )
+  );
+}
+
+// ── Shared Excel export helper ────────────────────────────────────────────────
+async function ensureXLSX(){
+  if(window.XLSX)return window.XLSX;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=res;s.onerror=rej;
+    document.head.appendChild(s);
+  });
+  return window.XLSX;
+}
+
+// ── Employee invoice list sub-table ──────────────────────────────────────────
+function EmpInvoiceTable({emp,invoices,salesTargets,expanded,onToggle}){
+  const now=new Date();
+  const [drillYear,setDrillYear]=useState(now.getFullYear());
+  const [drillMonth,setDrillMonth]=useState(now.getMonth()+1);
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const yearOptions=[];
+  for(let y=now.getFullYear()-1;y<=now.getFullYear()+1;y++)yearOptions.push(y);
+
+  const key=`${drillYear}-${String(drillMonth).padStart(2,'0')}`;
+  const empInvs=invoices.filter(i=>i.employeeId===emp.id&&i.created&&i.created.startsWith(key));
+  const total=empInvs.reduce((s,i)=>s+i.total,0);
+  const target=(salesTargets.find(t=>t.employee_id===emp.id&&t.year===drillYear&&t.month===drillMonth)||{}).target||0;
+  const pct=target>0?Math.round((total/target)*100):null;
+  const color=pct===null?'var(--text3)':pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+
+  return React.createElement('div',{style:{borderTop:'1px solid var(--border)',marginTop:2}},
+    React.createElement('div',{
+      style:{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',cursor:'pointer',background:'var(--bg3)',userSelect:'none'},
+      onClick:onToggle
+    },
+      React.createElement('span',{style:{fontSize:11,color:'var(--text3)',width:14}},(expanded?'▾':'▸')),
+      React.createElement('span',{style:{fontWeight:600,fontSize:13,color:'var(--text)',flex:1}},emp.name),
+      React.createElement('span',{style:{fontSize:11,color:'var(--text3)'}},empInvs.length+' invoice'+(empInvs.length!==1?'s':'')+' — '+fmtCurrency(total)),
+      pct!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:600,color,marginLeft:6}},pct+'%')
+    ),
+    expanded&&React.createElement('div',{style:{padding:'14px 16px',background:'var(--bg2)'}},
+      // mini month picker
+      React.createElement('div',{style:{display:'flex',gap:8,marginBottom:12,alignItems:'center'}},
+        React.createElement('select',{value:drillMonth,onChange:e=>setDrillMonth(Number(e.target.value)),style:{width:'auto',fontSize:12,padding:'4px 8px'}},
+          monthNames.map((m,i)=>React.createElement('option',{key:i,value:i+1},m))
+        ),
+        React.createElement('select',{value:drillYear,onChange:e=>setDrillYear(Number(e.target.value)),style:{width:80,fontSize:12,padding:'4px 8px'}},
+          yearOptions.map(y=>React.createElement('option',{key:y,value:y},y))
+        ),
+        target>0&&React.createElement('span',{style:{fontSize:11,color:'var(--text3)'}},
+          'Target: '+fmtCurrency(target)+
+          (pct!==null?' — '+pct+'% achieved':'')
+        )
+      ),
+      empInvs.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'8px 0'}},'No approved invoices for this period.')
+        :React.createElement('div',{style:{overflowX:'auto'}},
+          React.createElement('table',{style:{minWidth:420}},
+            React.createElement('thead',null,React.createElement('tr',null,
+              React.createElement('th',null,'Invoice ID'),
+              React.createElement('th',null,'Date'),
+              React.createElement('th',null,'Customer'),
+              React.createElement('th',null,'Items'),
+              React.createElement('th',null,'Total')
+            )),
+            React.createElement('tbody',null,
+              empInvs.map(inv=>React.createElement('tr',{key:inv.id},
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id),
+                React.createElement('td',null,inv.created||'—'),
+                React.createElement('td',{className:'primary'},inv.customerName),
+                React.createElement('td',null,inv.items.length+' item'+(inv.items.length!==1?'s':'')),
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:'var(--green)'}},fmtCurrency(inv.total))
+              )),
+              React.createElement('tr',null,
+                React.createElement('td',{colSpan:4,style:{textAlign:'right',fontWeight:600,fontSize:12,paddingTop:10,borderTop:'1px solid var(--border)',color:'var(--text2)'}},'Total'),
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,paddingTop:10,borderTop:'1px solid var(--border)',color:'var(--text)'}},fmtCurrency(total))
+              )
+            )
+          )
+        )
+    )
+  );
+}
+
+function SalesTargetsPage({user,data,setData,notify}){
+  const {users=[],salesTargets=[],documents=[]}=data;
+  const employees=users.filter(u=>u.role==='employee');
+  const invoices=documents.filter(d=>d.type==='invoice'&&d.status==='approved');
+  const months=buildSixMonths();
+  const now=new Date();
+  const [selYear,setSelYear]=useState(now.getFullYear());
+  const [selMonth,setSelMonth]=useState(now.getMonth()+1);
+  const [saving,setSaving]=useState({});
+  const [exporting,setExporting]=useState(false);
+  const [expanded,setExpanded]=useState({});  // empId -> bool
+  const [inputs,setInputs]=useState({});
+
+  const getKey=(empId,y,m)=>`${empId}_${y}_${m}`;
+  const getTarget=(empId,y,m)=>{
+    const found=salesTargets.find(t=>t.employee_id===empId&&t.year===y&&t.month===m);
+    return found?Number(found.target):0;
+  };
+  const getSales=(empId,y,m)=>{
+    const key=`${y}-${String(m).padStart(2,'0')}`;
+    return invoices.filter(inv=>inv.employeeId===empId&&inv.created&&inv.created.startsWith(key))
+      .reduce((s,inv)=>s+inv.total,0);
+  };
+  const saveTarget=async(empId,y,m)=>{
+    const k=getKey(empId,y,m);
+    const val=Number(inputs[k]!==undefined?inputs[k]:getTarget(empId,y,m));
+    if(isNaN(val)||val<0)return;
+    setSaving(s=>({...s,[k]:true}));
+    try{
+      const res=await fetch('https://mkaerp-production.up.railway.app/sales-targets',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({employee_id:empId,year:y,month:m,target:val})
+      });
+      const updated=await res.json();
+      setData(prev=>{
+        const existing=prev.salesTargets.filter(t=>!(t.employee_id===empId&&t.year===y&&t.month===m));
+        return {...prev,salesTargets:[...existing,updated]};
+      });
+      setInputs(s=>{const n={...s};delete n[k];return n;});
+      notify('Target saved','success');
+    }catch(e){notify('Failed to save','error');}
+    setSaving(s=>{const n={...s};delete n[k];return n;});
+  };
+
+  // ── Excel export ────────────────────────────────────────────────────────────
+  const exportExcel=async()=>{
+    setExporting(true);
+    try{
+      const XLSX=await ensureXLSX();
+      const wb=XLSX.utils.book_new();
+      const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+      // ── Sheet 1: Monthly Summary (all employees, selected year) ──
+      const summaryRows=[
+        ['MKA ERP — Sales Targets Report','','','','',''],
+        ['Year: '+selYear,'','Generated: '+new Date().toLocaleDateString('en-GB'),'','',''],
+        [],
+        ['Employee',...monthNames,'Total Sales','Total Target','Achievement'],
+      ];
+      employees.forEach(emp=>{
+        const monthlySales=[];
+        let totalSales=0,totalTarget=0;
+        for(let m=1;m<=12;m++){
+          const s=getSales(emp.id,selYear,m);
+          monthlySales.push(parseFloat(s.toFixed(3)));
+          totalSales+=s;
+          totalTarget+=getTarget(emp.id,selYear,m);
+        }
+        const pct=totalTarget>0?parseFloat(((totalSales/totalTarget)*100).toFixed(1)):null;
+        summaryRows.push([emp.name,...monthlySales,parseFloat(totalSales.toFixed(3)),parseFloat(totalTarget.toFixed(3)),pct!==null?pct+'%':'No target']);
+      });
+      // Totals row
+      const totSales=employees.reduce((s,e)=>s+([...Array(12)].reduce((ms,_,mi)=>ms+getSales(e.id,selYear,mi+1),0)),0);
+      const totTarget=employees.reduce((s,e)=>s+([...Array(12)].reduce((mt,_,mi)=>mt+getTarget(e.id,selYear,mi+1),0)),0);
+      summaryRows.push([]);
+      summaryRows.push(['TOTAL (All Employees)',...[...Array(12)].map((_,mi)=>parseFloat(employees.reduce((s,e)=>s+getSales(e.id,selYear,mi+1),0).toFixed(3))),parseFloat(totSales.toFixed(3)),parseFloat(totTarget.toFixed(3)),totTarget>0?parseFloat(((totSales/totTarget)*100).toFixed(1))+'%':'—']);
+      const ws1=XLSX.utils.aoa_to_sheet(summaryRows);
+      ws1['!cols']=[{wch:20},...Array(12).fill({wch:10}),{wch:14},{wch:14},{wch:14}];
+      XLSX.utils.book_append_sheet(wb,ws1,'Monthly Summary');
+
+      // ── Sheet 2: Invoice Detail (all employees, all time) ──
+      const detailRows=[
+        ['MKA ERP — Sales Invoice Detail','','','','','',''],
+        ['Generated: '+new Date().toLocaleDateString('en-GB'),'','','','','',''],
+        [],
+        ['Invoice ID','Date','Employee','Customer','Items','Total (OMR)','Target (Month)']
+      ];
+      const sortedInvs=[...invoices].sort((a,b)=>(a.created||'').localeCompare(b.created||''));
+      sortedInvs.forEach(inv=>{
+        const [y,m]=inv.created?inv.created.split('-').map(Number):[null,null];
+        const tgt=y&&m?getTarget(inv.employeeId,y,m):0;
+        detailRows.push([
+          inv.id,
+          inv.created||'',
+          inv.employeeName||'',
+          inv.customerName||'',
+          inv.items.length,
+          parseFloat(Number(inv.total).toFixed(3)),
+          tgt>0?parseFloat(tgt.toFixed(3)):''
+        ]);
+      });
+      const ws2=XLSX.utils.aoa_to_sheet(detailRows);
+      ws2['!cols']=[{wch:20},{wch:12},{wch:18},{wch:22},{wch:8},{wch:14},{wch:14}];
+      XLSX.utils.book_append_sheet(wb,ws2,'Invoice Detail');
+
+      // ── One sheet per employee ──
+      employees.forEach(emp=>{
+        const empInvs=invoices.filter(i=>i.employeeId===emp.id).sort((a,b)=>(a.created||'').localeCompare(b.created||''));
+        const rows=[
+          [emp.name+' — Sales Report','','','',''],
+          ['Generated: '+new Date().toLocaleDateString('en-GB'),'','','',''],
+          [],
+          ['Invoice ID','Date','Customer','Items','Total (OMR)']
+        ];
+        let grandTotal=0;
+        empInvs.forEach(inv=>{
+          rows.push([inv.id,inv.created||'',inv.customerName||'',inv.items.length,parseFloat(Number(inv.total).toFixed(3))]);
+          grandTotal+=Number(inv.total);
+        });
+        rows.push([]);
+        rows.push(['','','','Grand Total',parseFloat(grandTotal.toFixed(3))]);
+        // Monthly summary for this employee
+        rows.push([]);
+        rows.push(['Month','Target (OMR)','Sales (OMR)','Achievement']);
+        for(let mi=0;mi<12;mi++){
+          const s=getSales(emp.id,selYear,mi+1);
+          const t=getTarget(emp.id,selYear,mi+1);
+          const pct=t>0?parseFloat(((s/t)*100).toFixed(1)):null;
+          rows.push([monthNames[mi]+' '+selYear,t>0?parseFloat(t.toFixed(3)):'',parseFloat(s.toFixed(3)),pct!==null?pct+'%':'—']);
+        }
+        const wsEmp=XLSX.utils.aoa_to_sheet(rows);
+        wsEmp['!cols']=[{wch:20},{wch:12},{wch:22},{wch:8},{wch:14}];
+        // Sheet name max 31 chars, strip special chars
+        const sheetName=emp.name.replace(/[:\\/?*[\]]/g,'').slice(0,31);
+        XLSX.utils.book_append_sheet(wb,wsEmp,sheetName);
+      });
+
+      XLSX.writeFile(wb,'MKA_Sales_Report_'+selYear+'.xlsx');
+      notify('Excel exported','success');
+    }catch(e){
+      console.error('Export failed:',e);
+      notify('Export failed: '+e.message,'error');
+    }
+    setExporting(false);
+  };
+
+  const yearOptions=[];
+  for(let y=now.getFullYear()-1;y<=now.getFullYear()+1;y++)yearOptions.push(y);
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  return React.createElement('div',null,
+    // ── Top toolbar ──
+    React.createElement('div',{style:{display:'flex',gap:10,marginBottom:18,alignItems:'center',flexWrap:'wrap'}},
+      React.createElement('select',{value:selMonth,onChange:e=>setSelMonth(Number(e.target.value)),style:{width:'auto'}},
+        monthNames.map((m,i)=>React.createElement('option',{key:i,value:i+1},m))
+      ),
+      React.createElement('select',{value:selYear,onChange:e=>setSelYear(Number(e.target.value)),style:{width:90}},
+        yearOptions.map(y=>React.createElement('option',{key:y,value:y},y))
+      ),
+      React.createElement('div',{style:{flex:1}}),
+      React.createElement('button',{
+        className:'btn btn-ghost',
+        style:{display:'flex',alignItems:'center',gap:7,fontSize:12},
+        onClick:exportExcel,
+        disabled:exporting
+      },
+        React.createElement('span',null,'📊'),
+        exporting?'Exporting…':'Export Excel'
+      )
+    ),
+
+    // ── Target-setting table ──
+    React.createElement('div',{className:'card',style:{marginBottom:20}},
+      React.createElement('div',{className:'card-title'},monthNames[selMonth-1]+' '+selYear+' — Individual Targets'),
+      employees.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'12px 0'}},'No employee accounts found.')
+        :React.createElement('table',null,
+          React.createElement('thead',null,React.createElement('tr',null,
+            React.createElement('th',null,'Employee'),
+            React.createElement('th',null,'Target (OMR)'),
+            React.createElement('th',null,'Sales'),
+            React.createElement('th',null,'Achievement'),
+            React.createElement('th',null,'Set New Target'),
+            React.createElement('th',null,'')
+          )),
+          React.createElement('tbody',null,employees.map(emp=>{
+            const k=getKey(emp.id,selYear,selMonth);
+            const tgt=getTarget(emp.id,selYear,selMonth);
+            const sal=getSales(emp.id,selYear,selMonth);
+            const pct=tgt>0?Math.round((sal/tgt)*100):null;
+            const color=pct===null?'var(--text3)':pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+            const inputVal=inputs[k]!==undefined?inputs[k]:String(tgt||'');
+            return React.createElement('tr',{key:emp.id},
+              React.createElement('td',{className:'primary'},emp.name),
+              React.createElement('td',null,tgt>0?fmtCurrency(tgt):'—'),
+              React.createElement('td',null,fmtCurrency(sal)),
+              React.createElement('td',null,pct!==null
+                ?React.createElement('span',{style:{color,fontWeight:600}},pct+'%')
+                :'—'
+              ),
+              React.createElement('td',null,
+                React.createElement('input',{
+                  type:'number',min:0,step:100,value:inputVal,
+                  onChange:e=>setInputs(s=>({...s,[k]:e.target.value})),
+                  placeholder:'0',style:{width:110,fontSize:12,padding:'5px 9px'}
+                })
+              ),
+              React.createElement('td',null,
+                React.createElement('button',{
+                  className:'btn btn-primary btn-sm',disabled:saving[k],
+                  onClick:()=>saveTarget(emp.id,selYear,selMonth)
+                },saving[k]?'…':'Save')
+              )
+            );
+          }))
+        )
+    ),
+
+    // ── Per-employee invoice drill-down ──
+    React.createElement('div',{className:'card',style:{marginBottom:20,overflow:'hidden',padding:0}},
+      React.createElement('div',{style:{padding:'14px 16px 10px',borderBottom:'1px solid var(--border)'}},
+        React.createElement('div',{className:'card-title',style:{margin:0}},'Invoice Breakdown — Per Employee'),
+        React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:3}},'Click an employee row to expand invoices for any period')
+      ),
+      employees.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:16}},'No employees.')
+        :employees.map(emp=>React.createElement(EmpInvoiceTable,{
+            key:emp.id,emp,invoices,salesTargets,
+            expanded:!!expanded[emp.id],
+            onToggle:()=>setExpanded(s=>({...s,[emp.id]:!s[emp.id]}))
+          }))
+    ),
+
+    // ── 6-month chart per employee ──
+    React.createElement('div',{className:'card'},
+      React.createElement('div',{className:'card-title'},'6-Month Sales vs Target — All Employees'),
+      employees.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No employees.')
+        :React.createElement('div',{style:{display:'flex',flexDirection:'column',gap:24}},
+          employees.map(emp=>{
+            const salesByMonth={},targetByMonth={};
+            months.forEach(m=>{
+              salesByMonth[m.key]=getSales(emp.id,m.year,m.month);
+              targetByMonth[m.key]=getTarget(emp.id,m.year,m.month);
+            });
+            return React.createElement('div',{key:emp.id},
+              React.createElement('div',{style:{fontSize:12,fontWeight:600,marginBottom:8,color:'var(--text)'}},emp.name),
+              React.createElement(SalesVsTargetChart,{salesByMonth,targetByMonth,months,height:80})
+            );
+          })
+        )
+    )
+  );
+}
+
+// ── My Sales page (employee-only) ─────────────────────────────────────────────
+function MySalesPage({user,data}){
+  const {documents=[],salesTargets=[]}=data;
+  const invoices=documents.filter(d=>d.type==='invoice'&&d.status==='approved'&&d.employeeId===user.id);
+  const months=buildSixMonths();
+  const now=new Date();
+  const [selYear,setSelYear]=useState(now.getFullYear());
+  const [selMonth,setSelMonth]=useState(now.getMonth()+1);
+  const [exporting,setExporting]=useState(false);
+  const monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const yearOptions=[];
+  for(let y=now.getFullYear()-1;y<=now.getFullYear()+1;y++)yearOptions.push(y);
+
+  const getTarget=(y,m)=>{
+    const found=salesTargets.find(t=>t.employee_id===user.id&&t.year===y&&t.month===m);
+    return found?Number(found.target):0;
+  };
+
+  const periodKey=`${selYear}-${String(selMonth).padStart(2,'0')}`;
+  const periodInvs=invoices.filter(i=>i.created&&i.created.startsWith(periodKey));
+  const periodSales=periodInvs.reduce((s,i)=>s+i.total,0);
+  const periodTarget=getTarget(selYear,selMonth);
+  const periodPct=periodTarget>0?Math.round((periodSales/periodTarget)*100):null;
+  const color=periodPct===null?'var(--text3)':periodPct>=100?'var(--green)':periodPct>=60?'var(--amber)':'var(--red)';
+
+  const salesByMonth={},targetByMonth={};
+  months.forEach(m=>{
+    const k=`${m.year}-${String(m.month).padStart(2,'0')}`;
+    salesByMonth[k]=invoices.filter(i=>i.created&&i.created.startsWith(k)).reduce((s,i)=>s+i.total,0);
+    targetByMonth[k]=getTarget(m.year,m.month);
+  });
+
+  const totalEver=invoices.reduce((s,i)=>s+i.total,0);
+
+  // ── Excel export (self-report) ──
+  const exportMyReport=async()=>{
+    setExporting(true);
+    try{
+      const XLSX=await ensureXLSX();
+      const wb=XLSX.utils.book_new();
+      // Sheet 1: all invoices
+      const rows=[
+        [user.name+' — My Sales Report','','','',''],
+        ['Generated: '+new Date().toLocaleDateString('en-GB'),'','','',''],
+        [],
+        ['Invoice ID','Date','Customer','Items','Total (OMR)']
+      ];
+      const sorted=[...invoices].sort((a,b)=>(a.created||'').localeCompare(b.created||''));
+      let grand=0;
+      sorted.forEach(inv=>{
+        rows.push([inv.id,inv.created||'',inv.customerName||'',inv.items.length,parseFloat(Number(inv.total).toFixed(3))]);
+        grand+=Number(inv.total);
+      });
+      rows.push([]);
+      rows.push(['','','','Grand Total',parseFloat(grand.toFixed(3))]);
+      const ws1=XLSX.utils.aoa_to_sheet(rows);
+      ws1['!cols']=[{wch:20},{wch:12},{wch:24},{wch:8},{wch:14}];
+      XLSX.utils.book_append_sheet(wb,ws1,'All Invoices');
+      // Sheet 2: monthly summary with targets
+      const summaryRows=[
+        [user.name+' — Monthly Summary','','',''],
+        ['Year: '+selYear,'','Generated: '+new Date().toLocaleDateString('en-GB'),''],
+        [],
+        ['Month','Target (OMR)','Sales (OMR)','Achievement']
+      ];
+      for(let mi=0;mi<12;mi++){
+        const s=invoices.filter(i=>i.created&&i.created.startsWith(selYear+'-'+String(mi+1).padStart(2,'0'))).reduce((s,i)=>s+i.total,0);
+        const t=getTarget(selYear,mi+1);
+        const pct=t>0?parseFloat(((s/t)*100).toFixed(1)):null;
+        summaryRows.push([monthNames[mi]+' '+selYear,t>0?parseFloat(t.toFixed(3)):'',parseFloat(s.toFixed(3)),pct!==null?pct+'%':'—']);
+      }
+      const ws2=XLSX.utils.aoa_to_sheet(summaryRows);
+      ws2['!cols']=[{wch:16},{wch:14},{wch:14},{wch:14}];
+      XLSX.utils.book_append_sheet(wb,ws2,'Monthly Summary');
+      XLSX.writeFile(wb,'MKA_My_Sales_'+user.name.replace(/ /g,'_')+'_'+selYear+'.xlsx');
+    }catch(e){alert('Export failed: '+e.message);}
+    setExporting(false);
+  };
+
+  return React.createElement('div',null,
+    // ── Metrics ──
+    React.createElement('div',{className:'metrics',style:{marginBottom:20}},
+      [{label:'Total Revenue',val:fmtCurrency(totalEver),change:invoices.length+' approved invoices',cc:'var(--green)'},
+       {label:'This Month Sales',val:fmtCurrency(periodSales),change:monthNames[selMonth-1]+' '+selYear,cc:'var(--text3)'},
+       {label:'This Month Target',val:periodTarget>0?fmtCurrency(periodTarget):'Not set',change:periodTarget>0?'':'Ask your manager',cc:'var(--text3)'},
+       {label:'Achievement',val:periodPct!==null?periodPct+'%':'—',change:periodPct!==null?(periodPct>=100?'🎯 Target hit!':fmtCurrency(periodTarget-periodSales)+' to go'):'No target set',cc:color},
+      ].map((m,i)=>React.createElement('div',{key:i,className:'metric'},
+        React.createElement('div',{className:'metric-label'},m.label),
+        React.createElement('div',{className:'metric-value'},m.val),
+        React.createElement('div',{className:'metric-change',style:{color:m.cc}},m.change)
+      ))
+    ),
+    // ── Chart ──
+    React.createElement('div',{className:'card',style:{marginBottom:20}},
+      React.createElement('div',{className:'card-title'},'My Sales vs Target — 6 months'),
+      React.createElement(SalesVsTargetChart,{salesByMonth,targetByMonth,months,height:110})
+    ),
+    // ── Invoice table for selected period ──
+    React.createElement('div',{className:'card'},
+      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}},
+        React.createElement('div',{className:'card-title',style:{margin:0,flex:1}},'Invoice Detail'),
+        React.createElement('select',{value:selMonth,onChange:e=>setSelMonth(Number(e.target.value)),style:{width:'auto',fontSize:12,padding:'4px 8px'}},
+          monthNames.map((m,i)=>React.createElement('option',{key:i,value:i+1},m))
+        ),
+        React.createElement('select',{value:selYear,onChange:e=>setSelYear(Number(e.target.value)),style:{width:80,fontSize:12,padding:'4px 8px'}},
+          yearOptions.map(y=>React.createElement('option',{key:y,value:y},y))
+        ),
+        React.createElement('button',{
+          className:'btn btn-ghost',
+          style:{display:'flex',alignItems:'center',gap:6,fontSize:12},
+          onClick:exportMyReport,disabled:exporting
+        },React.createElement('span',null,'📊'),exporting?'…':'Export My Report')
+      ),
+      periodInvs.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'12px 0'}},'No approved invoices for '+monthNames[selMonth-1]+' '+selYear+'.')
+        :React.createElement('div',{style:{overflowX:'auto'}},
+          React.createElement('table',null,
+            React.createElement('thead',null,React.createElement('tr',null,
+              React.createElement('th',null,'Invoice ID'),
+              React.createElement('th',null,'Date'),
+              React.createElement('th',null,'Customer'),
+              React.createElement('th',null,'Items'),
+              React.createElement('th',null,'Total')
+            )),
+            React.createElement('tbody',null,
+              periodInvs.map(inv=>React.createElement('tr',{key:inv.id},
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text3)'}},inv.id),
+                React.createElement('td',null,inv.created||'—'),
+                React.createElement('td',{className:'primary'},inv.customerName),
+                React.createElement('td',null,inv.items.length+' item'+(inv.items.length!==1?'s':'')),
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:'var(--green)'}},fmtCurrency(inv.total))
+              )),
+              React.createElement('tr',null,
+                React.createElement('td',{colSpan:4,style:{textAlign:'right',fontWeight:600,fontSize:12,paddingTop:10,borderTop:'2px solid var(--border)',color:'var(--text2)'}},'Period Total'),
+                React.createElement('td',{style:{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,paddingTop:10,borderTop:'2px solid var(--border)',color:'var(--text)'}},fmtCurrency(periodSales))
+              )
+            )
+          )
+        )
     )
   );
 }
@@ -2721,21 +3327,45 @@ function DeliveryPage({user,data,setData,notify}){
 }
 
 function CustomersPage({user,data,setData,notify}){
-  const {leads,products}=data;
+  const {leads,products,users=[]}=data;
+  const isEmployee=user.role==='employee';
+  const canSeeAll=!isEmployee; // owner, admin, accountant
+
   const [showModal,setShowModal]=useState(false);
   const [editLead,setEditLead]=useState(null);
-  const [filter,setFilter]=useState('all');
+  const [statusFilter,setStatusFilter]=useState('all');
+  const [empFilter,setEmpFilter]=useState('all');   // 'all' | empId string
+  const [search,setSearch]=useState('');
   const empty={name:'',phone:'',source:'Instagram',product:'',status:'new',notes:'',address:''};
   const [form,setForm]=useState(empty);
-  const myLeads=user.role==='employee'?leads.filter(l=>l.employeeId===user.id):leads;
-  const filtered=filter==='all'?myLeads:myLeads.filter(l=>l.status===filter);
   const BASE='https://mkaerp-production.up.railway.app';
+
+  // Build employee list for the dropdown (only employees role)
+  const employees=users.filter(u=>u.role==='employee');
+  // Name lookup map for display in table
+  const userMap={};
+  users.forEach(u=>{userMap[u.id]=u.name;});
+
+  // Scope: employees only see their own
+  const scopedLeads=isEmployee?leads.filter(l=>l.employeeId===user.id):leads;
+
+  // Apply filters
+  const filtered=scopedLeads.filter(l=>{
+    const matchStatus=statusFilter==='all'||l.status===statusFilter;
+    const matchEmp=!canSeeAll||empFilter==='all'||String(l.employeeId)===String(empFilter);
+    const matchSearch=!search.trim()||
+      l.name.toLowerCase().includes(search.toLowerCase())||
+      (l.phone||'').includes(search)||
+      (l.product||'').toLowerCase().includes(search.toLowerCase());
+    return matchStatus&&matchEmp&&matchSearch;
+  });
+
   const save=async()=>{
-    if(!form.name.trim()){notify('Name required','error');return}
+    if(!form.name.trim()){notify('Name required','error');return;}
     const payload={
-      name:form.name, phone:form.phone, source:form.source,
-      product:form.product, status:form.status,
-      notes:form.notes, address:form.address,
+      name:form.name,phone:form.phone,source:form.source,
+      product:form.product,status:form.status,
+      notes:form.notes,address:form.address,
       employee_id:user.id,
       created:new Date().toISOString().split('T')[0]
     };
@@ -2758,39 +3388,110 @@ function CustomersPage({user,data,setData,notify}){
       setShowModal(false);
     }catch(e){notify('Save failed: '+e.message,'error');console.error(e);}
   };
+
   return React.createElement('div',null,
-    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}},
+    // ── Toolbar ──
+    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:18,flexWrap:'wrap'}},
+      // Status filter pills
       React.createElement('div',{style:{display:'flex',gap:5}},
-        ['all','new','converted','lost'].map(s=>React.createElement('button',{key:s,className:'btn btn-ghost btn-sm',style:{borderColor:filter===s?'var(--text3)':'var(--border)',color:filter===s?'var(--text)':'var(--text2)'},onClick:()=>setFilter(s)},s.charAt(0).toUpperCase()+s.slice(1)))
+        ['all','new','converted','lost'].map(s=>React.createElement('button',{
+          key:s,className:'btn btn-ghost btn-sm',
+          style:{borderColor:statusFilter===s?'var(--text3)':'var(--border)',color:statusFilter===s?'var(--text)':'var(--text2)'},
+          onClick:()=>setStatusFilter(s)
+        },s==='all'?'All':s.charAt(0).toUpperCase()+s.slice(1)))
       ),
+      // Employee filter dropdown (owners/admins only)
+      canSeeAll&&React.createElement('select',{
+        value:empFilter,
+        onChange:e=>setEmpFilter(e.target.value),
+        style:{fontSize:12,padding:'5px 9px',width:'auto',minWidth:140}
+      },
+        React.createElement('option',{value:'all'},'All Employees'),
+        employees.map(e=>React.createElement('option',{key:e.id,value:String(e.id)},e.name))
+      ),
+      // Search
+      React.createElement('input',{
+        type:'text',placeholder:'🔍 Search name, phone, product…',
+        value:search,onChange:e=>setSearch(e.target.value),
+        style:{fontSize:12,padding:'5px 10px',width:210}
+      }),
+      React.createElement('div',{style:{flex:1}}),
+      // Count badge
+      React.createElement('span',{style:{fontSize:11,color:'var(--text3)'}},(filtered.length)+' customer'+(filtered.length!==1?'s':'')),
       React.createElement('button',{className:'btn btn-primary',onClick:()=>{setForm(empty);setEditLead(null);setShowModal(true)}},'+ Add Customer')
     ),
+
+    // ── Table ──
     React.createElement('div',{className:'card'},
-      filtered.length===0?React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12}},'No customers')):
-      React.createElement('table',null,
-        React.createElement('thead',null,React.createElement('tr',null,React.createElement('th',null,'Name'),React.createElement('th',null,'Phone'),React.createElement('th',null,'Source'),React.createElement('th',null,'Product'),React.createElement('th',null,'Status'),React.createElement('th',null,''))),
-        React.createElement('tbody',null,filtered.map(l=>React.createElement('tr',{key:l.id},
-          React.createElement('td',{className:'primary'},l.name),
-          React.createElement('td',null,l.phone),
-          React.createElement('td',null,l.source),
-          React.createElement('td',null,l.product||'—'),
-          React.createElement('td',null,React.createElement('span',{className:`badge ${l.status}`},l.status)),
-          React.createElement('td',{style:{display:'flex',gap:6}},
-            React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>{setForm({name:l.name,phone:l.phone,source:l.source,product:l.product,status:l.status,notes:l.notes,address:l.address||''});setEditLead(l);setShowModal(true)}},'Edit'),
-            user.role!=='employee'&&React.createElement('button',{className:'btn btn-danger btn-sm',onClick:async()=>{if(!confirm('Delete '+l.name+'?'))return;const BASE='https://mkaerp-production.up.railway.app';await fetch(BASE+'/leads/'+l.id,{method:'DELETE'});setData(d=>({...d,leads:d.leads.filter(x=>x.id!==l.id)}));notify('Deleted','success');}},'Delete')
+      filtered.length===0
+        ?React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12,color:'var(--text3)'}},'No customers match your filters'))
+        :React.createElement('div',{style:{overflowX:'auto'}},
+          React.createElement('table',{style:{minWidth:canSeeAll?680:540}},
+            React.createElement('thead',null,
+              React.createElement('tr',null,
+                React.createElement('th',null,'Customer'),
+                React.createElement('th',null,'Phone'),
+                canSeeAll&&React.createElement('th',null,'Employee'),
+                React.createElement('th',null,'Source'),
+                React.createElement('th',null,'Product Interest'),
+                React.createElement('th',null,'Status'),
+                React.createElement('th',null,'Added'),
+                React.createElement('th',null,'')
+              )
+            ),
+            React.createElement('tbody',null,
+              filtered.map(l=>{
+                const empName=userMap[l.employeeId]||'—';
+                return React.createElement('tr',{key:l.id},
+                  React.createElement('td',{className:'primary'},
+                    React.createElement('div',null,l.name),
+                    l.address&&React.createElement('div',{style:{fontSize:10,color:'var(--text3)',marginTop:1}},l.address)
+                  ),
+                  React.createElement('td',null,l.phone||'—'),
+                  canSeeAll&&React.createElement('td',null,
+                    React.createElement('span',{style:{
+                      fontSize:11,background:'var(--bg3)',border:'1px solid var(--border)',
+                      borderRadius:6,padding:'2px 7px',color:'var(--text2)',whiteSpace:'nowrap'
+                    }},empName)
+                  ),
+                  React.createElement('td',null,l.source||'—'),
+                  React.createElement('td',null,l.product||'—'),
+                  React.createElement('td',null,React.createElement('span',{className:`badge ${l.status}`},l.status)),
+                  React.createElement('td',{style:{color:'var(--text3)',fontSize:11}},l.created||'—'),
+                  React.createElement('td',null,
+                    React.createElement('div',{style:{display:'flex',gap:6}},
+                      React.createElement('button',{
+                        className:'btn btn-ghost btn-sm',
+                        onClick:()=>{setForm({name:l.name,phone:l.phone,source:l.source,product:l.product||'',status:l.status,notes:l.notes||'',address:l.address||''});setEditLead(l);setShowModal(true);}
+                      },'Edit'),
+                      !isEmployee&&React.createElement('button',{
+                        className:'btn btn-danger btn-sm',
+                        onClick:async()=>{
+                          if(!confirm('Delete '+l.name+'?'))return;
+                          await fetch(BASE+'/leads/'+l.id,{method:'DELETE'});
+                          setData(d=>({...d,leads:d.leads.filter(x=>x.id!==l.id)}));
+                          notify('Deleted','success');
+                        }
+                      },'Delete')
+                    )
+                  )
+                );
+              })
+            )
           )
-        )))
-      )
+        )
     ),
+
+    // ── Add/Edit Modal ──
     showModal&&React.createElement('div',{className:'modal-overlay'},
       React.createElement('div',{className:'modal'},
         React.createElement('div',{className:'modal-title'},editLead?'Edit Customer':'Add Customer'),
         React.createElement('div',{className:'form-grid'},
           React.createElement('div',{className:'form-row'},
-            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Name'),React.createElement('input',{value:form.name,onChange:e=>setForm(f=>({...f,name:e.target.value})),placeholder:'Full name'})),
+            React.createElement('div',{className:'form-group'},React.createElement('label',null,'Name'),React.createElement('input',{value:form.name,onChange:e=>setForm(f=>({...f,name:e.target.value})),placeholder:'Full name',autoFocus:true})),
             React.createElement('div',{className:'form-group'},React.createElement('label',null,'Phone'),React.createElement('input',{value:form.phone,onChange:e=>setForm(f=>({...f,phone:e.target.value})),placeholder:'9XXXXXXX'}))
           ),
-          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery Address'),React.createElement('input',{value:form.address,onChange:e=>setForm(f=>({...f,address:e.target.value}))})),
+          React.createElement('div',{className:'form-group'},React.createElement('label',null,'Delivery Address'),React.createElement('input',{value:form.address,onChange:e=>setForm(f=>({...f,address:e.target.value})),placeholder:'Street, area, city'})),
           React.createElement('div',{className:'form-row'},
             React.createElement('div',{className:'form-group'},React.createElement('label',null,'Source'),React.createElement('select',{value:form.source,onChange:e=>setForm(f=>({...f,source:e.target.value}))},['Instagram','WhatsApp','Walk-in','Referral','Website'].map(s=>React.createElement('option',{key:s},s)))),
             React.createElement('div',{className:'form-group'},React.createElement('label',null,'Status'),React.createElement('select',{value:form.status,onChange:e=>setForm(f=>({...f,status:e.target.value}))},['new','converted','lost'].map(s=>React.createElement('option',{key:s},s))))
@@ -5020,6 +5721,7 @@ function App(){
     products:[],
     users:[],
     demandEntries:[],
+    salesTargets:[],
   });
 
   const [notif,setNotif]=useState(null);
@@ -5178,6 +5880,16 @@ function App(){
       .catch(err => console.error("Demand tracker fetch error:", err));
   }, []);
 
+  // FETCH SALES TARGETS
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/sales-targets")
+      .then(res => res.json())
+      .then(targets => {
+        setData(prev => ({ ...prev, salesTargets: targets || [] }));
+      })
+      .catch(err => console.error("Sales targets fetch error:", err));
+  }, []);
+
   // 🔐 LOGIN
   if(!user)
     return React.createElement(Login,{
@@ -5223,6 +5935,8 @@ function App(){
     'audit-log':['Audit Log','Full system activity feed'],
     'product-limits':['Product Limits','Reorder thresholds & stock alerts'],
     'vat-report':['VAT Report','Monthly VAT summary & Excel export'],
+    'sales-targets':['Sales Targets','Set & track monthly employee targets'],
+    'my-sales':['My Sales','Your personal sales report & history'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -5257,6 +5971,8 @@ function App(){
     if(active==='audit-log')return React.createElement(AuditLogPage,props);
     if(active==='product-limits')return React.createElement(ProductLimitsPage,props);
     if(active==='vat-report')return React.createElement(VATReportPage,props);
+    if(active==='sales-targets')return React.createElement(SalesTargetsPage,props);
+    if(active==='my-sales')return React.createElement(MySalesPage,props);
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
@@ -5663,7 +6379,7 @@ function ExpenditureTrackerPage({user,data,setData,notify}){
             React.createElement('textarea',{rows:2,value:form.description,onChange:e=>setF('description',e.target.value),placeholder:'Additional details…',style:{resize:'vertical'}})
           ),
           React.createElement('div',{className:'form-group'},
-            React.createElement('label',null,'Proof URL (receipt image link)'),
+            React.createElement('label',null,'Proof URL (receipt image link) / Accountant in-charge Name'),
             React.createElement('input',{value:form.proof_url,onChange:e=>setF('proof_url',e.target.value),placeholder:'https://…'})
           ),
           React.createElement('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'4px 0'}},
