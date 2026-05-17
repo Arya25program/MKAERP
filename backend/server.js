@@ -442,6 +442,33 @@ app.delete('/demand-tracker/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// ═══════════════════════════════════════════════════════
+//  SALES TARGETS
+// ═══════════════════════════════════════════════════════
+
+app.get('/sales-targets', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM sales_targets ORDER BY year DESC, month DESC');
+    ok(res, rows);
+  } catch (e) { fail(res, e); }
+});
+
+// Upsert: POST with employee_id+year+month inserts or updates
+app.post('/sales-targets', async (req, res) => {
+  try {
+    const { employee_id, year, month, target } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO sales_targets (employee_id, year, month, target)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (employee_id, year, month)
+       DO UPDATE SET target = EXCLUDED.target
+       RETURNING *`,
+      [employee_id, year, month, target]
+    );
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  START
