@@ -267,13 +267,6 @@ app.delete('/documents/:id', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════
 //  LEADS  (powers the "Customers" page)
-//
-//  ⚠️  REQUIRED one-time DB migration (run once in Supabase SQL editor):
-//
-//    ALTER TABLE leads DROP CONSTRAINT IF EXISTS leads_product_id_fkey;
-//    ALTER TABLE leads DROP COLUMN IF EXISTS product_id;
-//    ALTER TABLE leads ADD COLUMN IF NOT EXISTS product TEXT DEFAULT '';
-//
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/leads', async (req, res) => {
@@ -400,13 +393,50 @@ app.get('/audit-log', async (req, res) => {
 
 app.post('/audit-log', async (req, res) => {
   try {
-    const { user_id, user_name, category, action, meta, time_label, date_label, ts } = req.body;
+    const { user_id, user_name, category, action, meta, time_label, date_label, ts, target_user_id } = req.body;
     await pool.query(
-      `INSERT INTO audit_log (user_id, user_name, category, action, meta, time_label, date_label, ts)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [user_id, user_name, category, action, meta ? JSON.stringify(meta) : null, time_label, date_label, ts]
+      `INSERT INTO audit_log (user_id, user_name, category, action, meta, time_label, date_label, ts, target_user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [user_id, user_name, category, action, meta ? JSON.stringify(meta) : null, time_label, date_label, ts, target_user_id || null]
     );
     ok(res, { ok: true });
+  } catch (e) { fail(res, e); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  NOTIFICATION SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/notifications', async (req, res) => {
+  try {
+    const { user_id, role } = req.query;
+    const uid = parseInt(user_id);
+ 
+    let query, params;
+ 
+    if (role === 'owner' || role === 'admin') {
+      // Owner/admin: see approvals, rejections, all invoices, expense events
+      query = `
+        SELECT * FROM audit_log
+        WHERE category IN ('approval','rejection','invoice','quotation','expense','product')
+        ORDER BY ts DESC LIMIT 100
+      `;
+      params = [];
+    } else {
+      // Employee/accountant: see approvals/rejections targeting them + product changes
+      query = `
+        SELECT * FROM audit_log
+        WHERE (
+          category IN ('approval','rejection') AND (target_user_id = $1 OR user_id = $1)
+          OR category = 'product'
+        )
+        ORDER BY ts DESC LIMIT 100
+      `;
+      params = [uid];
+    }
+ 
+    const { rows } = await pool.query(query, params);
+    ok(res, rows);
   } catch (e) { fail(res, e); }
 });
 
