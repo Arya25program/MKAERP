@@ -1364,8 +1364,6 @@ function Login({onLogin,users,theme,setTheme}){
         setLoading(false);
         return;
       }
-
-      console.log("Logged in user:", user);
       onLogin(user);
       setLoading(false);
     })
@@ -6137,8 +6135,6 @@ function App(){
           reorderThreshold: p.reorder_threshold !== undefined && p.reorder_threshold !== null ? Number(p.reorder_threshold) : null,
         }));
 
-        console.log("LOADED PRODUCTS:", formatted); // 🔥 DEBUG
-
         setData(prev => ({
           ...prev,
           products: formatted
@@ -6211,7 +6207,6 @@ function App(){
     fetch("https://mkaerp-production.up.railway.app/leads")
       .then(res => res.json())
       .then(leadsFromDB => {
-        console.log("Leads:", leadsFromDB);
 
         const formatted = leadsFromDB.map(l => ({
           ...l,
