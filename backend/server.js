@@ -20,26 +20,6 @@ function fail(res, err, status = 500) {
   res.status(status).json({ error: String(err) });
 }
 
-const rateLimit = require('express-rate-limit');
- 
-// ── In-memory failed attempt tracker ──────────────────────────
-// Structure: { email: { count, firstFail, lockedUntil } }
-const failedAttempts = {};
- 
-const FAIL_LIMIT       = 3;    // Lock after this many fails
-const LOCKOUT_MINUTES  = 15;   // First lockout duration
-const SECOND_FAIL      = 2;    // Extra fails after lockout = permanent block
-const SECOND_WINDOW_MS = 15 * 60 * 1000; // Must happen within 15min of unlock
- 
-// ── IP-level rate limiter (runs before DB check) ──────────────
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,                   // max 20 attempts per IP per window
-  message: { error: 'Too many login attempts from this IP. Try again in 15 minutes.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
 
 // ═══════════════════════════════════════════════════════════════
 //  Login route
