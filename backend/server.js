@@ -499,6 +499,63 @@ app.post('/sales-targets', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// ═══════════════════════════════════════════════════════════════
+//  HELP REQUESTS  (feature requests, change requests, bugs, help)
+// ═══════════════════════════════════════════════════════════════
+ 
+// GET all (admin sees all; pass ?user_id=X for filtered employee view)
+app.get('/help-requests', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    let query, params;
+    if (user_id) {
+      query = 'SELECT * FROM help_requests WHERE user_id = $1 ORDER BY created_at DESC';
+      params = [user_id];
+    } else {
+      query = 'SELECT * FROM help_requests ORDER BY created_at DESC';
+      params = [];
+    }
+    const { rows } = await pool.query(query, params);
+    ok(res, rows);
+  } catch (e) { fail(res, e); }
+});
+ 
+// POST — create new request
+app.post('/help-requests', async (req, res) => {
+  try {
+    const { user_id, user_name, user_role, type, title, description } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO help_requests (user_id, user_name, user_role, type, title, description, status)
+       VALUES ($1, $2, $3, $4, $5, $6, 'open') RETURNING *`,
+      [user_id, user_name, user_role, type, title, description]
+    );
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+ 
+// PATCH status — admin updates status + optional note
+app.patch('/help-requests/:id/status', async (req, res) => {
+  try {
+    const { status, admin_note, reviewed_by } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE help_requests
+       SET status=$1, admin_note=$2, reviewed_by=$3, reviewed_at=NOW()
+       WHERE id=$4 RETURNING *`,
+      [status, admin_note || null, reviewed_by || null, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+ 
+// DELETE
+app.delete('/help-requests/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM help_requests WHERE id = $1', [req.params.id]);
+    ok(res, { deleted: true });
+  } catch (e) { fail(res, e); }
+});
+
 
 // ═══════════════════════════════════════════════════════════════
 //  START
