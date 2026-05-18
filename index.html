@@ -357,8 +357,16 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   .import-choice{grid-template-columns:1fr 1fr!important}
   .mini-grid{grid-template-columns:1fr 1fr!important}
   table{min-width:480px}
-  .tbl-scroll{overflow-x:auto}
+  .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .user-actions button{font-size:10px!important;padding:4px 8px!important}
+  /* Charts & graphs: horizontal scroll on mobile */
+  .chart-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .chart-scroll-inner{min-width:480px}
+  /* Notification dropdown: full-width anchored to topbar on mobile */
+  .notif-dropdown{position:fixed!important;top:58px!important;left:8px!important;right:8px!important;width:auto!important;max-height:70vh!important;overflow-y:auto!important;border-radius:14px!important}
+  /* Sales vs target bar chart scrollable */
+  .sales-chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sales-chart-inner{min-width:400px}
 }
 @media(max-width:440px){
   .metrics{grid-template-columns:1fr!important}
@@ -1594,6 +1602,7 @@ function getAllPagesForUser(user){
 
   const notifEntry={id:'notifications',icon:'🔔',label:'Notifications'};
 
+  const helpEntry={id:'help-requests',icon:'◇',label:'Help & Requests'};
   if(user.role==='employee') return [
     {id:'dashboard',icon:'◈',label:'Dashboard'},
     {id:'products',icon:'▣',label:'Products'},
@@ -1601,6 +1610,7 @@ function getAllPagesForUser(user){
     {id:'invoices',icon:'◻',label:'My Invoices'},
     {id:'my-sales',icon:'◎',label:'My Sales'},
     {id:'customers',icon:'◎',label:'Customers'},
+    helpEntry,
     notifEntry,
   ];
   if(user.role==='accountant') return [
@@ -1609,6 +1619,8 @@ function getAllPagesForUser(user){
     {id:'exp-tracker',icon:'◆',label:'Expense Tracking'},
     {id:'approved-invoices',icon:'◻',label:'Approved Invoices'},
     {id:'delivery',icon:'◉',label:'Delivery'},
+    {id:'my-sales',icon:'◎',label:'Sales Reports'},
+    helpEntry,
     notifEntry,
   ];
   if(isAdmin) return [
@@ -1626,7 +1638,7 @@ function getAllPagesForUser(user){
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
     {id:'vat-report',icon:'◈',label:'VAT Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
-    {id:'devtools',icon:'⫘',label:'DevTools'},
+    {id:'help-requests',icon:'◇',label:'Help & Requests'},
     notifEntry,
   ];
   if(isRam) return [
@@ -1641,6 +1653,7 @@ function getAllPagesForUser(user){
     {id:'sales-targets',icon:'◎',label:'Sales Targets'},
     {id:'vat-report',icon:'◈',label:'VAT Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
+    {id:'help-requests',icon:'◇',label:'Help & Requests'},
     notifEntry,
   ];
   if(isAsha) return [
@@ -1650,6 +1663,7 @@ function getAllPagesForUser(user){
     {id:'invoices',icon:'◻',label:'Invoices'},
     {id:'customers',icon:'◎',label:'Customers'},
     {id:'approvals',icon:'✦',label:'Approvals'},
+    helpEntry,
     notifEntry,
   ];
   // default owner
@@ -1662,6 +1676,7 @@ function getAllPagesForUser(user){
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'product-limits',icon:'⚠',label:'Product Limits'},
     {id:'sales-targets',icon:'◎',label:'Sales Targets'},
+    helpEntry,
     notifEntry,
   ];
 }
@@ -1782,21 +1797,23 @@ function SalesVsTargetChart({salesByMonth,targetByMonth,months,height=90}){
         )
       )
     ),
-    React.createElement('div',{style:{display:'flex',alignItems:'flex-end',gap:4,height}},
-      months.map((m,i)=>{
-        const {s,t}=vals[i];
-        const barH=h=>`${Math.max((h/mx)*100,h>0?2:0)}%`;
-        const hit=s>=t&&t>0;
-        return React.createElement('div',{key:m.key,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
-          React.createElement('div',{style:{width:'100%',display:'flex',gap:2,alignItems:'flex-end',height:height-16,position:'relative'}},
-            // target bar (ghost)
-            React.createElement('div',{style:{flex:1,height:barH(t),background:'var(--text3)',borderRadius:'3px 3px 0 0',opacity:.25}}),
-            // sales bar
-            React.createElement('div',{style:{flex:1,height:barH(s),background:hit?'var(--green)':'var(--amber)',borderRadius:'3px 3px 0 0',opacity:.9}})
-          ),
-          React.createElement('div',{style:{fontSize:9,color:'var(--text3)',marginTop:2}},m.label)
-        );
-      })
+    React.createElement('div',{className:'sales-chart-wrap'},
+      React.createElement('div',{className:'sales-chart-inner',style:{display:'flex',alignItems:'flex-end',gap:4,height}},
+        months.map((m,i)=>{
+          const {s,t}=vals[i];
+          const barH=h=>`${Math.max((h/mx)*100,h>0?2:0)}%`;
+          const hit=s>=t&&t>0;
+          return React.createElement('div',{key:m.key,style:{flex:'0 0 52px',display:'flex',flexDirection:'column',alignItems:'center',gap:2}},
+            React.createElement('div',{style:{width:'100%',display:'flex',gap:2,alignItems:'flex-end',height:height-16,position:'relative'}},
+              // target bar (ghost)
+              React.createElement('div',{style:{flex:1,height:barH(t),background:'var(--text3)',borderRadius:'3px 3px 0 0',opacity:.25}}),
+              // sales bar
+              React.createElement('div',{style:{flex:1,height:barH(s),background:hit?'var(--green)':'var(--amber)',borderRadius:'3px 3px 0 0',opacity:.9}})
+            ),
+            React.createElement('div',{style:{fontSize:9,color:'var(--text3)',marginTop:2}},m.label)
+          );
+        })
+      )
     ),
     React.createElement('div',{style:{display:'flex',gap:4,marginTop:10,flexWrap:'wrap'}},
       months.map((m,i)=>{
@@ -2334,8 +2351,10 @@ function SalesTargetsPage({user,data,setData,notify}){
 
 // ── My Sales page (employee-only) ─────────────────────────────────────────────
 function MySalesPage({user,data}){
-  const {documents=[],salesTargets=[]}=data;
-  const invoices=documents.filter(d=>d.type==='invoice'&&d.status==='approved'&&d.employeeId===user.id);
+  const isAccountant=user.role==='accountant'||user.role==='owner'||user.role==='admin';
+  const {documents=[],salesTargets=[],users=[]}=data;
+  // Accountants/admins see all approved invoices; employees see only their own
+  const invoices=documents.filter(d=>d.type==='invoice'&&d.status==='approved'&&(isAccountant||d.employeeId===user.id));
   const months=buildSixMonths();
   const now=new Date();
   const [selYear,setSelYear]=useState(now.getFullYear());
@@ -5927,7 +5946,7 @@ function useNotifications(user){
   useEffect(()=>{
     if(!user)return;
     refresh();
-    const t=setInterval(refresh,15000); // poll every 15s
+    const t=setInterval(refresh,10000); // poll every 10s
     return()=>clearInterval(t);
   },[user]);
 
@@ -5942,7 +5961,8 @@ function NotificationBell({notifs,unread,readAll,readOne,setActive}){
   useEffect(()=>{
     function handle(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false);}
     document.addEventListener('mousedown',handle);
-    return()=>document.removeEventListener('mousedown',handle);
+    document.addEventListener('touchstart',handle,{passive:true});
+    return()=>{document.removeEventListener('mousedown',handle);document.removeEventListener('touchstart',handle);};
   },[]);
 
   const recent=notifs.slice(0,8);
@@ -6227,6 +6247,55 @@ function App(){
       .catch(err => console.error("Sales targets fetch error:", err));
   }, []);
 
+  // 🔄 LIVE POLLING — refresh documents + expenditures every 20s so approvals appear without reload
+  useEffect(()=>{
+    if(!user) return;
+    function pollDocuments(){
+      Promise.all([
+        fetch(`${BASE_URL}/documents`).then(r=>r.json()),
+        fetch(`${BASE_URL}/users`).then(r=>r.json())
+      ]).then(([docsFromDB, usersFromDB])=>{
+        const userMap={};
+        usersFromDB.forEach(u=>{userMap[u.id]=u.name;});
+        const formatted=docsFromDB.map(doc=>({
+          ...doc,
+          items:Array.isArray(doc.items)?doc.items.map(item=>({productId:item.productId,name:item.name,qty:item.qty,price:Number(item.price)})):(typeof doc.items==='string'?JSON.parse(doc.items):[]),
+          terms:doc.terms?(typeof doc.terms==='string'?JSON.parse(doc.terms):doc.terms):{payment:'',delivery:'',warranty:'',validity:''},
+          employeeId:Number(doc.employee_id),
+          employeeName:userMap[doc.employee_id]||'Unknown',
+          customerName:doc.customer_name,
+          customerPhone:doc.customer_phone||'',
+          customerAddress:doc.customer_address||'',
+          companyName:doc.company_name||'',
+          customerRef:doc.customer_ref||'',
+          mkaRef:doc.mka_ref||'',
+          promoCode:doc.promo_code||'',
+          lpoNo:doc.lpo_no||'',
+          lpoDate:doc.lpo_date||'',
+          approvedBy:doc.approved_by||null,
+          approvedAt:doc.approved_at?doc.approved_at.split('T')[0]:null,
+          total:Number(doc.total||0),
+          created:doc.created?doc.created.split('T')[0]:null,
+          accountantSent:doc.accountant_sent||false,
+          deliveryDate:doc.delivery_date||'',
+          deliveryDone:doc.delivery_done||false,
+          deliveryDoneDate:doc.delivery_done_date||'',
+          discountPct:Number(doc.discount_pct||0),
+          discountTitle:doc.discount_title||'',
+          discountAmt:0,
+          comment:(()=>{try{const t=typeof doc.terms==='string'?JSON.parse(doc.terms):doc.terms;return(t&&t.comment)||doc.comment||'';}catch(e){return doc.comment||'';}})(),
+          rejectionNote:doc.reject_reason||''
+        })).map(doc=>({
+          ...doc,
+          discountAmt:doc.discountPct>0?(doc.items||[]).reduce((s,p)=>s+(p.price*p.qty),0)*(doc.discountPct/100):0
+        }));
+        setData(prev=>({...prev,documents:formatted,users:usersFromDB||[]}));
+      }).catch(()=>{});
+    }
+    const t=setInterval(pollDocuments, 20000);
+    return()=>clearInterval(t);
+  },[user]);
+
   // 🔐 LOGIN
   if(!user)
     return React.createElement(Login,{
@@ -6273,8 +6342,9 @@ function App(){
     'product-limits':['Product Limits','Reorder thresholds & stock alerts'],
     'vat-report':['VAT Report','Monthly VAT summary & Excel export'],
     'sales-targets':['Sales Targets','Set & track monthly employee targets'],
-    'my-sales':['My Sales','Your personal sales report & history'],
+    'my-sales': user&&(user.role==='accountant'||user.role==='owner'||user.role==='admin')?['Sales Reports','All employee sales & reports']:['My Sales','Your personal sales report & history'],
     'notifications':['Notifications','Your activity & alerts'],
+    'help-requests':['Help & Requests', (user&&user.role==='admin')?'All user submissions & feedback':'Submit a request, suggestion, or report an issue'],
   };
 
   const [pt,ps]=titles[active]||['Dashboard',''];
@@ -6312,6 +6382,7 @@ function App(){
     if(active==='sales-targets')return React.createElement(SalesTargetsPage,props);
     if(active==='my-sales')return React.createElement(MySalesPage,props);
     if(active==='notifications')return React.createElement(NotificationsPage,{user,notifs:appNotifs,unread:unreadCount,readAll,readOne,refresh:refreshNotifs});
+    if(active==='help-requests')return React.createElement(HelpRequestsPage,{user});
     return React.createElement('div',{className:'card',style:{color:'var(--text3)'}},'Coming soon');
   };
 
@@ -6730,6 +6801,259 @@ function ExpenditureTrackerPage({user,data,setData,notify}){
         React.createElement('div',{className:'modal-actions'},
           React.createElement('button',{className:'btn btn-ghost',onClick:()=>setShowForm(false)},'Cancel'),
           React.createElement('button',{className:'btn btn-primary',onClick:handleSave},editExp?'Save Changes':'Add Expenditure')
+        )
+      )
+    )
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELP & REQUESTS PAGE
+// ═══════════════════════════════════════════════════════════
+function HelpRequestsPage({user}) {
+  const isAdmin = user.role==='admin';
+  const [tickets, setTickets] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [showForm, setShowForm] = React.useState(false);
+  const [selected, setSelected] = React.useState(null);
+  const [filter, setFilter] = React.useState('all');
+  const [form, setForm] = React.useState({type:'feature',title:'',description:''});
+  const [saving, setSaving] = React.useState(false);
+  const [notif, setNotif] = React.useState(null);
+
+  const BASE = 'https://mkaerp-production.up.railway.app';
+
+  const showMsg = (msg, isErr) => {
+    setNotif({msg, isErr});
+    setTimeout(()=>setNotif(null), 3000);
+  };
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const url = isAdmin ? `${BASE}/help-requests` : `${BASE}/help-requests?user_id=${user.id}`;
+      const r = await fetch(url);
+      const d = await r.json();
+      setTickets(Array.isArray(d) ? d : []);
+    } catch(e){ setTickets([]); }
+    setLoading(false);
+  };
+
+  React.useEffect(()=>{ load(); }, []);
+
+  const handleSubmit = async () => {
+    if(!form.title.trim()||!form.description.trim()) return showMsg('Please fill in all fields', true);
+    setSaving(true);
+    try {
+      const r = await fetch(`${BASE}/help-requests`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          user_id: user.id,
+          user_name: user.name,
+          user_role: user.role,
+          type: form.type,
+          title: form.title.trim(),
+          description: form.description.trim(),
+        })
+      });
+      if(!r.ok) throw new Error('Failed');
+      showMsg('Request submitted successfully');
+      setShowForm(false);
+      setForm({type:'feature',title:'',description:''});
+      load();
+    } catch(e){ showMsg('Failed to submit. Please try again.', true); }
+    setSaving(false);
+  };
+
+  const updateStatus = async (id, status, note='') => {
+    try {
+      await fetch(`${BASE}/help-requests/${id}/status`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ status, admin_note: note, reviewed_by: user.name })
+      });
+      showMsg('Status updated');
+      setSelected(null);
+      load();
+    } catch(e){ showMsg('Update failed', true); }
+  };
+
+  const deleteTicket = async (id) => {
+    if(!confirm('Delete this request?')) return;
+    try {
+      await fetch(`${BASE}/help-requests/${id}`, { method:'DELETE' });
+      showMsg('Deleted');
+      setSelected(null);
+      load();
+    } catch(e){ showMsg('Delete failed', true); }
+  };
+
+  const typeColors = {
+    feature: {bg:'var(--green-bg)',color:'var(--green)',label:'Feature Request'},
+    change:  {bg:'var(--amber-bg)',color:'var(--amber)',label:'Change Request'},
+    bug:     {bg:'var(--red-bg)',color:'var(--red)',label:'Bug / Issue'},
+    help:    {bg:'var(--bg3)',color:'var(--text2)',label:'Help Needed'},
+  };
+  const statusColors = {
+    open:     {bg:'var(--bg3)',color:'var(--text2)'},
+    reviewed: {bg:'var(--amber-bg)',color:'var(--amber)'},
+    resolved: {bg:'var(--green-bg)',color:'var(--green)'},
+    closed:   {bg:'var(--bg4)',color:'var(--text3)'},
+  };
+
+  const filtered = tickets.filter(t => filter==='all' || t.status===filter);
+  const counts = { all: tickets.length, open: tickets.filter(t=>t.status==='open').length, reviewed: tickets.filter(t=>t.status==='reviewed').length, resolved: tickets.filter(t=>t.status==='resolved').length, closed: tickets.filter(t=>t.status==='closed').length };
+
+  return React.createElement('div', null,
+    // Inline notif
+    notif && React.createElement('div', {style:{position:'fixed',top:16,right:24,zIndex:9999,padding:'10px 18px',borderRadius:10,background:notif.isErr?'var(--red-bg)':'var(--green-bg)',color:notif.isErr?'var(--red)':'var(--green)',border:`1px solid ${notif.isErr?'var(--red)':'var(--green)'}`,fontSize:13,fontWeight:500,boxShadow:'0 4px 20px var(--shadow)'}}, notif.msg),
+
+    // Header row
+    React.createElement('div', {style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}},
+      React.createElement('div', {style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        ['all','open','reviewed','resolved','closed'].map(f =>
+          React.createElement('button', {
+            key:f,
+            className:`btn btn-sm ${filter===f?'btn-primary':'btn-ghost'}`,
+            onClick:()=>setFilter(f)
+          }, f==='all'?`All (${counts.all})`:`${f.charAt(0).toUpperCase()+f.slice(1)} (${counts[f]||0})`)
+        )
+      ),
+      React.createElement('button', {className:'btn btn-primary', onClick:()=>setShowForm(true)},
+        '+ New Request')
+    ),
+
+    // Stats for admin
+    isAdmin && React.createElement('div', {className:'metrics', style:{marginBottom:18, gridTemplateColumns:'repeat(4,1fr)'}},
+      [{label:'Total Tickets', val:counts.all},{label:'Open', val:counts.open},{label:'In Review', val:counts.reviewed},{label:'Resolved', val:counts.resolved}].map(m=>
+        React.createElement('div', {key:m.label, className:'metric'},
+          React.createElement('div',{className:'metric-label'},m.label),
+          React.createElement('div',{className:'metric-value',style:{fontSize:18}},m.val)
+        )
+      )
+    ),
+
+    // Table
+    React.createElement('div', {className:'card', style:{padding:0}},
+      loading
+        ? React.createElement('div', {style:{padding:40, textAlign:'center', color:'var(--text3)'}}, 'Loading…')
+        : filtered.length===0
+          ? React.createElement('div', {style:{padding:40, textAlign:'center', color:'var(--text3)'}},
+              React.createElement('div', {style:{fontSize:28,marginBottom:8}}, '📭'),
+              React.createElement('div', null, filter==='all'?'No requests yet. Submit your first one!':'No requests with this status.')
+            )
+          : React.createElement('table', null,
+              React.createElement('thead', null,
+                React.createElement('tr', null,
+                  React.createElement('th', null, '#'),
+                  isAdmin && React.createElement('th', null, 'From'),
+                  React.createElement('th', null, 'Type'),
+                  React.createElement('th', null, 'Title'),
+                  React.createElement('th', null, 'Status'),
+                  React.createElement('th', null, 'Submitted'),
+                  React.createElement('th', null, '')
+                )
+              ),
+              React.createElement('tbody', null,
+                filtered.map((t, i) => {
+                  const tc = typeColors[t.type]||typeColors.help;
+                  const sc = statusColors[t.status]||statusColors.open;
+                  return React.createElement('tr', {key:t.id, style:{cursor:'pointer'}, onClick:()=>setSelected(t)},
+                    React.createElement('td', null, React.createElement('span', {style:{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--text3)'}}, `#${t.id}`)),
+                    isAdmin && React.createElement('td', {className:'primary'}, React.createElement('div',null,t.user_name), React.createElement('div',{style:{fontSize:10,color:'var(--text3)'}},t.user_role)),
+                    React.createElement('td', null, React.createElement('span', {className:'badge', style:{background:tc.bg,color:tc.color}}, tc.label)),
+                    React.createElement('td', {className:'primary', style:{maxWidth:240}},
+                      React.createElement('div', {style:{fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, t.title),
+                      React.createElement('div', {style:{fontSize:11,color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:220}}, t.description)
+                    ),
+                    React.createElement('td', null, React.createElement('span', {className:'badge', style:{background:sc.bg,color:sc.color}}, t.status)),
+                    React.createElement('td', null, t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'),
+                    React.createElement('td', null,
+                      React.createElement('button', {className:'btn btn-ghost btn-sm', onClick:e=>{e.stopPropagation();setSelected(t);}}, 'View')
+                    )
+                  );
+                })
+              )
+            )
+    ),
+
+    // Submit form modal
+    showForm && React.createElement('div', {className:'modal-overlay', onClick:()=>setShowForm(false)},
+      React.createElement('div', {className:'modal', onClick:e=>e.stopPropagation(), style:{maxWidth:500}},
+        React.createElement('div', {className:'modal-header'},
+          React.createElement('div', {className:'modal-title'}, 'Submit a Request'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowForm(false)}, '✕')
+        ),
+        React.createElement('div', {className:'form-grid'},
+          React.createElement('div', {className:'form-group'},
+            React.createElement('label', null, 'Request Type'),
+            React.createElement('select', {value:form.type, onChange:e=>setForm(f=>({...f,type:e.target.value}))},
+              React.createElement('option', {value:'feature'}, '✦ Feature Request — New functionality you would like added'),
+              React.createElement('option', {value:'change'}, '◆ Change Request — Modify existing behavior'),
+              React.createElement('option', {value:'bug'}, '◉ Bug / Issue — Something is broken or wrong'),
+              React.createElement('option', {value:'help'}, '◎ Help Needed — I need assistance or clarification')
+            )
+          ),
+          React.createElement('div', {className:'form-group'},
+            React.createElement('label', null, 'Title'),
+            React.createElement('input', {value:form.title, onChange:e=>setForm(f=>({...f,title:e.target.value})), placeholder:'Short description of your request…'})
+          ),
+          React.createElement('div', {className:'form-group'},
+            React.createElement('label', null, 'Description'),
+            React.createElement('textarea', {rows:5, value:form.description, onChange:e=>setForm(f=>({...f,description:e.target.value})), placeholder:'Describe in detail what you need, what is broken, or what you suggest…', style:{resize:'vertical'}})
+          )
+        ),
+        React.createElement('div', {className:'modal-actions'},
+          React.createElement('button', {className:'btn btn-ghost', onClick:()=>setShowForm(false)}, 'Cancel'),
+          React.createElement('button', {className:'btn btn-primary', onClick:handleSubmit, disabled:saving}, saving?'Submitting…':'Submit Request')
+        )
+      )
+    ),
+
+    // Detail/review modal
+    selected && React.createElement('div', {className:'modal-overlay', onClick:()=>setSelected(null)},
+      React.createElement('div', {className:'modal', onClick:e=>e.stopPropagation(), style:{maxWidth:520}},
+        React.createElement('div', {className:'modal-header'},
+          React.createElement('div', {className:'modal-title'},
+            React.createElement('span', {style:{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:'var(--text3)',marginRight:8}}, `#${selected.id}`),
+            selected.title
+          ),
+          React.createElement('button', {className:'modal-close', onClick:()=>setSelected(null)}, '✕')
+        ),
+        React.createElement('div', {style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
+          React.createElement('span', {className:'badge', style:{background:(typeColors[selected.type]||typeColors.help).bg, color:(typeColors[selected.type]||typeColors.help).color}}, (typeColors[selected.type]||typeColors.help).label),
+          React.createElement('span', {className:'badge', style:{background:(statusColors[selected.status]||statusColors.open).bg, color:(statusColors[selected.status]||statusColors.open).color}}, selected.status),
+          React.createElement('span', {style:{fontSize:11,color:'var(--text3)',display:'flex',alignItems:'center'}}, `by ${selected.user_name} (${selected.user_role})`)
+        ),
+        React.createElement('div', {style:{background:'var(--bg3)',borderRadius:10,padding:'14px 16px',marginBottom:16,lineHeight:1.7,fontSize:13,color:'var(--text)',whiteSpace:'pre-wrap'}}, selected.description),
+        selected.admin_note && React.createElement('div', {style:{background:'var(--amber-bg)',border:'1px solid var(--amber)',borderRadius:10,padding:'12px 16px',marginBottom:16,fontSize:12}},
+          React.createElement('div', {style:{fontWeight:600,color:'var(--amber)',marginBottom:4}}, `Admin Note (${selected.reviewed_by||'Admin'})`),
+          React.createElement('div', {style:{color:'var(--text)',lineHeight:1.6}}, selected.admin_note)
+        ),
+        React.createElement('div', {style:{fontSize:11,color:'var(--text3)',marginBottom:16}},
+          `Submitted: ${selected.created_at ? new Date(selected.created_at).toLocaleString('en-GB') : '—'}`
+        ),
+        isAdmin && React.createElement('div', null,
+          React.createElement('div', {style:{fontSize:12,color:'var(--text2)',marginBottom:8,fontWeight:500}}, 'Update Status'),
+          React.createElement('div', {style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}},
+            ['reviewed','resolved','closed'].map(s =>
+              React.createElement('button', {
+                key:s,
+                className:'btn btn-sm btn-ghost',
+                style:selected.status===s?{background:'var(--bg4)',borderColor:'var(--text3)'}:{},
+                onClick:()=>{
+                  const note = s==='resolved'||s==='reviewed' ? (prompt(`Optional note for "${s}" status:`)||'') : '';
+                  updateStatus(selected.id, s, note);
+                }
+              }, s.charAt(0).toUpperCase()+s.slice(1))
+            )
+          )
+        ),
+        React.createElement('div', {className:'modal-actions'},
+          isAdmin && React.createElement('button', {className:'btn btn-danger btn-sm', onClick:()=>deleteTicket(selected.id)}, 'Delete'),
+          React.createElement('div', {style:{flex:1}}),
+          React.createElement('button', {className:'btn btn-ghost', onClick:()=>setSelected(null)}, 'Close')
         )
       )
     )
