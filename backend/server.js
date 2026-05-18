@@ -22,132 +22,18 @@ function fail(res, err, status = 500) {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  Login route
+//  AUTH
 // ═══════════════════════════════════════════════════════════════
- 
-app.post('/login', loginLimiter, async (req, res) => {
+
+app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
- 
-    const lowerEmail = email.toLowerCase().trim();
-    const now        = Date.now();
-    const tracker    = failedAttempts[lowerEmail] || { count: 0, firstFail: null, lockedUntil: null, postLockFails: 0, postLockFirst: null };
- 
-    // ── Check if account is permanently blocked ──────────────
-    const { rows: userRows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [lowerEmail]);
-    const user = userRows[0];
- 
-    if (user && user.active === false) {
-      return res.status(403).json({ error: 'Account locked. Please contact your administrator.' });
-    }
- 
-    // ── Check if currently in lockout window ─────────────────
-    if (tracker.lockedUntil && now < tracker.lockedUntil) {
-      const remaining = Math.ceil((tracker.lockedUntil - now) / 60000);
-      return res.status(429).json({
-        error: `Account temporarily locked due to too many failed attempts. Try again in ${remaining} minute${remaining !== 1 ? 's' : ''}.`
-      });
-    }
- 
-    // ── If lockout just expired, reset first-phase counter ───
-    if (tracker.lockedUntil && now >= tracker.lockedUntil) {
-      tracker.count = 0;
-      tracker.firstFail = null;
-      // Keep postLockFails tracking active
-    }
- 
-    // ── Verify credentials ───────────────────────────────────
-    if (!user || user.password !== password) {
-      // Increment failure counter
-      tracker.firstFail = tracker.firstFail || now;
-      tracker.count = (tracker.count || 0) + 1;
- 
-      if (tracker.lockedUntil && now >= tracker.lockedUntil) {
-        // We're in the post-lockout window — track secondary failures
-        tracker.postLockFirst = tracker.postLockFirst || now;
-        tracker.postLockFails = (tracker.postLockFails || 0) + 1;
- 
-        if (tracker.postLockFails >= SECOND_FAIL) {
-          // ── PERMANENT BLOCK — set active=false ────────────
-          if (user) {
-            await pool.query('UPDATE users SET active = false WHERE id = $1', [user.id]);
- 
-            // Log security event for admin notification
-            const ts  = new Date().toISOString();
-            const now2 = new Date();
-            const hh   = now2.getHours();
-            const mm   = String(now2.getMinutes()).padStart(2,'0');
-            const ampm = hh >= 12 ? 'PM' : 'AM';
-            const time = `${hh % 12 || 12}:${mm}${ampm}`;
-            const date = `${String(now2.getDate()).padStart(2,'0')}/${String(now2.getMonth()+1).padStart(2,'0')}/${now2.getFullYear()}`;
- 
-            await pool.query(
-              `INSERT INTO audit_log (user_id, user_name, category, action, meta, time_label, date_label, ts)
-               VALUES ($1, $2, 'security', $3, $4::jsonb, $5, $6, $7)`,
-              [
-                user.id,
-                user.name,
-                `ACCOUNT LOCKED: ${user.name} (${user.email}) — account disabled after repeated failed login attempts`,
-                JSON.stringify({ email: user.email, locked: true, attempts: tracker.count + tracker.postLockFails }),
-                time,
-                date,
-                ts
-              ]
-            );
-          }
- 
-          failedAttempts[lowerEmail] = tracker;
-          return res.status(403).json({ error: 'Account permanently locked due to repeated failed attempts. Contact your administrator.' });
-        }
-      } else if (tracker.count >= FAIL_LIMIT) {
-        // ── TEMPORARY LOCKOUT ─────────────────────────────────
-        tracker.lockedUntil = now + LOCKOUT_MINUTES * 60 * 1000;
-        tracker.postLockFails = 0;
-        tracker.postLockFirst = null;
- 
-        if (user) {
-          const ts  = new Date().toISOString();
-          const now2 = new Date();
-          const hh   = now2.getHours();
-          const mm   = String(now2.getMinutes()).padStart(2,'0');
-          const ampm = hh >= 12 ? 'PM' : 'AM';
-          const time = `${hh % 12 || 12}:${mm}${ampm}`;
-          const date = `${String(now2.getDate()).padStart(2,'0')}/${String(now2.getMonth()+1).padStart(2,'0')}/${now2.getFullYear()}`;
- 
-          await pool.query(
-            `INSERT INTO audit_log (user_id, user_name, category, action, meta, time_label, date_label, ts)
-             VALUES ($1, $2, 'security', $3, $4::jsonb, $5, $6, $7)`,
-            [
-              user.id,
-              user.name,
-              `Failed login attempt: ${user.name} (${user.email}) — locked for 15 minutes after ${FAIL_LIMIT} failed attempts`,
-              JSON.stringify({ email: user.email, locked: false, attempts: tracker.count, lockout_until: new Date(tracker.lockedUntil).toISOString() }),
-              time,
-              date,
-              ts
-            ]
-          );
-        }
- 
-        failedAttempts[lowerEmail] = tracker;
-        return res.status(429).json({
-          error: `Too many failed attempts. Account locked for ${LOCKOUT_MINUTES} minutes.`
-        });
-      }
- 
-      failedAttempts[lowerEmail] = tracker;
-      const remaining = FAIL_LIMIT - tracker.count;
-      return res.status(401).json({
-        error: `Invalid credentials. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining before temporary lockout.`
-      });
-    }
- 
-    // ── SUCCESS — clear tracker, return user (without password) ──
-    delete failedAttempts[lowerEmail];
-    const { password: _pw, ...safeUser } = user;
-    return res.json(safeUser);
- 
+    const { rows } = await pool.query(
+      'SELECT * FROM users WHERE email = $1 AND password = $2',
+      [email, password]
+    );
+    if (!rows.length) return res.status(401).send('Invalid credentials');
+    ok(res, rows[0]);
   } catch (e) { fail(res, e); }
 });
 
