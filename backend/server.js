@@ -235,6 +235,18 @@ app.patch('/documents/:id/reject', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+// ── Send client-call invoice for approval (employee action) ──
+app.patch('/documents/:id/send-for-approval', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE documents SET status='pending' WHERE id=$1 AND status='client-call' RETURNING *`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Document not found or not in client-call status' });
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+
 app.patch('/documents/:id/delivery-date', async (req, res) => {
   try {
     const { delivery_date } = req.body;
@@ -472,9 +484,9 @@ app.delete('/demand-tracker/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 //  SALES TARGETS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 
 app.get('/sales-targets', async (req, res) => {
   try {
