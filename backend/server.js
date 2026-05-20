@@ -276,9 +276,17 @@ app.delete('/documents/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
+app.patch('/documents/:id/send-for-approval', async (req, res) => {
+  const { rows } = await pool.query(
+    `UPDATE documents SET status='pending' WHERE id=$1 AND status='client-call' RETURNING *`,
+    [req.params.id]
+  );
+  ...
+});
+
 
 // ═══════════════════════════════════════════════════════════════
-//  LEADS  (powers the "Customers" page)
+//  LEADS
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/leads', async (req, res) => {
