@@ -276,17 +276,9 @@ app.delete('/documents/:id', async (req, res) => {
   } catch (e) { fail(res, e); }
 });
 
-app.patch('/documents/:id/send-for-approval', async (req, res) => {
-  const { rows } = await pool.query(
-    `UPDATE documents SET status='pending' WHERE id=$1 AND status='client-call' RETURNING *`,
-    [req.params.id]
-  );
-  ...
-});
-
 
 // ═══════════════════════════════════════════════════════════════
-//  LEADS
+//  LEADS  (powers the "Customers" page)
 // ═══════════════════════════════════════════════════════════════
 
 app.get('/leads', async (req, res) => {
@@ -572,6 +564,97 @@ app.patch('/help-requests/:id/status', async (req, res) => {
 app.delete('/help-requests/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM help_requests WHERE id = $1', [req.params.id]);
+    ok(res, { deleted: true });
+  } catch (e) { fail(res, e); }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  CALL REPORTS
+// ═══════════════════════════════════════════════════════════════
+
+// Run once to create the table if it doesn't exist
+pool.query(`
+  CREATE TABLE IF NOT EXISTS call_reports (
+    id            SERIAL PRIMARY KEY,
+    employee_id   INTEGER NOT NULL,
+    employee_name TEXT    NOT NULL,
+    date          DATE    NOT NULL,
+    customer_company  TEXT NOT NULL,
+    contact_person    TEXT DEFAULT '',
+    phone             TEXT DEFAULT '',
+    purpose           TEXT DEFAULT 'New Quotation',
+    discussion        TEXT DEFAULT '',
+    requirement       TEXT DEFAULT '',
+    followup_action   TEXT DEFAULT '',
+    status            TEXT DEFAULT 'Pending',
+    next_followup_date DATE,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+  )
+`).catch(e => console.error('call_reports table creation error:', e));
+
+app.get('/call-reports', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM call_reports ORDER BY date DESC, created_at DESC'
+    );
+    ok(res, rows);
+  } catch (e) { fail(res, e); }
+});
+
+app.post('/call-reports', async (req, res) => {
+  try {
+    const {
+      employee_id, employee_name, date,
+      customer_company, contact_person, phone,
+      purpose, discussion, requirement,
+      followup_action, status, next_followup_date
+    } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO call_reports
+        (employee_id, employee_name, date, customer_company, contact_person, phone,
+         purpose, discussion, requirement, followup_action, status, next_followup_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [
+        employee_id, employee_name, date,
+        customer_company, contact_person ?? '', phone ?? '',
+        purpose ?? 'New Quotation', discussion ?? '', requirement ?? '',
+        followup_action ?? '', status ?? 'Pending',
+        next_followup_date || null
+      ]
+    );
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+
+app.patch('/call-reports/:id', async (req, res) => {
+  try {
+    const {
+      date, customer_company, contact_person, phone,
+      purpose, discussion, requirement,
+      followup_action, status, next_followup_date
+    } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE call_reports SET
+        date=$1, customer_company=$2, contact_person=$3, phone=$4,
+        purpose=$5, discussion=$6, requirement=$7,
+        followup_action=$8, status=$9, next_followup_date=$10
+       WHERE id=$11 RETURNING *`,
+      [
+        date, customer_company, contact_person ?? '', phone ?? '',
+        purpose ?? 'New Quotation', discussion ?? '', requirement ?? '',
+        followup_action ?? '', status ?? 'Pending',
+        next_followup_date || null, req.params.id
+      ]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    ok(res, rows[0]);
+  } catch (e) { fail(res, e); }
+});
+
+app.delete('/call-reports/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM call_reports WHERE id = $1', [req.params.id]);
     ok(res, { deleted: true });
   } catch (e) { fail(res, e); }
 });
