@@ -69,6 +69,7 @@ select option{background:var(--bg3);color:var(--text)}
 .badge.in-stock{background:var(--green-bg);color:var(--green)}
 .badge.low-stock{background:var(--amber-bg);color:var(--amber)}
 .badge.delivered{background:var(--green-bg);color:var(--green)}
+.badge.client-call{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
 .badge.scheduled{background:var(--amber-bg);color:var(--amber)}
 .badge.unscheduled{background:var(--bg3);color:var(--text3)}
 table{width:100%;border-collapse:collapse}
@@ -415,13 +416,6 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   flex: 1; /* pushes footer to the bottom */
 }
 
-.footer-img-box {
-  margin-top: auto;
-  padding-top: 16px;
-  width: 50%;
-  align-items: center;
-  justify-content: center;
-}
 
 /* HEADER */
 .doc-header {
@@ -542,92 +536,6 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
   margin-bottom: 10px;
 }
 
-/* FOOTER IMAGE */
-.footer-img {
-  position: fixed;
-  bottom: 10px;
-  left: 0;
-  width: 100%;
-  text-align: center;
-}
-
-.footer-img img {
-  max-width: 100%;
-  height: auto;
-  justify-content: center;
-}
-
-.footer-img-box img {
-  display: block;
-  object-fit: contain;
-  object-position: center;
-  justify-content: center;
-}
-.footer-box {
-  margin-top: auto;              /* 🔥 pushes to bottom naturally */
-  border: 2px solid #1B5886;
-  background: #eef5fb;
-  padding: 10px 14px;
-  font-size: 8.5px;              /* 🔻 tighter like real invoices */
-  justify-content: center;
-}
-
-/* Company */
-.footer-company {
-  text-align: center;
-  font-weight: 700;
-  font-size: 10px;
-  margin-bottom: 4px;
-  justify-content: center;
-}
-
-/* Details */
-.footer-details {
-  text-align: center;
-  font-size: 8px;
-  margin-bottom: 6px;
-  line-height: 1.3;
-}
-
-/* Layout */
-.footer-terms-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-}
-
-/* Terms */
-.footer-terms {
-  width: 50%;
-}
-
-.footer-terms .terms-title {
-  font-size: 9px;
-  font-weight: 600;
-  margin-bottom: 3px;
-}
-
-.footer-terms ul {
-  margin: 0;
-  padding-left: 12px;
-}
-
-.footer-terms li {
-  margin-bottom: 2px;
-  line-height: 1.2;
-}
-
-/* Arabic */
-.footer-terms.ar {
-  direction: rtl;
-  text-align: right;
-  font-family: "Tahoma", sans-serif;
-}
-
-.footer-terms.ar ul {
-  padding-right: 12px;
-  padding-left: 0;
-}
 .signature-section {
   display: flex;
   justify-content: space-between;
@@ -880,6 +788,7 @@ body.light .mobile-nav{background:rgba(255,255,255,.97)}
 .notif-item-icon.stock{background:var(--bg4)}
 .notif-item-icon.expense{background:var(--amber-bg)}
 .notif-item-icon.system{background:var(--bg4)}
+.notif-item-icon.security{background:var(--red-bg)}
 .notif-item-body{flex:1;min-width:0}
 .notif-item-text{font-size:12px;color:var(--text);line-height:1.45;word-break:break-word}
 .notif-item-time{font-size:10px;color:var(--text3);margin-top:3px;font-family:'JetBrains Mono',monospace}
@@ -921,51 +830,7 @@ const COMPANY_VATIN = 'OM1100144996';   // ← VATIN
 const COMPANY_VAT_NO = 'OM1100037509';  // ← VAT No
 const BASE_URL = 'https://mkaerp-production.up.railway.app'; // ← Single source of truth
 
-// ── FOOTER IMAGE CONFIG (editable via Settings → Document Footer) ──
-let FOOTER_IMG_WIDTH  = 100;  // % of page width (1–100)
-let FOOTER_IMG_HEIGHT = 90;   // max height in px
 
-// Footer settings panel component — renders a small popover with sliders
-function FooterSettingsBtn() {
-  const [open, setOpen] = React.useState(false);
-  const [w, setW] = React.useState(FOOTER_IMG_WIDTH);
-  const [h, setH] = React.useState(FOOTER_IMG_HEIGHT);
-  const apply = () => { FOOTER_IMG_WIDTH = w; FOOTER_IMG_HEIGHT = h; setOpen(false); };
-  return React.createElement('div', { style: { position: 'relative', display: 'inline-block' } },
-    React.createElement('button', {
-      className: 'btn btn-ghost btn-sm',
-      title: 'Footer image settings',
-      onClick: () => setOpen(o => !o),
-      style: { fontSize: 16, padding: '4px 8px' }
-    }, '⚙'),
-    open && React.createElement('div', {
-      style: {
-        position: 'absolute', bottom: '110%', right: 0, zIndex: 999,
-        background: 'var(--bg2)', border: '1px solid var(--border2)',
-        borderRadius: 10, padding: '14px 16px', width: 220,
-        boxShadow: '0 4px 20px rgba(0,0,0,.3)'
-      }
-    },
-      React.createElement('div', { style: { fontSize: 12, fontWeight: 700, marginBottom: 12, color: 'var(--text)' } }, '📐 Footer Image Size'),
-      React.createElement('label', { style: { fontSize: 11, color: 'var(--text3)' } }, `Width: ${w}%`),
-      React.createElement('input', {
-        type: 'range', min: 20, max: 100, value: w,
-        onChange: e => setW(Number(e.target.value)),
-        style: { width: '100%', margin: '4px 0 10px' }
-      }),
-      React.createElement('label', { style: { fontSize: 11, color: 'var(--text3)' } }, `Max Height: ${h}px`),
-      React.createElement('input', {
-        type: 'range', min: 40, max: 200, value: h,
-        onChange: e => setH(Number(e.target.value)),
-        style: { width: '100%', margin: '4px 0 12px' }
-      }),
-      React.createElement('div', { style: { display: 'flex', gap: 8 } },
-        React.createElement('button', { className: 'btn btn-primary btn-sm', style: { flex: 1 }, onClick: apply }, 'Apply'),
-        React.createElement('button', { className: 'btn btn-ghost btn-sm', style: { flex: 1 }, onClick: () => setOpen(false) }, 'Cancel')
-      )
-    )
-  );
-}
 function normalize(s){return String(s||'').toLowerCase().trim().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ')}
 
 const LEADS_INIT = [];
@@ -1077,7 +942,6 @@ function generateDocumentHTML(data, type="quotation") {
     <!-- TOTAL -->
     <div class="totals">
       <div>Subtotal <span>OMR ${subtotal.toFixed(2)}</span></div>
-      ${discAmt>0?`<div style="color:#c04040;">${discTitle?discTitle:'Discount'} (${discPct}%) <span>- OMR ${discAmt.toFixed(2)}</span></div>`:''}
       <div>VAT 5% <span>OMR ${vat.toFixed(2)}</span></div>
       <div class="grand">Gross Total <span>OMR ${total.toFixed(2)}</span></div>
     </div>
@@ -1098,6 +962,7 @@ function generateDocumentHTML(data, type="quotation") {
 
     </div>
 
+
     <!-- TERMS -->
     <div class="terms">
       <div class="terms-title">TERMS & CONDITIONS</div>
@@ -1106,9 +971,11 @@ function generateDocumentHTML(data, type="quotation") {
       </div>
     </div>
 
-    <div class="footer-img-box">
-      <img src="https://raw.githubusercontent.com/Arya25program/MKAERP/main/footer.png" style="width:${FOOTER_IMG_WIDTH}%;max-height:${FOOTER_IMG_HEIGHT}px;object-fit:contain;object-position:center;display:block;">
+    ${type==='quotation'?`
+    <div style="margin-top:18px;text-align:center;font-size:10px;color:#888;font-style:italic;border-top:1px solid #e0e0e0;padding-top:10px;">
+      This is a system-generated quotation. No signature is required.
     </div>
+    `:''}
 
   </div>
   `;
@@ -1202,10 +1069,6 @@ function generateDeliveryOrderHTML(data) {
         <div class="sign-line"></div>
       </div>
 
-    </div>
-
-    <div class="footer-img-box">
-      <img src="https://raw.githubusercontent.com/Arya25program/MKAERP/main/footer.png" style="width:${FOOTER_IMG_WIDTH}%;max-height:${FOOTER_IMG_HEIGHT}px;object-fit:contain;object-position:center;display:block;">
     </div>
 
   </div>
@@ -1364,6 +1227,8 @@ function Login({onLogin,users,theme,setTheme}){
         setLoading(false);
         return;
       }
+
+      console.log("Logged in user:", user);
       onLogin(user);
       setLoading(false);
     })
@@ -1608,6 +1473,7 @@ function getAllPagesForUser(user){
     {id:'invoices',icon:'◻',label:'My Invoices'},
     {id:'my-sales',icon:'◎',label:'My Sales'},
     {id:'customers',icon:'◎',label:'Customers'},
+    {id:'call-report',icon:'📞',label:'Call Report'},
     helpEntry,
     notifEntry,
   ];
@@ -1635,6 +1501,7 @@ function getAllPagesForUser(user){
     {id:'exp-approvals',icon:'◆',label:'Exp. Approvals'},
     {id:'exp-tracker',icon:'◇',label:'Exp. Tracker'},
     {id:'vat-report',icon:'◈',label:'VAT Report'},
+    {id:'call-report',icon:'📞',label:'Call Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'help-requests',icon:'◇',label:'Help & Requests'},
     notifEntry,
@@ -1650,6 +1517,7 @@ function getAllPagesForUser(user){
     {id:'product-limits',icon:'⚠',label:'Product Limits'},
     {id:'sales-targets',icon:'◎',label:'Sales Targets'},
     {id:'vat-report',icon:'◈',label:'VAT Report'},
+    {id:'call-report',icon:'📞',label:'Call Report'},
     {id:'audit-log',icon:'◉',label:'Audit Log'},
     {id:'help-requests',icon:'◇',label:'Help & Requests'},
     notifEntry,
@@ -1674,6 +1542,7 @@ function getAllPagesForUser(user){
     {id:'quotation',icon:'❖',label:'Quotation Uphold'},
     {id:'product-limits',icon:'⚠',label:'Product Limits'},
     {id:'sales-targets',icon:'◎',label:'Sales Targets'},
+    {id:'call-report',icon:'📞',label:'Call Report'},
     helpEntry,
     notifEntry,
   ];
@@ -1826,8 +1695,14 @@ function SalesVsTargetChart({salesByMonth,targetByMonth,months,height=90}){
   );
 }
 
-function OwnerDashboard({data}){
+function OwnerDashboard({user,data,setActive}){
   const {leads,documents,products,salesTargets=[],users=[]}=data;
+  const [helpTickets,setHelpTickets]=React.useState(null);
+  React.useEffect(()=>{
+    fetch('https://mkaerp-production.up.railway.app/help-requests')
+      .then(r=>r.json()).then(d=>setHelpTickets(Array.isArray(d)?d:[]))
+      .catch(()=>setHelpTickets([]));
+  },[]);
   const invoices=documents.filter(d=>d.type==='invoice');
   const approvedInvs=invoices.filter(i=>i.status==='approved');
   const totalRev=approvedInvs.reduce((s,i)=>s+i.total,0);
@@ -1936,7 +1811,83 @@ function OwnerDashboard({data}){
             React.createElement('td',null,React.createElement('span',{className:'badge pending'},'Pending'))
           )))
         ))
+    ),
+    React.createElement('div',{className:'grid-2',style:{marginTop:18}},
+      React.createElement('div',{className:'card'},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
+          React.createElement('div',{className:'card-title',style:{margin:0}},'\uD83C\uDFAB Help & Requests'),
+          setActive&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setActive('help-requests')},'View all \u2192')
+        ),
+        helpTickets===null
+          ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'8px 0'}},'Loading\u2026')
+          :(()=>{
+            const open=helpTickets.filter(t=>t.status==='open');
+            const reviewed=helpTickets.filter(t=>t.status==='reviewed');
+            const pending=[...open,...reviewed];
+            if(pending.length===0) return React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'16px 0',textAlign:'center'}},
+              React.createElement('div',{style:{fontSize:24,marginBottom:6}},String.fromCharCode(10003)),
+              'No pending requests'
+            );
+            return React.createElement('div',null,
+              React.createElement('div',{style:{display:'flex',gap:10,marginBottom:12}},
+                React.createElement('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:10,padding:'8px 14px',flex:1,textAlign:'center'}},
+                  React.createElement('div',{style:{fontSize:20,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:'var(--amber)'}},open.length),
+                  React.createElement('div',{style:{fontSize:10,color:'var(--amber)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:2}},'Open')
+                ),
+                React.createElement('div',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 14px',flex:1,textAlign:'center'}},
+                  React.createElement('div',{style:{fontSize:20,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:'var(--text)'}},reviewed.length),
+                  React.createElement('div',{style:{fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.06em',marginTop:2}},'In Review')
+                )
+              ),
+              pending.slice(0,4).map(t=>React.createElement('div',{key:t.id,style:{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}},
+                React.createElement('span',{style:{fontSize:11,color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",minWidth:24}},'#'+t.id),
+                React.createElement('div',{style:{flex:1,minWidth:0}},
+                  React.createElement('div',{style:{fontSize:12,color:'var(--text)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},t.title),
+                  React.createElement('div',{style:{fontSize:11,color:'var(--text3)'}},t.user_name+' \u00b7 '+t.type)
+                ),
+                React.createElement('span',{className:'badge '+(t.status==='open'?'pending':'new')},t.status)
+              )),
+              pending.length>4&&React.createElement('div',{style:{fontSize:11,color:'var(--text3)',marginTop:8,textAlign:'center'}},'+'+(pending.length-4)+' more')
+            );
+          })()
+      ),
+      React.createElement(SecurityAlertsWidget,{setActive})
     )
+  );
+}
+
+function SecurityAlertsWidget({setActive}){
+  const [secEvents,setSecEvents]=React.useState(null);
+  React.useEffect(()=>{
+    fetch('https://mkaerp-production.up.railway.app/audit-log')
+      .then(r=>r.json())
+      .then(rows=>setSecEvents((rows||[]).filter(r=>r.category==='security').slice(0,5)))
+      .catch(()=>setSecEvents([]));
+  },[]);
+  return React.createElement('div',{className:'card'},
+    React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}},
+      React.createElement('div',{className:'card-title',style:{margin:0}},String.fromCodePoint(0x1F510)+' Security Alerts'),
+      setActive&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setActive('audit-log')},'Audit log \u2192')
+    ),
+    secEvents===null
+      ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'8px 0'}},'Loading\u2026')
+      :secEvents.length===0
+        ?React.createElement('div',{style:{fontSize:12,color:'var(--text3)',padding:'16px 0',textAlign:'center'}},
+          React.createElement('div',{style:{fontSize:24,marginBottom:6}},String.fromCodePoint(0x1F6E1)),
+          'No security events'
+        )
+        :React.createElement('div',null,
+          secEvents.map((ev,i)=>{
+            const meta=ev.meta?(typeof ev.meta==='string'?JSON.parse(ev.meta):ev.meta):{};
+            return React.createElement('div',{key:i,style:{display:'flex',alignItems:'flex-start',gap:10,padding:'9px 0',borderBottom:'1px solid var(--border)'}},
+              React.createElement('span',{style:{fontSize:16,marginTop:1}},meta.locked?'\uD83D\uDD12':'\u26A0\uFE0F'),
+              React.createElement('div',{style:{flex:1,minWidth:0}},
+                React.createElement('div',{style:{fontSize:12,color:meta.locked?'var(--red)':'var(--amber)',fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},ev.action),
+                React.createElement('div',{style:{fontSize:10,color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",marginTop:2}},ev.time_label+' \u00b7 '+ev.date_label)
+              )
+            );
+          })
+        )
   );
 }
 
@@ -2517,7 +2468,7 @@ function AccountantDashboard({data}){
   );
 }
 
-function InvoiceDetail({inv,onBack}){
+function InvoiceDetail({inv,onBack,onSendForApproval,notify}){
   return React.createElement('div',null,
     React.createElement('div',{className:'back-btn',onClick:onBack},'← Back'),
     React.createElement('div',{className:'card'},
@@ -2530,7 +2481,7 @@ function InvoiceDetail({inv,onBack}){
         ),
         React.createElement('div',{style:{textAlign:'right'}},
           React.createElement('div',{style:{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}},fmtCurrency(inv.total)),
-          React.createElement('div',{style:{marginTop:6}},React.createElement('span',{className:`badge ${inv.status}`},inv.status))
+          React.createElement('div',{style:{marginTop:6}},React.createElement('span',{className:`badge ${inv.status}`},inv.status==='client-call'?'Client Call':inv.status))
         )
       ),
       React.createElement('div',{className:'grid-2',style:{marginBottom:18}},
@@ -2581,21 +2532,53 @@ function InvoiceDetail({inv,onBack}){
             )
           )
         );
-      })()
+      })(),
+      inv.status==='client-call'&&React.createElement('div',{style:{display:'flex',gap:8,marginTop:16,justifyContent:'flex-end'}},
+        React.createElement('button',{className:'btn btn-ghost',onClick:()=>printInvoice(inv)},'⬇ Download PDF'),
+        onSendForApproval&&React.createElement('button',{className:'btn btn-primary',onClick:()=>onSendForApproval(inv)},'Send for Approval →')
+      )
     )
   );
 }
 
-function InvoicesPage({user,data}){
+function InvoicesPage({user,data,setData,notify}){
   const invoices=(data.documents||[]).filter(d=>d.type==='invoice');
   const [filter,setFilter]=useState('all');
   const [detail,setDetail]=useState(null);
   const myInvs=user.role==='employee'?invoices.filter(i=>i.employeeId===user.id):invoices;
   const filtered=filter==='all'?myInvs:myInvs.filter(i=>i.status===filter);
-  if(detail)return React.createElement(InvoiceDetail,{inv:detail,onBack:()=>setDetail(null)});
+
+  const sendForApproval=(inv)=>{
+    fetch(`https://mkaerp-production.up.railway.app/documents/${inv.id}/send-for-approval`,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({status:'pending'})
+    })
+    .then(r=>{
+      if(r.status===404){throw new Error('route_missing');}
+      if(!r.ok)throw new Error('server_error');
+      return r.json();
+    })
+    .then(()=>{
+      const updated={...inv,status:'pending'};
+      setData(d=>({...d,documents:d.documents.map(doc=>doc.id===inv.id?updated:doc)}));
+      setDetail(updated);
+      logAction(user,'invoice',user.name+' sent invoice '+inv.id+' for approval',{invoice:inv.id,customer:inv.customerName});
+      notify('Invoice sent for approval — owner can now review it','success');
+    })
+    .catch(e=>{
+      if(e.message==='route_missing'){
+        notify('Server needs redeployment — deploy the latest server.js on Railway','error');
+      } else {
+        notify('Failed to send for approval — please try again','error');
+      }
+    });
+  };
+
+  if(detail)return React.createElement(InvoiceDetail,{inv:detail,onBack:()=>setDetail(null),onSendForApproval:user.role==='employee'?sendForApproval:null,notify});
+  const filterOptions=user.role==='employee'?['all','client-call','pending','approved','rejected']:['all','pending','approved','rejected'];
   return React.createElement('div',null,
     React.createElement('div',{style:{display:'flex',gap:5,marginBottom:18}},
-      ['all','pending','approved','rejected'].map(s=>React.createElement('button',{key:s,className:'btn btn-ghost btn-sm',style:{borderColor:filter===s?'var(--text3)':'var(--border)',color:filter===s?'var(--text)':'var(--text2)'},onClick:()=>setFilter(s)},s.charAt(0).toUpperCase()+s.slice(1)))
+      filterOptions.map(s=>React.createElement('button',{key:s,className:'btn btn-ghost btn-sm',style:{borderColor:filter===s?'var(--text3)':'var(--border)',color:filter===s?'var(--text)':'var(--text2)'},onClick:()=>setFilter(s)},s==='client-call'?'Client Call':s.charAt(0).toUpperCase()+s.slice(1)))
     ),
     React.createElement('div',{className:'card'},
       filtered.length===0?React.createElement('div',{className:'empty'},React.createElement('div',{style:{fontSize:12}},'No invoices found')):
@@ -2606,9 +2589,15 @@ function InvoicesPage({user,data}){
           React.createElement('td',{className:'primary'},inv.customerName),
           React.createElement('td',null,inv.employeeName),
           React.createElement('td',null,fmtCurrency(inv.total)),
-          React.createElement('td',null,React.createElement('span',{className:`badge ${inv.status}`},inv.status)),
+          React.createElement('td',null,React.createElement('span',{className:`badge ${inv.status}`},inv.status==='client-call'?'Client Call':inv.status)),
           React.createElement('td',null,inv.approvedBy?React.createElement('span',{style:{fontSize:11,color:'var(--green)'}},inv.approvedBy):'—'),
-          React.createElement('td',null,React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setDetail(inv)},'View'))
+          React.createElement('td',null,
+            React.createElement('div',{style:{display:'flex',gap:5}},
+              React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>setDetail(inv)},'View'),
+              inv.status==='client-call'&&React.createElement('button',{className:'btn btn-ghost btn-sm',onClick:()=>printInvoice(inv)},'⬇ PDF'),
+              inv.status==='client-call'&&user.role==='employee'&&React.createElement('button',{className:'btn btn-primary btn-sm',onClick:()=>sendForApproval(inv)},'Send →')
+            )
+          )
         )))
       )
     )
@@ -3928,7 +3917,7 @@ function CreateInvoice({user,data,setData,notify}){
   const total =
     discountedSubTotal + vat;
 
-  const submit = () => {
+  const submit = (invoiceStatus = 'pending') => {
     if(!customer.trim()){
       notify('Customer name required','error');
       return;
@@ -3965,7 +3954,7 @@ function CreateInvoice({user,data,setData,notify}){
     const newDoc = {
       id,
       type: "invoice",
-      status: "pending",
+      status: invoiceStatus,
       employee_id: user.id,
       customer_name: customer,
       customer_phone: phone,
@@ -3998,8 +3987,8 @@ function CreateInvoice({user,data,setData,notify}){
       return data;
     })
     .then(saved => {
-      notify('Invoice submitted for approval','success');
-      logAction(user,'invoice',user.name+' created invoice for '+customer+' — OMR '+total.toFixed(2),{customer,total:total.toFixed(2),items:builtItems.length});
+      notify(invoiceStatus==='client-call'?'Invoice saved as demo (not sent for approval)':'Invoice submitted for approval','success');
+      logAction(user,'invoice',user.name+(invoiceStatus==='client-call'?' saved demo invoice for ':' created invoice for ')+customer+' — OMR '+total.toFixed(2),{customer,total:total.toFixed(2),items:builtItems.length,status:invoiceStatus});
 
       setData(d => ({
         ...d,
@@ -4018,7 +4007,7 @@ function CreateInvoice({user,data,setData,notify}){
             promoCode: '',
             lpoNo: '',
             lpoDate: '',
-            status: 'pending',
+            status: invoiceStatus,
             total,
             created: new Date().toISOString().split('T')[0],
             comment,
@@ -4139,7 +4128,8 @@ function CreateInvoice({user,data,setData,notify}){
         React.createElement('span',{style:{fontWeight:700,fontSize:13}},'Gross Total'),
         React.createElement('span',{style:{fontWeight:700,fontFamily:"'JetBrains Mono',monospace",fontSize:17}},fmtCurrency(total))
       ),
-      React.createElement('button',{className:'btn btn-primary',style:{width:'100%',marginTop:18,padding:11},onClick:submit},'Submit for Approval →')
+      React.createElement('button',{className:'btn btn-primary',style:{width:'100%',marginTop:18,padding:11},onClick:()=>submit('pending')},'Submit for Approval →'),
+      user.role==='employee'&&React.createElement('button',{className:'btn btn-ghost',style:{width:'100%',marginTop:8,padding:11},onClick:()=>submit('client-call')},'💾 Save as Demo (Client Call)')
     )
   );
 }
@@ -5318,62 +5308,576 @@ function logAction(user, category, action, meta) {
    VAT is 5% of the subtotal (total / 1.05 × 0.05).
    Exports a multi-sheet .xlsx via SheetJS (CDN, no server call).
    ──────────────────────────────────────────────────────────── */
-function VATReportPage({user,data}){
+/* ── CALL REPORT PAGE ──────────────────────────────────────────
+   Employees log their own sales calls.
+   Owner / Admin see all employees' call logs with filters.
+   ──────────────────────────────────────────────────────────── */
+function CallReportPage({user,data,setData,notify}){
   const R=React.createElement;
-  const VAT_RATE=0.05;
+  const BASE='https://mkaerp-production.up.railway.app';
+  const isManager=user.role==='owner'||user.role==='admin';
 
-  const [year,setYear]=useState(new Date().getFullYear());
-  const [exporting,setExporting]=useState(false);
+  // ── State ──────────────────────────────────────────────────
+  const [showForm,setShowForm]=useState(false);
+  const [editEntry,setEditEntry]=useState(null);  // null = new, obj = editing
+  const [filterEmp,setFilterEmp]=useState('all');
+  const [filterStatus,setFilterStatus]=useState('all');
+  const [filterPurpose,setFilterPurpose]=useState('all');
+  const [search,setSearch]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [delConfirm,setDelConfirm]=useState(null);
+  const [showExport,setShowExport]=useState(false);
 
-  // All approved invoices contribute to VAT (regardless of accountantSent)
-  const invoices=(data.documents||[]).filter(d=>
-    d.type==='invoice'&&d.status==='approved'
+  const today=new Date().toISOString().split('T')[0];
+
+  const blankForm={
+    date:today,
+    customer_company:'',
+    contact_person:'',
+    phone:'',
+    purpose:'New Quotation',
+    discussion:'',
+    requirement:'',
+    followup_action:'',
+    status:'Pending',
+    next_followup_date:''
+  };
+  const [form,setForm]=useState(blankForm);
+  const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
+
+  const PURPOSES=['New Quotation','Follow-up','Payment','Support','Other'];
+  const STATUSES=['Pending','Follow-up Needed','Closed'];
+
+  // ── Data ───────────────────────────────────────────────────
+  const allCalls=data.callReports||[];
+  const canSeeAll=user.role==='owner'||user.role==='admin';
+  const myCalls=canSeeAll?allCalls:allCalls.filter(c=>Number(c.employee_id)===user.id);
+
+  // employees list for filter dropdown (manager only) — built from all users
+  const allUsers=data.users||[];
+  const empList=allUsers
+    .filter(u=>u.role==='employee'||u.role==='sales'||u.role==='owner'||u.role==='admin')
+    .sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+  const filtered=myCalls.filter(c=>{
+    if(filterEmp!=='all'&&String(c.employee_id)!==String(filterEmp))return false;
+    if(filterStatus!=='all'&&c.status!==filterStatus)return false;
+    if(filterPurpose!=='all'&&c.purpose!==filterPurpose)return false;
+    if(search){
+      const q=search.toLowerCase();
+      if(!(
+        (c.customer_company||'').toLowerCase().includes(q)||
+        (c.contact_person||'').toLowerCase().includes(q)||
+        (c.phone||'').includes(q)||
+        (c.discussion||'').toLowerCase().includes(q)
+      ))return false;
+    }
+    return true;
+  }).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  // ── CRUD ───────────────────────────────────────────────────
+  const openNew=()=>{setEditEntry(null);setForm(blankForm);setShowForm(true);};
+  const openEdit=(c)=>{
+    setEditEntry(c);
+    setForm({
+      date:c.date||today,
+      customer_company:c.customer_company||'',
+      contact_person:c.contact_person||'',
+      phone:c.phone||'',
+      purpose:c.purpose||'New Quotation',
+      discussion:c.discussion||'',
+      requirement:c.requirement||'',
+      followup_action:c.followup_action||'',
+      status:c.status||'Pending',
+      next_followup_date:c.next_followup_date||''
+    });
+    setShowForm(true);
+  };
+
+  const save=async()=>{
+    if(!form.customer_company.trim()){notify('Customer / Company is required','error');return;}
+    if(!form.date){notify('Date is required','error');return;}
+    setLoading(true);
+    try{
+      const payload={
+        ...form,
+        employee_id:user.id,
+        employee_name:user.name,
+        next_followup_date:form.next_followup_date||null
+      };
+      let saved;
+      if(editEntry){
+        const r=await fetch(`${BASE}/call-reports/${editEntry.id}`,{
+          method:'PATCH',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        if(!r.ok)throw new Error(await r.text());
+        saved=await r.json();
+        setData(d=>({...d,callReports:(d.callReports||[]).map(x=>x.id===saved.id?saved:x)}));
+        notify('Call report updated','success');
+      }else{
+        const r=await fetch(`${BASE}/call-reports`,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        if(!r.ok)throw new Error(await r.text());
+        saved=await r.json();
+        setData(d=>({...d,callReports:[saved,...(d.callReports||[])]}));
+        notify('Call report saved','success');
+      }
+      setShowForm(false);
+    }catch(e){notify('Save failed: '+e.message,'error');}
+    setLoading(false);
+  };
+
+  const del=async(id)=>{
+    try{
+      await fetch(`${BASE}/call-reports/${id}`,{method:'DELETE'});
+      setData(d=>({...d,callReports:(d.callReports||[]).filter(x=>x.id!==id)}));
+      notify('Entry deleted','success');
+    }catch(e){notify('Delete failed','error');}
+    setDelConfirm(null);
+  };
+
+  // ── Styles ─────────────────────────────────────────────────
+  const statusColor={
+    'Pending':'var(--amber)',
+    'Follow-up Needed':'var(--red)',
+    'Closed':'var(--green)'
+  };
+  const statusBg={
+    'Pending':'var(--amber-bg)',
+    'Follow-up Needed':'var(--red-bg)',
+    'Closed':'var(--green-bg)'
+  };
+
+  // ── Form modal ─────────────────────────────────────────────
+  const FormModal=()=>R('div',{style:{
+    position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:1000,
+    display:'flex',alignItems:'center',justifyContent:'center',padding:16
+  }},
+    R('div',{style:{
+      background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:14,
+      width:'100%',maxWidth:640,maxHeight:'90vh',overflowY:'auto',padding:24
+    }},
+      R('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+        R('div',{style:{fontSize:15,fontWeight:700}},editEntry?'Edit Call Log':'New Call Log'),
+        R('button',{className:'btn btn-ghost btn-sm',onClick:()=>setShowForm(false)},'✕')
+      ),
+      // Row 1: Date + Purpose
+      R('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}},
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Date *'),
+          R('input',{type:'date',value:form.date,onChange:e=>setF('date',e.target.value),
+            style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        ),
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Purpose of Call *'),
+          R('select',{value:form.purpose,onChange:e=>setF('purpose',e.target.value),
+            style:{width:'100%',fontSize:13,padding:'8px 10px'}},
+            PURPOSES.map(p=>R('option',{key:p,value:p},p))
+          )
+        )
+      ),
+      // Row 2: Customer + Contact
+      R('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}},
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Customer / Company *'),
+          R('input',{type:'text',value:form.customer_company,onChange:e=>setF('customer_company',e.target.value),
+            placeholder:'e.g. Al Faisal Trading LLC',style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        ),
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Contact Person'),
+          R('input',{type:'text',value:form.contact_person,onChange:e=>setF('contact_person',e.target.value),
+            placeholder:'Full name',style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        )
+      ),
+      // Row 3: Phone + Status
+      R('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}},
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Phone Number'),
+          R('input',{type:'tel',value:form.phone,onChange:e=>setF('phone',e.target.value),
+            placeholder:'+968 XXXX XXXX',style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        ),
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Status'),
+          R('select',{value:form.status,onChange:e=>setF('status',e.target.value),
+            style:{width:'100%',fontSize:13,padding:'8px 10px'}},
+            STATUSES.map(s=>R('option',{key:s,value:s},s))
+          )
+        )
+      ),
+      // Discussion
+      R('div',{style:{marginBottom:12}},
+        R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Discussion Summary'),
+        R('textarea',{value:form.discussion,onChange:e=>setF('discussion',e.target.value),
+          rows:3,placeholder:'What was discussed during the call...',
+          style:{width:'100%',fontSize:13,padding:'8px 10px',resize:'vertical'}})
+      ),
+      // Requirement / Feedback
+      R('div',{style:{marginBottom:12}},
+        R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Customer Requirement / Feedback'),
+        R('textarea',{value:form.requirement,onChange:e=>setF('requirement',e.target.value),
+          rows:2,placeholder:'What the customer needs or said...',
+          style:{width:'100%',fontSize:13,padding:'8px 10px',resize:'vertical'}})
+      ),
+      // Row: Follow-up Action + Next Date
+      R('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}},
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Follow-up Action'),
+          R('input',{type:'text',value:form.followup_action,onChange:e=>setF('followup_action',e.target.value),
+            placeholder:'e.g. Send quotation, Call back...',style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        ),
+        R('div',null,
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:4}},'Next Follow-up Date'),
+          R('input',{type:'date',value:form.next_followup_date,onChange:e=>setF('next_followup_date',e.target.value),
+            style:{width:'100%',fontSize:13,padding:'8px 10px'}})
+        )
+      ),
+      R('div',{style:{display:'flex',gap:8,justifyContent:'flex-end'}},
+        R('button',{className:'btn btn-ghost',onClick:()=>setShowForm(false)},'Cancel'),
+        R('button',{className:'btn btn-primary',onClick:save,disabled:loading},
+          loading?'Saving…':(editEntry?'Update Entry':'Save Entry'))
+      )
+    )
   );
 
-  // Group by year-month
+  // ── Export Modal ───────────────────────────────────────────
+  const ExportModal=()=>{
+    // Week helpers
+    const getWeekStart=(d)=>{const dt=new Date(d);const day=dt.getDay();const diff=dt.getDate()-day+(day===0?-6:1);return new Date(dt.setDate(diff));};
+    const fmt=(d)=>d.toISOString().split('T')[0];
+    const weekLabel=(start)=>{
+      const end=new Date(start);end.setDate(end.getDate()+6);
+      const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return `${start.getDate()} ${months[start.getMonth()]} – ${end.getDate()} ${months[end.getMonth()]} ${end.getFullYear()}`;
+    };
+    const thisMonday=getWeekStart(new Date());
+    const weeks=[];
+    for(let i=-4;i<=0;i++){
+      const s=new Date(thisMonday);s.setDate(s.getDate()+i*7);
+      weeks.push(s);
+    }
+    const [selWeek,setSelWeek]=useState(fmt(thisMonday));
+    const [selEmp,setSelEmp]=useState('all');
+
+    const generateExcel=()=>{
+      const wStart=selWeek;
+      const wEnd=new Date(selWeek);wEnd.setDate(wEnd.getDate()+6);
+      const wEndStr=fmt(wEnd);
+      const rows=allCalls.filter(c=>{
+        const d=c.date?c.date.split('T')[0]:'';
+        if(d<wStart||d>wEndStr)return false;
+        if(selEmp!=='all'&&String(c.employee_id)!==String(selEmp))return false;
+        return true;
+      });
+      if(!rows.length){notify('No call logs found for that selection','error');return;}
+
+      // Build CSV (Excel-compatible)
+      const headers=['#','Date','Employee','Customer / Company','Contact','Phone','Purpose','Discussion','Requirement','Follow-up Action','Status','Next Follow-up'];
+      const escape=(v)=>v==null?'':String(v).replace(/"/g,'""');
+      const csvRows=[headers.map(h=>`"${h}"`).join(',')];
+      rows.sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach((c,i)=>{
+        csvRows.push([
+          i+1,
+          `"${escape(c.date?c.date.split('T')[0]:'')} "`,
+          `"${escape(c.employee_name)}"`,
+          `"${escape(c.customer_company)}"`,
+          `"${escape(c.contact_person)}"`,
+          `"${escape(c.phone)}"`,
+          `"${escape(c.purpose)}"`,
+          `"${escape(c.discussion)}"`,
+          `"${escape(c.requirement)}"`,
+          `"${escape(c.followup_action)}"`,
+          `"${escape(c.status)}"`,
+          `"${escape(c.next_followup_date?c.next_followup_date.split('T')[0]:'')} "`
+        ].join(','));
+      });
+      const bom='\uFEFF';
+      const blob=new Blob([bom+csvRows.join('\n')],{type:'text/csv;charset=utf-8;'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      const empLabel=selEmp==='all'?'All':(empList.find(u=>String(u.id)===String(selEmp))?.name||'Unknown');
+      a.href=url;a.download=`CallReport_${wStart}_to_${wEndStr}_${empLabel}.csv`;
+      a.click();URL.revokeObjectURL(url);
+      notify('Excel report downloaded','success');
+      setShowExport(false);
+    };
+
+    return R('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}},
+      R('div',{style:{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:14,width:'100%',maxWidth:480,padding:24}},
+        R('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}},
+          R('div',{style:{fontSize:15,fontWeight:700}},'Export Weekly Call Report'),
+          R('button',{className:'btn btn-ghost btn-sm',onClick:()=>setShowExport(false)},'✕')
+        ),
+        // Week selector
+        R('div',{style:{marginBottom:16}},
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:8}},'SELECT WEEK'),
+          R('div',{style:{display:'flex',flexDirection:'column',gap:4,maxHeight:260,overflowY:'auto',border:'1px solid var(--border)',borderRadius:10,padding:6}},
+            weeks.map(ws=>{
+              const wsStr=fmt(ws);
+              const isCurrent=wsStr===fmt(thisMonday);
+              const isPast=ws<thisMonday;
+              const isSelected=wsStr===selWeek;
+              return R('div',{
+                key:wsStr,
+                onClick:()=>setSelWeek(wsStr),
+                style:{
+                  padding:'8px 12px',borderRadius:8,cursor:'pointer',
+                  background:isSelected?'var(--bg4)':'transparent',
+                  border:isSelected?'1px solid var(--border2)':'1px solid transparent',
+                  opacity:isCurrent?1:0.45,
+                  fontWeight:isCurrent?600:400,
+                  fontSize:13,
+                  color:isSelected?'var(--text)':'var(--text2)',
+                  transition:'all .12s'
+                }
+              },
+                R('span',null,weekLabel(ws)),
+                isCurrent&&R('span',{style:{marginLeft:8,fontSize:10,padding:'2px 7px',borderRadius:99,background:'var(--bg3)',color:'var(--text3)',border:'1px solid var(--border)'}},'This week')
+              );
+            })
+          )
+        ),
+        // Employee filter
+        isManager&&R('div',{style:{marginBottom:20}},
+          R('label',{style:{fontSize:11,color:'var(--text3)',fontWeight:600,display:'block',marginBottom:6}},'EMPLOYEE'),
+          R('select',{value:selEmp,onChange:e=>setSelEmp(e.target.value),style:{width:'100%',fontSize:13,padding:'8px 10px'}},
+            R('option',{value:'all'},'All Employees'),
+            empList.map(u=>R('option',{key:u.id,value:u.id},u.name))
+          )
+        ),
+        R('div',{style:{display:'flex',gap:8,justifyContent:'flex-end'}},
+          R('button',{className:'btn btn-ghost',onClick:()=>setShowExport(false)},'Cancel'),
+          R('button',{className:'btn btn-primary',onClick:generateExcel},'⬇ Download Excel')
+        )
+      )
+    );
+  };
+
+  // ── Metrics ────────────────────────────────────────────────
+  const todayCalls=myCalls.filter(c=>c.date===today).length;
+  const openCalls=myCalls.filter(c=>c.status!=='Closed').length;
+  const followupDue=myCalls.filter(c=>c.next_followup_date&&c.next_followup_date<=today&&c.status!=='Closed').length;
+
+  return R('div',null,
+    showForm&&R(FormModal),
+    showExport&&R(ExportModal),
+    // ── Top bar ───────────────────────────────────────────────
+    R('div',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:18,flexWrap:'nowrap'}},
+      R('input',{
+        type:'text',value:search,onChange:e=>setSearch(e.target.value),
+        placeholder:'Search customer, contact, discussion…',
+        style:{flex:1,minWidth:0,fontSize:12,padding:'6px 10px'}
+      }),
+      isManager&&R('select',{value:filterEmp,onChange:e=>setFilterEmp(e.target.value),
+        style:{fontSize:11,padding:'6px 8px',width:'auto',flexShrink:0}},
+        R('option',{value:'all'},'All Employees'),
+        empList.map(e=>R('option',{key:e.id,value:e.id},e.name))
+      ),
+      R('select',{value:filterPurpose,onChange:e=>setFilterPurpose(e.target.value),
+        style:{fontSize:11,padding:'6px 8px',width:'auto',flexShrink:0}},
+        R('option',{value:'all'},'All Purposes'),
+        PURPOSES.map(p=>R('option',{key:p,value:p},p))
+      ),
+      R('select',{value:filterStatus,onChange:e=>setFilterStatus(e.target.value),
+        style:{fontSize:11,padding:'6px 8px',width:'auto',flexShrink:0}},
+        R('option',{value:'all'},'All Statuses'),
+        STATUSES.map(s=>R('option',{key:s,value:s},s))
+      ),
+      R('button',{className:'btn btn-ghost',style:{flexShrink:0,fontSize:12,padding:'6px 12px',border:'1px solid var(--border2)'},onClick:()=>setShowExport(true)},'⬇ Export'),
+      R('button',{className:'btn btn-primary',style:{flexShrink:0,fontSize:12,padding:'6px 12px'},onClick:openNew},'+ Log a Call')
+    ),
+
+    // ── Metrics ───────────────────────────────────────────────
+    R('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}},
+      [
+        {label:"Today's Calls",val:todayCalls,color:'var(--text)'},
+        {label:'Total Logged',val:myCalls.length,color:'var(--text)'},
+        {label:'Open / Pending',val:openCalls,color:'var(--amber)'},
+        {label:'Follow-ups Due',val:followupDue,color:followupDue>0?'var(--red)':'var(--green)'},
+      ].map(m=>R('div',{key:m.label,className:'metric'},
+        R('div',{className:'metric-label'},m.label),
+        R('div',{className:'metric-value',style:{color:m.color}},m.val)
+      ))
+    ),
+
+    // ── Table ─────────────────────────────────────────────────
+    R('div',{className:'card'},
+      filtered.length===0
+        ? R('div',{className:'empty'},
+            R('div',{style:{fontSize:12,marginBottom:8}},search||filterEmp!=='all'||filterStatus!=='all'||filterPurpose!=='all'?'No matching call logs':'No call logs yet'),
+            !isManager&&R('button',{className:'btn btn-primary btn-sm',onClick:openNew},'Log your first call')
+          )
+        : R('div',{className:'tbl-scroll'},
+            R('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12,tableLayout:'fixed'}},
+              R('thead',null,R('tr',{style:{background:'var(--bg3)'}},
+                [
+                  {h:'#',w:28},
+                  {h:'Date',w:88},
+                  isManager?{h:'Employee',w:90}:null,
+                  {h:'Customer / Company',w:130},
+                  {h:'Contact',w:80},
+                  {h:'Phone',w:70},
+                  {h:'Purpose',w:100},
+                  {h:'Discussion',w:120},
+                  {h:'Requirement',w:110},
+                  {h:'Follow-up Action',w:110},
+                  {h:'Status',w:72},
+                  {h:'Next Follow-up',w:100},
+                  {h:'',w:72},
+                ].filter(Boolean)
+                  .map(col=>R('th',{key:col.h,style:{padding:'8px 8px',textAlign:'left',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.05em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',width:col.w}},col.h))
+              )),
+              R('tbody',null,filtered.map((c,i)=>{
+                const overdue=c.next_followup_date&&c.next_followup_date<today&&c.status!=='Closed';
+                return R('tr',{key:c.id,style:{borderTop:'1px solid var(--border)',background:overdue?'rgba(212,92,92,.04)':'transparent'}},
+                  R('td',{style:{padding:'9px 8px',color:'var(--text3)',fontFamily:"'JetBrains Mono',monospace",fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},i+1),
+                  R('td',{style:{padding:'9px 8px',whiteSpace:'nowrap',color:'var(--text2)'}},c.date?(c.date.split('T')[0]):'—'),
+                  isManager&&R('td',{style:{padding:'9px 8px',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.employee_name||'—'),
+                  R('td',{style:{padding:'9px 8px',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.customer_company||'—'),
+                  R('td',{style:{padding:'9px 8px',color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.contact_person||'—'),
+                  R('td',{style:{padding:'9px 8px',fontFamily:"'JetBrains Mono',monospace",fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.phone||'—'),
+                  R('td',{style:{padding:'9px 8px',overflow:'hidden'}},
+                    R('span',{style:{fontSize:10,padding:'2px 7px',borderRadius:99,background:'var(--bg4)',border:'1px solid var(--border)',color:'var(--text2)',display:'inline-block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100%'}},c.purpose||'—')
+                  ),
+                  R('td',{style:{padding:'9px 8px',color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.discussion||'—'),
+                  R('td',{style:{padding:'9px 8px',color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.requirement||'—'),
+                  R('td',{style:{padding:'9px 8px',color:'var(--text2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.followup_action||'—'),
+                  R('td',{style:{padding:'9px 8px',overflow:'hidden'}},
+                    R('span',{style:{fontSize:10,padding:'3px 9px',borderRadius:99,
+                      background:statusBg[c.status]||'var(--bg4)',
+                      color:statusColor[c.status]||'var(--text2)',
+                      fontWeight:600,border:'1px solid transparent'
+                    }},c.status||'—')
+                  ),
+                  R('td',{style:{padding:'9px 8px',whiteSpace:'nowrap',color:overdue?'var(--red)':'var(--text2)',fontWeight:overdue?700:400}},
+                    c.next_followup_date?(c.next_followup_date.split('T')[0]):(c.status==='Closed'?'—':'—'),
+                    overdue&&R('span',{style:{marginLeft:4,fontSize:9,color:'var(--red)'}},'⚠ Overdue')
+                  ),
+                  R('td',{style:{padding:'9px 8px',whiteSpace:'nowrap'}},
+                    R('div',{style:{display:'flex',gap:5}},
+                      (isManager||Number(c.employee_id)===user.id)&&R('button',{
+                        className:'btn btn-ghost btn-sm',onClick:()=>openEdit(c)},'Edit')
+                    )
+                  )
+                );
+              }))
+            )
+          )
+    )
+  );
+}
+
+function VATReportPage({user,data}){
+  const R=React.createElement;
+
   const MONTHS=['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
+  const QUARTERS=[
+    {label:'Q1 — Jan to Mar',months:[0,1,2]},
+    {label:'Q2 — Apr to Jun',months:[3,4,5]},
+    {label:'Q3 — Jul to Sep',months:[6,7,8]},
+    {label:'Q4 — Oct to Dec',months:[9,10,11]},
+  ];
 
-  const byMonth=Array.from({length:12},(_,i)=>{
-    const monthInvs=invoices.filter(inv=>{
-      if(!inv.created)return false;
-      const d=new Date(inv.created);
-      return d.getFullYear()===year&&d.getMonth()===i;
-    });
-    const grossTotal=monthInvs.reduce((s,inv)=>s+Number(inv.total||0),0);
-    // total already includes VAT: gross = subtotal * 1.05
-    const subtotal=grossTotal/1.05;
-    const vat=grossTotal-subtotal;
-    return{
-      month:MONTHS[i],
-      monthNum:i+1,
-      count:monthInvs.length,
-      grossTotal,
-      subtotal,
-      vat,
-      invoices:monthInvs
-    };
-  });
+  const [year,setYear]   = useState(new Date().getFullYear());
+  const [view,setView]   = useState('quarterly'); // 'quarterly' | 'monthly'
+  const [exporting,setExporting] = useState(false);
 
-  const totals=byMonth.reduce((acc,m)=>({
-    count:acc.count+m.count,
-    grossTotal:acc.grossTotal+m.grossTotal,
-    subtotal:acc.subtotal+m.subtotal,
-    vat:acc.vat+m.vat
-  }),{count:0,grossTotal:0,subtotal:0,vat:0});
+  // ── Source data ──────────────────────────────────────────────
+  const allDocs = data.documents||[];
 
-  // Available years from data
-  const years=[...new Set(invoices.map(inv=>{
-    if(!inv.created)return null;
-    return new Date(inv.created).getFullYear();
+  // Sales VAT: approved invoices (outward)
+  const salesInvoices = allDocs.filter(d=>
+    d.type==='invoice' && d.status==='approved'
+  );
+
+  // Purchase VAT: approved quotations treated as purchase records from suppliers
+  // (quotations represent what MKA buys from companies before selling)
+  const purchaseDocs = allDocs.filter(d=>
+    d.type==='quotation' && (d.status==='approved'||d.status==='draft')
+  );
+
+  // ── Available years ──────────────────────────────────────────
+  const allForYears=[...salesInvoices,...purchaseDocs];
+  const years=[...new Set(allForYears.map(d=>{
+    if(!d.created)return null;
+    return new Date(d.created).getFullYear();
   }).filter(Boolean))].sort((a,b)=>b-a);
   if(!years.includes(new Date().getFullYear()))years.unshift(new Date().getFullYear());
 
-  // ── Excel export via SheetJS ──
+  // ── Core calc helpers ────────────────────────────────────────
+  const fmtN=n=>n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
+  const mono={fontFamily:"'JetBrains Mono',monospace"};
+
+  const calcVAT=docs=>{
+    const gross=docs.reduce((s,d)=>s+Number(d.total||0),0);
+    const subtotal=gross/1.05;
+    const vat=gross-subtotal;
+    return{gross,subtotal,vat,count:docs.length};
+  };
+
+  const docsInYear=(docs)=>docs.filter(d=>{
+    if(!d.created)return false;
+    return new Date(d.created).getFullYear()===year;
+  });
+
+  const docsInMonths=(docs,monthIdxs)=>docs.filter(d=>{
+    if(!d.created)return false;
+    const dt=new Date(d.created);
+    return dt.getFullYear()===year && monthIdxs.includes(dt.getMonth());
+  });
+
+  // ── Build period rows ────────────────────────────────────────
+  const periods = view==='monthly'
+    ? MONTHS.map((label,i)=>({
+        label,
+        sales:  calcVAT(docsInMonths(salesInvoices,[i])),
+        purchases: calcVAT(docsInMonths(purchaseDocs,[i])),
+      }))
+    : QUARTERS.map(q=>({
+        label:q.label,
+        sales:  calcVAT(docsInMonths(salesInvoices,q.months)),
+        purchases: calcVAT(docsInMonths(purchaseDocs,q.months)),
+      }));
+
+  const yearSales    = calcVAT(docsInYear(salesInvoices));
+  const yearPurchases= calcVAT(docsInYear(purchaseDocs));
+  const payableVAT   = yearSales.vat - yearPurchases.vat;
+
+  // ── Customer breakdown (top sales customers) ────────────────
+  const customerBreakdown=(()=>{
+    const map={};
+    docsInYear(salesInvoices).forEach(inv=>{
+      const k=inv.customerName||'Unknown';
+      if(!map[k])map[k]={name:k,gross:0,vat:0,count:0};
+      const g=Number(inv.total||0);
+      map[k].gross+=g;
+      map[k].vat+=g-(g/1.05);
+      map[k].count++;
+    });
+    return Object.values(map).sort((a,b)=>b.vat-a.vat).slice(0,8);
+  })();
+
+  // ── Company (supplier) breakdown ────────────────────────────
+  const companyBreakdown=(()=>{
+    const map={};
+    docsInYear(purchaseDocs).forEach(doc=>{
+      const k=doc.companyName||doc.customerName||'Unknown Supplier';
+      if(!map[k])map[k]={name:k,gross:0,vat:0,count:0};
+      const g=Number(doc.total||0);
+      map[k].gross+=g;
+      map[k].vat+=g-(g/1.05);
+      map[k].count++;
+    });
+    return Object.values(map).sort((a,b)=>b.vat-a.vat).slice(0,8);
+  })();
+
+  // ── Excel export ─────────────────────────────────────────────
   const exportExcel=async()=>{
     setExporting(true);
     try{
-      // Load SheetJS dynamically from CDN if not present
       if(!window.XLSX){
         await new Promise((res,rej)=>{
           const s=document.createElement('script');
@@ -5384,161 +5888,241 @@ function VATReportPage({user,data}){
       }
       const XLSX=window.XLSX;
       const wb=XLSX.utils.book_new();
+      const p3=n=>parseFloat(n.toFixed(3));
 
-      // ── Sheet 1: Monthly Summary ──
-      const summaryRows=[
-        ['MKA ERP — VAT Report','','','',''],
-        ['Year: '+year,'','Generated: '+new Date().toLocaleDateString('en-GB'),'',''],
-        ['VAT Rate: 5%','','','',''],
+      // Sheet 1: Summary
+      const sumRows=[
+        ['MKA ERP — VAT Return Report','','','','','',''],
+        ['Year: '+year,'','View: '+(view==='monthly'?'Monthly':'Quarterly'),'','Generated: '+new Date().toLocaleDateString('en-GB'),'',''],
         [],
-        ['Month','Invoices','Subtotal (OMR)','VAT 5% (OMR)','Gross Total (OMR)'],
-        ...byMonth.map(m=>[
-          m.month,
-          m.count,
-          parseFloat(m.subtotal.toFixed(3)),
-          parseFloat(m.vat.toFixed(3)),
-          parseFloat(m.grossTotal.toFixed(3))
+        ['Period','Sales Invoices','Sales Subtotal','Sales VAT (5%)','Purchase Docs','Purchase Subtotal','Purchase VAT (5%)','Net VAT Payable'],
+        ...periods.map(p=>[
+          p.label,
+          p.sales.count, p3(p.sales.subtotal), p3(p.sales.vat),
+          p.purchases.count, p3(p.purchases.subtotal), p3(p.purchases.vat),
+          p3(p.sales.vat-p.purchases.vat)
         ]),
         [],
-        ['TOTAL ('+year+')',
-          totals.count,
-          parseFloat(totals.subtotal.toFixed(3)),
-          parseFloat(totals.vat.toFixed(3)),
-          parseFloat(totals.grossTotal.toFixed(3))
+        ['ANNUAL TOTAL',
+          yearSales.count, p3(yearSales.subtotal), p3(yearSales.vat),
+          yearPurchases.count, p3(yearPurchases.subtotal), p3(yearPurchases.vat),
+          p3(payableVAT)
         ]
       ];
-      const ws1=XLSX.utils.aoa_to_sheet(summaryRows);
-      // Column widths
-      ws1['!cols']=[{wch:14},{wch:10},{wch:18},{wch:16},{wch:18}];
-      // Bold header rows
-      const boldCells=['A1','A4','A5','B5','C5','D5','E5'];
-      boldCells.forEach(addr=>{
-        if(ws1[addr])ws1[addr].s={font:{bold:true}};
-      });
-      XLSX.utils.book_append_sheet(wb,ws1,'Monthly Summary');
+      const ws1=XLSX.utils.aoa_to_sheet(sumRows);
+      ws1['!cols']=[{wch:22},{wch:12},{wch:18},{wch:16},{wch:14},{wch:18},{wch:16},{wch:18}];
+      XLSX.utils.book_append_sheet(wb,ws1,'VAT Summary');
 
-      // ── Sheet 2: Invoice Detail ──
-      const detailRows=[
-        ['Invoice Ref','Date','Customer','LPO No','LPO Date','Subtotal (OMR)','VAT 5% (OMR)','Gross Total (OMR)','Employee'],
-        ...invoices
-          .filter(inv=>{
-            if(!inv.created)return false;
-            return new Date(inv.created).getFullYear()===year;
-          })
-          .sort((a,b)=>new Date(a.created)-new Date(b.created))
-          .map(inv=>{
-            const gross=Number(inv.total||0);
-            const sub=gross/1.05;
-            const vat=gross-sub;
-            return[
-              inv.id,
-              inv.created,
-              inv.customerName,
-              inv.lpoNo||'',
-              inv.lpoDate||'',
-              parseFloat(sub.toFixed(3)),
-              parseFloat(vat.toFixed(3)),
-              parseFloat(gross.toFixed(3)),
-              inv.employeeName||''
-            ];
-          })
+      // Sheet 2: Sales Detail
+      const salesRows=[
+        ['Invoice Ref','Date','Customer','Subtotal (OMR)','VAT 5% (OMR)','Gross (OMR)','Employee'],
+        ...docsInYear(salesInvoices).sort((a,b)=>new Date(a.created)-new Date(b.created)).map(inv=>{
+          const g=Number(inv.total||0),sub=g/1.05,vat=g-sub;
+          return[inv.id,inv.created,inv.customerName,p3(sub),p3(vat),p3(g),inv.employeeName||''];
+        })
       ];
-      const ws2=XLSX.utils.aoa_to_sheet(detailRows);
-      ws2['!cols']=[{wch:18},{wch:12},{wch:22},{wch:14},{wch:12},{wch:16},{wch:14},{wch:18},{wch:16}];
-      XLSX.utils.book_append_sheet(wb,ws2,'Invoice Detail');
+      const ws2=XLSX.utils.aoa_to_sheet(salesRows);
+      ws2['!cols']=[{wch:18},{wch:12},{wch:24},{wch:16},{wch:14},{wch:16},{wch:16}];
+      XLSX.utils.book_append_sheet(wb,ws2,'Sales (Outward)');
 
-      XLSX.writeFile(wb,'MKA_VAT_Report_'+year+'.xlsx');
-      logAction(user,'invoice',user.name+' exported VAT report for '+year,{year,total_vat:totals.vat.toFixed(3)});
-    }catch(e){
-      console.error('Export failed:',e);
-      alert('Export failed: '+e.message);
-    }
+      // Sheet 3: Purchase Detail
+      const purchRows=[
+        ['Ref','Date','Supplier / Company','Subtotal (OMR)','VAT 5% (OMR)','Gross (OMR)'],
+        ...docsInYear(purchaseDocs).sort((a,b)=>new Date(a.created)-new Date(b.created)).map(doc=>{
+          const g=Number(doc.total||0),sub=g/1.05,vat=g-sub;
+          return[doc.id,doc.created,doc.companyName||doc.customerName||'—',p3(sub),p3(vat),p3(g)];
+        })
+      ];
+      const ws3=XLSX.utils.aoa_to_sheet(purchRows);
+      ws3['!cols']=[{wch:18},{wch:12},{wch:28},{wch:16},{wch:14},{wch:16}];
+      XLSX.utils.book_append_sheet(wb,ws3,'Purchases (Inward)');
+
+      XLSX.writeFile(wb,'MKA_VAT_Return_'+year+'.xlsx');
+      logAction(user,'invoice',user.name+' exported VAT return for '+year,{year,payable:payableVAT.toFixed(3)});
+    }catch(e){console.error(e);alert('Export failed: '+e.message);}
     setExporting(false);
   };
 
-  const fmt=n=>'OMR '+n.toFixed(3);
-  const fmtN=n=>n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3});
+  // ── Shared table cell styles ─────────────────────────────────
+  const thR={textAlign:'right',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.06em',padding:'8px 12px',fontWeight:600};
+  const thL={...thR,textAlign:'left'};
+  const tdR=(col,bold,extra={})=>({...mono,textAlign:'right',padding:'9px 12px',fontSize:12,fontWeight:bold?700:400,color:col||'var(--text)',...extra});
+  const tdL=(bold)=>({padding:'9px 12px',fontWeight:bold?700:400,fontSize:13});
+
+  const SectionHeader=({label})=>R('div',{style:{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--text3)',padding:'14px 0 8px',borderBottom:'1px solid var(--border)',marginBottom:8}},label);
 
   return R('div',null,
 
-    // ── Controls bar
-    R('div',{style:{display:'flex',gap:12,alignItems:'center',marginBottom:16,flexWrap:'wrap'}},
+    // ── Controls bar ─────────────────────────────────────────
+    R('div',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:18,flexWrap:'wrap'}},
+      // Year picker
       R('div',{style:{display:'flex',alignItems:'center',gap:8}},
         R('label',{style:{fontSize:12,color:'var(--text2)',fontWeight:600}},'Year'),
-        R('select',{
-          value:year,onChange:e=>setYear(Number(e.target.value)),
-          style:{fontSize:13,padding:'6px 12px',minWidth:100}
-        },
+        R('select',{value:year,onChange:e=>setYear(Number(e.target.value)),
+          style:{fontSize:13,padding:'6px 12px',minWidth:90}},
           years.map(y=>R('option',{key:y,value:y},y))
         )
       ),
-      R('button',{
-        className:'btn btn-primary',
-        onClick:exportExcel,
-        disabled:exporting,
-        style:{marginLeft:'auto'}
-      },exporting?'\u22ef Exporting\u2026':'\u2913 Export to Excel')
-    ),
-
-    // ── Info box — above metrics for visibility
-    R('div',{style:{background:'var(--amber-bg)',border:'1px solid rgba(212,160,48,.2)',borderRadius:12,padding:'12px 16px',fontSize:12,color:'var(--amber)',marginBottom:16,lineHeight:1.7}},
-      R('div',null,
-        R('b',null,'\u2139 How VAT is calculated: '),
-        'Each invoice total already includes 5% VAT, so the subtotal and VAT amount are automatically worked back from the gross.'
+      // View toggle
+      R('div',{style:{display:'flex',background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:8,padding:3,gap:2}},
+        ['quarterly','monthly'].map(v=>R('button',{
+          key:v,
+          onClick:()=>setView(v),
+          style:{
+            padding:'5px 14px',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer',border:'none',
+            background:view===v?'var(--bg4)':'transparent',
+            color:view===v?'var(--text)':'var(--text3)',
+            transition:'all .15s'
+          }
+        },v==='quarterly'?'Quarterly':'Monthly'))
       ),
-      R('div',{style:{marginTop:4}},
-        R('b',null,'\ud83d\udcca What counts: '),
-        'All approved invoices are included in this report.'
-      )
+      R('button',{className:'btn btn-primary',onClick:exportExcel,disabled:exporting,style:{marginLeft:'auto'}},
+        exporting?'⋯ Exporting…':'⬇ Export to Excel')
     ),
 
-    // ── Summary metrics
-    R('div',{className:'grid-3',style:{marginBottom:20}},
+    // ── Top metrics ───────────────────────────────────────────
+    R('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}},
       [
-        {label:'Total Invoices ('+year+')',val:totals.count,color:'var(--text)'},
-        {label:'Total VAT Collected',val:'OMR '+fmtN(totals.vat),color:'var(--green)'},
-        {label:'Gross Revenue',val:'OMR '+fmtN(totals.grossTotal),color:'var(--text)'},
+        {label:'Sales VAT Collected',val:'OMR '+fmtN(yearSales.vat),color:'var(--green)',sub:yearSales.count+' invoices'},
+        {label:'Purchase VAT Paid',val:'OMR '+fmtN(yearPurchases.vat),color:'var(--amber)',sub:yearPurchases.count+' records'},
+        {label:'Net VAT Payable',val:'OMR '+fmtN(payableVAT),color:payableVAT>=0?'var(--red)':'var(--green)',sub:payableVAT>=0?'Amount owed to tax authority':'VAT credit'},
+        {label:'Gross Revenue',val:'OMR '+fmtN(yearSales.gross),color:'var(--text)',sub:'Before VAT: OMR '+fmtN(yearSales.subtotal)},
       ].map(m=>R('div',{key:m.label,className:'metric'},
         R('div',{className:'metric-label'},m.label),
-        R('div',{className:'metric-value',style:{color:m.color,fontSize:m.val.length>10?16:undefined}},m.val)
+        R('div',{className:'metric-value',style:{color:m.color,fontSize:fmtN(0).length>10?15:undefined}},m.val),
+        R('div',{style:{fontSize:10,color:'var(--text3)',marginTop:4}},m.sub)
       ))
     ),
 
-    // ── Monthly table
-    R('div',{className:'card'},
-      R('div',{className:'card-title',style:{marginBottom:16}},'Monthly VAT Breakdown \u2014 '+year),
+    // ── Main VAT breakdown table ──────────────────────────────
+    R('div',{className:'card',style:{marginBottom:20}},
+      R('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}},
+        R('div',{className:'card-title'},
+          (view==='quarterly'?'Quarterly':'Monthly')+' VAT Return — '+year
+        )
+      ),
       R('div',{className:'tbl-scroll'},
-        R('table',null,
-          R('thead',null,R('tr',null,
-            R('th',null,'Month'),
-            R('th',{style:{textAlign:'center'}},'Invoices'),
-            R('th',{style:{textAlign:'right'}},'Subtotal'),
-            R('th',{style:{textAlign:'right'}},'VAT 5%'),
-            R('th',{style:{textAlign:'right'}},'Gross Total')
+        R('table',{style:{width:'100%',borderCollapse:'collapse'}},
+          R('thead',null,R('tr',{style:{background:'var(--bg3)'}},
+            R('th',{style:thL},'Period'),
+            R('th',{style:{...thR,borderLeft:'2px solid var(--border)',color:'var(--green)'}},'\ud83d\udcc8 Sales VAT'),
+            R('th',{style:{...thR,color:'var(--green)'}},'Sales Subtotal'),
+            R('th',{style:{...thR,color:'var(--green)'}},'Sales Gross'),
+            R('th',{style:{...thR,borderLeft:'2px solid var(--border)',color:'var(--amber)'}},'\ud83d\udce6 Purchase VAT'),
+            R('th',{style:{...thR,color:'var(--amber)'}},'Purch. Subtotal'),
+            R('th',{style:{...thR,color:'var(--amber)'}},'Purch. Gross'),
+            R('th',{style:{...thR,borderLeft:'2px solid var(--border)',color:'var(--red)'}},'\u2696 Net Payable')
           )),
           R('tbody',null,
-            byMonth.map(m=>R('tr',{key:m.month,
-              style:{opacity:m.count===0?0.4:1}
-            },
-              R('td',{style:{fontWeight:m.count>0?600:400}},m.month),
-              R('td',{style:{textAlign:'center',color:'var(--text2)'}},m.count||'\u2014'),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12}},
-                m.count>0?fmtN(m.subtotal):'\u2014'),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:'var(--green)',fontWeight:600}},
-                m.count>0?fmtN(m.vat):'\u2014'),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12}},
-                m.count>0?fmtN(m.grossTotal):'\u2014')
-            )),
-            R('tr',{style:{borderTop:'2px solid var(--border)',fontWeight:700,background:'var(--bg3)'}},
-              R('td',null,'Total'),
-              R('td',{style:{textAlign:'center'}},totals.count),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace"}},fmtN(totals.subtotal)),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",color:'var(--green)'}},fmtN(totals.vat)),
-              R('td',{style:{textAlign:'right',fontFamily:"'JetBrains Mono',monospace"}},fmtN(totals.grossTotal))
+            periods.map((p,i)=>{
+              const net=p.sales.vat-p.purchases.vat;
+              const empty=p.sales.count===0&&p.purchases.count===0;
+              return R('tr',{key:i,style:{opacity:empty?.4:1,borderTop:'1px solid var(--border)'}},
+                R('td',{style:tdL(!empty)},p.label),
+                R('td',{style:{...tdR('var(--green)',false),borderLeft:'2px solid var(--border)'}},empty?'—':fmtN(p.sales.vat)),
+                R('td',{style:tdR('var(--text2)')},empty?'—':fmtN(p.sales.subtotal)),
+                R('td',{style:tdR('var(--text2)')},empty?'—':fmtN(p.sales.gross)),
+                R('td',{style:{...tdR('var(--amber)',false),borderLeft:'2px solid var(--border)'}},empty?'—':(p.purchases.count?fmtN(p.purchases.vat):'—')),
+                R('td',{style:tdR('var(--text2)')},empty||!p.purchases.count?'—':fmtN(p.purchases.subtotal)),
+                R('td',{style:tdR('var(--text2)')},empty||!p.purchases.count?'—':fmtN(p.purchases.gross)),
+                R('td',{style:{...tdR(net>0?'var(--red)':net<0?'var(--green)':'var(--text)',!empty),borderLeft:'2px solid var(--border)'}},
+                  empty?'—':(net>0?'+':'')+fmtN(net))
+              );
+            }),
+            // Total row
+            R('tr',{style:{borderTop:'2px solid var(--border2)',background:'var(--bg3)',fontWeight:700}},
+              R('td',{style:{...tdL(true),fontSize:13}},'Annual Total '+year),
+              R('td',{style:{...tdR('var(--green)',true),borderLeft:'2px solid var(--border)'}},'OMR '+fmtN(yearSales.vat)),
+              R('td',{style:tdR('var(--text2)',true)},fmtN(yearSales.subtotal)),
+              R('td',{style:tdR('var(--text2)',true)},fmtN(yearSales.gross)),
+              R('td',{style:{...tdR('var(--amber)',true),borderLeft:'2px solid var(--border)'}},'OMR '+fmtN(yearPurchases.vat)),
+              R('td',{style:tdR('var(--text2)',true)},fmtN(yearPurchases.subtotal)),
+              R('td',{style:tdR('var(--text2)',true)},fmtN(yearPurchases.gross)),
+              R('td',{style:{...tdR(payableVAT>=0?'var(--red)':'var(--green)',true),borderLeft:'2px solid var(--border)'}},'OMR '+fmtN(payableVAT))
             )
           )
         )
+      ),
+
+      // ── Net Payable summary box ─────────────────────────────
+      R('div',{style:{
+        marginTop:20,padding:'16px 20px',borderRadius:10,
+        background:payableVAT>=0?'var(--red-bg)':'var(--green-bg)',
+        border:'1px solid '+(payableVAT>=0?'rgba(212,92,92,.25)':'rgba(72,187,120,.25)'),
+        display:'flex',justifyContent:'space-between',alignItems:'center'
+      }},
+        R('div',null,
+          R('div',{style:{fontSize:11,fontWeight:700,letterSpacing:'.08em',textTransform:'uppercase',
+            color:payableVAT>=0?'var(--red)':'var(--green)',marginBottom:4}},'VAT Position — '+year),
+          R('div',{style:{fontSize:12,color:'var(--text2)'}},
+            'Sales VAT collected (',R('b',null,'OMR '+fmtN(yearSales.vat)),
+            ') minus Purchase VAT paid (',R('b',null,'OMR '+fmtN(yearPurchases.vat),')')
+          )
+        ),
+        R('div',{style:{textAlign:'right'}},
+          R('div',{style:{fontSize:11,color:payableVAT>=0?'var(--red)':'var(--green)',fontWeight:600,marginBottom:2}},
+            payableVAT>=0?'VAT Payable to Authority':'VAT Credit / Refund'),
+          R('div',{style:{...mono,fontSize:22,fontWeight:800,color:payableVAT>=0?'var(--red)':'var(--green)'}},
+            'OMR '+fmtN(Math.abs(payableVAT)))
+        )
       )
+    ),
+
+    // ── Two-column breakdowns ─────────────────────────────────
+    R('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:20}},
+
+      // Sales by customer
+      R('div',{className:'card'},
+        R(SectionHeader,{label:'\ud83d\udc64 Sales VAT by Customer ('+year+')'}),
+        customerBreakdown.length===0
+          ? R('div',{className:'empty',style:{fontSize:12}},'No sales data')
+          : R('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              R('thead',null,R('tr',null,
+                R('th',{style:thL},'Customer'),
+                R('th',{style:{...thR,width:80}},'Invoices'),
+                R('th',{style:{...thR,width:120}},'VAT (OMR)')
+              )),
+              R('tbody',null,customerBreakdown.map((c,i)=>
+                R('tr',{key:i,style:{borderTop:'1px solid var(--border)'}},
+                  R('td',{style:{...tdL(false),maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.name),
+                  R('td',{style:{...tdR('var(--text2)'),width:80}},c.count),
+                  R('td',{style:{...tdR('var(--green)',false),width:120}},fmtN(c.vat))
+                )
+              ))
+            )
+      ),
+
+      // Purchases by company
+      R('div',{className:'card'},
+        R(SectionHeader,{label:'\ud83c\udfed Purchase VAT by Supplier ('+year+')'}),
+        companyBreakdown.length===0
+          ? R('div',{className:'empty',style:{fontSize:12}},'No purchase data — approved quotations will appear here')
+          : R('table',{style:{width:'100%',borderCollapse:'collapse'}},
+              R('thead',null,R('tr',null,
+                R('th',{style:thL},'Supplier / Company'),
+                R('th',{style:{...thR,width:80}},'Records'),
+                R('th',{style:{...thR,width:120}},'VAT (OMR)')
+              )),
+              R('tbody',null,companyBreakdown.map((c,i)=>
+                R('tr',{key:i,style:{borderTop:'1px solid var(--border)'}},
+                  R('td',{style:{...tdL(false),maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.name),
+                  R('td',{style:{...tdR('var(--text2)'),width:80}},c.count),
+                  R('td',{style:{...tdR('var(--amber)',false),width:120}},fmtN(c.vat))
+                )
+              ))
+            )
+      )
+    ),
+
+    // ── How it works info box ─────────────────────────────────
+    R('div',{style:{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:12,padding:'14px 18px',fontSize:12,color:'var(--text2)',lineHeight:1.8}},
+      R('div',{style:{fontWeight:700,color:'var(--text)',marginBottom:6}},'ℹ How VAT Payable is Calculated'),
+      R('div',null,'Each document total already includes 5% VAT — subtotals and VAT amounts are back-calculated automatically.'),
+      R('div',{style:{marginTop:6,padding:'8px 12px',background:'var(--bg4)',borderRadius:8,...mono,fontSize:12}},
+        'Net VAT Payable = Sales VAT Collected − Purchase VAT Paid'
+      ),
+      R('div',{style:{marginTop:8}},'Example: You buy goods, supplier charges ',R('b',null,'OMR 100 VAT'),'. You sell them, customer pays ',R('b',null,'OMR 120 VAT'),'. You remit ',R('b',null,'OMR 20'),' to the tax authority.'),
+      R('div',{style:{marginTop:6,color:'var(--text3)'}},'Sales source: approved invoices. Purchase source: approved/draft quotations with a company name.')
     )
   );
 }
@@ -5883,6 +6467,7 @@ function notifEmoji(cat){
   if(cat==='product')return '📦';
   if(cat==='expense')return '💸';
   if(cat==='login')return '🔑';
+  if(cat==='security')return '🚨';
   return '🔔';
 }
 
@@ -5912,6 +6497,7 @@ function useNotifications(user){
           }
           if(row.category==='product')return true; // everyone sees stock changes
           if(row.category==='expense'&&(user.role==='owner'||user.role==='admin'))return true;
+          if(row.category==='security'&&(user.role==='owner'||user.role==='admin'))return true;
           if((row.category==='invoice'||row.category==='quotation')&&(user.role==='owner'||user.role==='admin'))return true;
           return false;
         }).slice(0,80);
@@ -6135,6 +6721,8 @@ function App(){
           reorderThreshold: p.reorder_threshold !== undefined && p.reorder_threshold !== null ? Number(p.reorder_threshold) : null,
         }));
 
+        console.log("LOADED PRODUCTS:", formatted); // 🔥 DEBUG
+
         setData(prev => ({
           ...prev,
           products: formatted
@@ -6207,6 +6795,7 @@ function App(){
     fetch("https://mkaerp-production.up.railway.app/leads")
       .then(res => res.json())
       .then(leadsFromDB => {
+        console.log("Leads:", leadsFromDB);
 
         const formatted = leadsFromDB.map(l => ({
           ...l,
@@ -6240,6 +6829,16 @@ function App(){
         setData(prev => ({ ...prev, salesTargets: targets || [] }));
       })
       .catch(err => console.error("Sales targets fetch error:", err));
+  }, []);
+
+  // FETCH CALL REPORTS
+  useEffect(() => {
+    fetch("https://mkaerp-production.up.railway.app/call-reports")
+      .then(res => res.json())
+      .then(rows => {
+        setData(prev => ({ ...prev, callReports: rows || [] }));
+      })
+      .catch(err => console.error("Call reports fetch error:", err));
   }, []);
 
   // 🔄 LIVE POLLING — refresh documents + expenditures every 20s so approvals appear without reload
@@ -6335,7 +6934,8 @@ function App(){
     'exp-tracker':['Expenditure Tracker','Manage & track all expenditures'],
     'audit-log':['Audit Log','Full system activity feed'],
     'product-limits':['Product Limits','Reorder thresholds & stock alerts'],
-    'vat-report':['VAT Report','Monthly VAT summary & Excel export'],
+    'vat-report':['VAT Report','VAT return — quarterly & monthly, sales vs purchases'],
+    'call-report':['Call Report','Sales call log — track calls, follow-ups & customer feedback'],
     'sales-targets':['Sales Targets','Set & track monthly employee targets'],
     'my-sales': user&&(user.role==='accountant'||user.role==='owner'||user.role==='admin')?['Sales Reports','All employee sales & reports']:['My Sales','Your personal sales report & history'],
     'notifications':['Notifications','Your activity & alerts'],
@@ -6357,7 +6957,7 @@ function App(){
     if(active==='dashboard'){
       if(user.role==='employee')return React.createElement(EmployeeDashboard,props);
       if(user.role==='accountant')return React.createElement(AccountantDashboard,props);
-      return React.createElement(OwnerDashboard,props);
+      return React.createElement(OwnerDashboard,{...props,setActive});
     }
     if(active==='customers')return React.createElement(CustomersPage,props);
     if(active==='products')return React.createElement(ProductsPage,props);
@@ -6374,6 +6974,7 @@ function App(){
     if(active==='audit-log')return React.createElement(AuditLogPage,props);
     if(active==='product-limits')return React.createElement(ProductLimitsPage,props);
     if(active==='vat-report')return React.createElement(VATReportPage,props);
+    if(active==='call-report')return React.createElement(CallReportPage,props);
     if(active==='sales-targets')return React.createElement(SalesTargetsPage,props);
     if(active==='my-sales')return React.createElement(MySalesPage,props);
     if(active==='notifications')return React.createElement(NotificationsPage,{user,notifs:appNotifs,unread:unreadCount,readAll,readOne,refresh:refreshNotifs});
